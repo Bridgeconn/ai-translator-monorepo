@@ -1,14 +1,12 @@
 ### Backend Set Up - 22 -Jul - 2025
 
-> Go into the backend folder
-Open terminal and run:
-cd backend
+In the backend Folder...
 
-> Create a virtual environment
+> Created a virtual environment
 python -m venv venv
 venv\Scripts\activate          
 
-> Install FastAPI and Uvicorn
+> Installed FastAPI and Uvicorn
 pip install fastapi uvicorn
 
 > Created main.py
@@ -18,6 +16,4 @@ backend/main.py
 
 uvicorn main:app --reload
 
-> Open Swagger UI
-
-http://127.0.0.1:8000/docs
+> Open Swagger UI: http://127.0.0.1:8000/docs
