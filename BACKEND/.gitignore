@@ -1,0 +1,48 @@
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pyo
+*.pyd
+.__pycache__
+
+# Virtual environment
+venv/
+env/
+.myenv/
+*.env
+*.venv
+.Python
+
+# Environment variables
+.env
+.env.*
+
+# Editor and IDEs
+.vscode/
+.idea/
+*.swp
+
+
+# Logs
+*.log
+
+# Uvicorn logs or pid
+*.pid
+
+
+# Pytest cache
+.pytest_cache/
+__pycache__
+*.pyc
+# Ignore Python bytecode files
+__pycache__/
+*.py[cod]
+
+
+
+
+# Mypy
+.mypy_cache/
