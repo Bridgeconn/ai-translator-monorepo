@@ -4,6 +4,7 @@
 
 # Miniconda installation (installed locally)
 miniconda3/
+BACKEND/Miniconda3-latest-Linux-x86_64.sh/
 
 # Virtual environments (if created inside backend)
 venv/
