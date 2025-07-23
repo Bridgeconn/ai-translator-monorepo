@@ -33,3 +33,4 @@ python-dotenv   ==1.0.1           # For config variables
 loguru==0.7.2                    # Better logging
 
 passlib[bcrypt]==1.7.4   # For password hashing
+loguru==0.7.2                    # Better logging
