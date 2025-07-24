@@ -34,3 +34,6 @@ loguru==0.7.2                    # Better logging
 
 passlib[bcrypt]==1.7.4   # For password hashing
 loguru==0.7.2                    # Better logging
+
+# Testing
+pytest==7.4.0
