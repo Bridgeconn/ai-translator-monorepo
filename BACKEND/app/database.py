@@ -3,7 +3,7 @@ import urllib
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, MetaData, inspect
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.schema import CreateSchema
 
 load_dotenv()
@@ -22,6 +22,7 @@ DATABASE_URL = (
 
 engine = create_engine(DATABASE_URL, pool_size=10, max_overflow=20)
 
+# Ensure schema exists
 with engine.connect() as connection:
     if not connection.dialect.has_schema(connection, POSTGRES_SCHEMA):
         connection.execute(CreateSchema(POSTGRES_SCHEMA))
@@ -29,6 +30,14 @@ with engine.connect() as connection:
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-Base = declarative_base()
-Base.metadata = MetaData(schema=POSTGRES_SCHEMA)
+Base = declarative_base(metadata=MetaData(schema=POSTGRES_SCHEMA))
 inspector = inspect(engine)
+print("✅ Connecting to DB:", DATABASE_URL)
+
+# ✅ This is the missing part that your route depends on
+def get_db():
+    db: Session = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
