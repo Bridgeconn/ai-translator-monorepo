@@ -31,3 +31,7 @@ indic-transliteration==2.3.43      # Optional: for Indian script handling
 # Environment & logging
 python-dotenv   ==1.0.1           # For config variables
 loguru==0.7.2                    # Better logging
+
+
+# pytest
+pytest-8.4.1-py3
