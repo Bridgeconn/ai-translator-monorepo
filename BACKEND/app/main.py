@@ -4,7 +4,8 @@ from sqlalchemy import text
 
 from app.database import SessionLocal, engine, Base
 from app.routes import users as user_routes  # rename to avoid conflict
-from app import models  # this will import and register all models
+from app import models 
+from app.routes import languages
 
 
 # --- Create database tables ---
@@ -18,6 +19,8 @@ app = FastAPI(
 
 # --- Include routers ---
 app.include_router(user_routes.router)
+app.include_router(languages.router)
+
 
 # --- Dependency to get DB session ---
 def get_db():
