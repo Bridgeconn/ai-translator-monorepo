@@ -5,7 +5,6 @@ from sqlalchemy import text
 from app.database import SessionLocal, engine, Base
 from app.routes import users as user_routes  # rename to avoid conflict
 from app import models 
-from app.routes import languages
 from app.database import get_db, init_db_schema, Base, engine
 from contextlib import asynccontextmanager
 import logging
@@ -64,4 +63,3 @@ def ping_db(db: Session = Depends(get_db)):
 
 # --- Include API Routers ---
 app.include_router(user_routes.router, prefix="/users", tags=["users"])
-app.include_router(languages.router)

@@ -1,6 +1,8 @@
 from sqlalchemy import create_engine, MetaData, inspect
+
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
+
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.schema import CreateSchema
 from dotenv import load_dotenv
@@ -28,35 +30,12 @@ DATABASE_URL = (
 
 # --- SQLAlchemy engine and session setup ---
 engine = create_engine(DATABASE_URL, pool_size=10, max_overflow=20)
-<<<<<<< HEAD
-
-# Ensure schema exists
-with engine.connect() as connection:
-    if not connection.dialect.has_schema(connection, POSTGRES_SCHEMA):
-        connection.execute(CreateSchema(POSTGRES_SCHEMA))
-        connection.commit()
-
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-<<<<<<< HEAD
-Base = declarative_base(metadata=MetaData(schema=POSTGRES_SCHEMA))
-inspector = inspect(engine)
-print("✅ Connecting to DB:", DATABASE_URL)
-
-# ✅ This is the missing part that your route depends on
-def get_db():
-    db: Session = SessionLocal()
-=======
-Base = declarative_base()
-Base.metadata = MetaData(schema=POSTGRES_SCHEMA)
-=======
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 metadata = MetaData(schema=POSTGRES_SCHEMA)
 Base = declarative_base(metadata=metadata)
 
 # --- DB inspector ---
->>>>>>> 6d7cbff26e95075aaaf41935dec5c6f345763c17
 inspector = inspect(engine)
 
 # --- Schema creation (called from main.py on startup) ---
@@ -69,7 +48,6 @@ def init_db_schema():
 # --- Dependency for DB session ---
 def get_db():
     db = SessionLocal()
->>>>>>> 3e66df980586e26fb95e575ed6accb2aca3ae0e7
     try:
         yield db
     finally:

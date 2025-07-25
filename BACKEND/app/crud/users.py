@@ -7,18 +7,14 @@ from fastapi import HTTPException, status
 from passlib.context import CryptContext
 from app.models.users import User
 from app.schemas.users import UserCreate
-def delete_user_by_id(db: Session, user_id: UUID):
+
+def delete_user_by_id(db: Session, user_id: UUID) -> bool:
     user = db.query(User).filter(User.id == user_id).first()
-
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with ID {user_id} not found"
-        )
-
+        return False
     db.delete(user)
     db.commit()
-    return {"message": f"User with ID {user_id} deleted successfully"}
+    return True
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
