@@ -1,8 +1,29 @@
-from pydantic import BaseModel, EmailStr, Field, validator
-from typing import Optional
 import re
+from pydantic import BaseModel,EmailStr, validator,Field
+from typing import Optional
 from datetime import datetime
 from uuid import UUID
+
+
+
+class UserCreate(BaseModel):
+    username: str
+    email: EmailStr
+    password: str  # raw password; will be hashed before storing
+    full_name: Optional[str] = None
+    role: Optional[str] = None
+
+@validator('password')
+def validate_password_strength(cls, value):
+        if not re.search(r'[A-Z]', value):
+            raise ValueError("Password must have at least one uppercase letter.")
+        if not re.search(r'[a-z]', value):
+            raise ValueError("Password must have at least one lowercase letter.")
+        if not re.search(r'[0-9]', value):
+            raise ValueError("Password must have at least one number.")
+        if not re.search(r'[!@#$%^&*(),.?\":{}|<>]', value):
+            raise ValueError("Password must have at least one special character.")
+        return value
 
 
 class UserUpdate(BaseModel):
@@ -32,14 +53,6 @@ class UserResponse(BaseModel):
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
     is_active: bool
-
-    class Config:
-        orm_mode = True
-class LanguageResponse(BaseModel):
-    id: UUID
-    name: str
-    code: str
-    created_at: datetime
 
     class Config:
         orm_mode = True

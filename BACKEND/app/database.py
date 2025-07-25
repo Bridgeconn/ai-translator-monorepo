@@ -2,8 +2,10 @@ import os
 import urllib
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, MetaData, inspect
+
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
+
 from sqlalchemy.schema import CreateSchema
 
 load_dotenv()

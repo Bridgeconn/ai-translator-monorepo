@@ -31,3 +31,9 @@ indic-transliteration==2.3.43      # Optional: for Indian script handling
 # Environment & logging
 python-dotenv   ==1.0.1           # For config variables
 loguru==0.7.2                    # Better logging
+
+passlib[bcrypt]==1.7.4   # For password hashing
+loguru==0.7.2                    # Better logging
+
+# Testing
+pytest==7.4.0
