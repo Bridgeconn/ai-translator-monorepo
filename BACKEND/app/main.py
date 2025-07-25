@@ -1,42 +1,48 @@
-from fastapi import Depends, FastAPI
+from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
-from app.database import SessionLocal, engine
-from app.models import users
 from sqlalchemy import text
-
+from app.database import get_db, init_db_schema, Base, engine
 from app.routes import users as user_routes
+from contextlib import asynccontextmanager
+import logging
 
-# --- Create tables ---
-users.Base.metadata.create_all(bind=engine)
+# --- Logger setup ---
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# --- Lifespan context for startup/shutdown tasks ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: init schema + tables
+    init_db_schema()
+    Base.metadata.create_all(bind=engine)
+    logger.info(" Database schema and tables initialized.")
+    yield
+    # Shutdown: you can add cleanup here if needed
+    logger.info("Application shutdown completed.")
 
 # --- Initialize FastAPI app ---
 app = FastAPI(
     title="AI Bible Translator Backend",
     version="1.0.0",
-    description="Backend service for managing Bible translation tasks."
+    description="Backend service for managing Bible translation tasks.",
+    lifespan=lifespan,
 )
 
-# --- Dependency to get DB session ---
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-# --- Optional: Root route for confirmation ---
-@app.get("/")
+# --- Root route ---
+@app.get("/", summary="Root Endpoint")
 def read_root():
     return {"message": "Welcome to the AI Bible Translator backend!"}
 
-# --- Optional: Sample route to verify DB connection ---
-@app.get("/ping-db")
+# --- DB Ping Route ---
+@app.get("/ping-db", summary="Ping DB Connection")
 def ping_db(db: Session = Depends(get_db)):
     try:
-        db.execute(text("SELECT 1"))  # correct way
+        db.execute(text("SELECT 1"))
         return {"status": "Database connection successful!"}
     except Exception as e:
         return {"status": "Database connection failed", "error": str(e)}
+    
 
-
-app.include_router(user_routes.router)
+# --- Include API Routers ---
+app.include_router(user_routes.router, prefix="/users", tags=["users"])
