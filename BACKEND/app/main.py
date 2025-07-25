@@ -2,7 +2,7 @@ from fastapi import Depends, FastAPI
 from sqlalchemy.orm import Session
 from app.database import engine, get_db
 from app.models import users as user_models
-from app.routes import users as user_routes
+from app.routes import users as user_routes, languages as language_routes
 from sqlalchemy import text
 
 
@@ -41,3 +41,6 @@ def ping_db(db: Session = Depends(get_db)):
 # --- Include user routes ---
 
 app.include_router(user_routes.router)
+
+# --- Include language routes ---
+app.include_router(language_routes.router)
