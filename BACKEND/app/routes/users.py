@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from fastapi.responses import JSONResponse
 from app.database import get_db
-from app.schemas.users import UserCreate
+from app.schemas.users import UserCreate,UserUpdate,UserResponse
 from app.crud.users import create_user
 from app.models.users import User
+from app.crud.users import update_user
 from fastapi.encoders import jsonable_encoder
 
 router = APIRouter(
@@ -28,9 +29,6 @@ def create_new_user(user: UserCreate, db: Session = Depends(get_db)):
         content={"message": "User created successfully."}
     )
 
-from app.database import get_db
-from app.schemas.schemas import UserUpdate, UserResponse
-from app.crud.users import update_user
 
 router = APIRouter(prefix="/users", tags=["users"])
 

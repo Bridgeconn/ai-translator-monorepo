@@ -2,8 +2,9 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from passlib.context import CryptContext
-from app.models import users
-from app.schemas.users import UserCreate
+from app.models import users,User
+from app.schemas.users import UserCreate,UserUpdate
+from sqlalchemy.exc import SQLAlchemyError  
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 def create_user(db: Session, user: UserCreate):
@@ -48,12 +49,7 @@ def create_user(db: Session, user: UserCreate):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Something went wrong while saving the user."
         )
-from sqlalchemy.orm import Session
-from passlib.context import CryptContext
-from sqlalchemy.exc import SQLAlchemyError  
-from fastapi import HTTPException
-from app.models.users import User  
-from app.schemas.schemas import UserUpdate
+
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
