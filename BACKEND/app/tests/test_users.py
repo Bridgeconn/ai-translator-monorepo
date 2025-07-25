@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 from app.main import app
 import uuid
-import pytest
+
 
 client = TestClient(app)
 
@@ -18,8 +18,10 @@ def test_create_user_success():
     user = generate_user()
     response = client.post("/users/", json=user)
     assert response.status_code == 201
-    assert response.json()["message"] == "User created successfully."
-
+    data = response.json()
+    assert data["username"] == user["username"] # changed here 
+    assert data["email"] == user["email"]
+    
 def test_create_user_duplicate_username():
     user = generate_user()
     client.post("/users/", json=user)  # create first

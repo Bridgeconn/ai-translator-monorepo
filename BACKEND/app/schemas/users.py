@@ -1,5 +1,5 @@
 # Define User Pydantic schemas for data validation and serialization.
-from pydantic import BaseModel,EmailStr, validator
+from pydantic import BaseModel,EmailStr
 from typing import Optional
 from datetime import datetime
 import uuid
