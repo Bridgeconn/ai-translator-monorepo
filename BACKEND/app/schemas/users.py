@@ -1,10 +1,9 @@
 import re
+import uuid
 from pydantic import BaseModel,EmailStr, validator,Field
 from typing import Optional
 from datetime import datetime
 from uuid import UUID
-
-
 
 class UserCreate(BaseModel):
     username: str

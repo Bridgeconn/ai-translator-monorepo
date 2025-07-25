@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 
-from app.schemas.schemas import LanguageResponse
+from app.schemas.languages import LanguageResponse
 from app.database import get_db
 from app.crud import languages as crud_language
 
