@@ -18,7 +18,9 @@ def test_create_user_success():
     user = generate_user()
     response = client.post("/users/", json=user)
     assert response.status_code == 201
-    assert response.json()["message"] == "User created successfully."
+    data = response.json()
+    assert data["username"] == user["username"]
+
 
 def test_create_user_duplicate_username():
     user = generate_user()
@@ -55,7 +57,6 @@ def test_create_user_weak_password():
     response = client.post("/users/", json=user)
     assert response.status_code in (201, 422)
 
-client = TestClient(app)
 
 def test_update_user_not_found():
     fake_id = str(uuid.uuid4())
