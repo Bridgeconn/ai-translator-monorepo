@@ -4,6 +4,7 @@ from app.database import SessionLocal, engine
 from app.models import users
 from sqlalchemy import text
 
+from app.routes import users as user_routes
 
 # --- Create tables ---
 users.Base.metadata.create_all(bind=engine)
@@ -36,3 +37,6 @@ def ping_db(db: Session = Depends(get_db)):
         return {"status": "Database connection successful!"}
     except Exception as e:
         return {"status": "Database connection failed", "error": str(e)}
+
+
+app.include_router(user_routes.router)

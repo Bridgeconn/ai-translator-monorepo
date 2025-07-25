@@ -2,7 +2,7 @@ import os
 import urllib
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, MetaData, inspect
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.schema import CreateSchema
 
@@ -32,3 +32,12 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 Base.metadata = MetaData(schema=POSTGRES_SCHEMA)
 inspector = inspect(engine)
+
+
+# --- Dependency to get DB session ---
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
