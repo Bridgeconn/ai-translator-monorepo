@@ -30,6 +30,7 @@ with engine.connect() as connection:
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+<<<<<<< HEAD
 Base = declarative_base(metadata=MetaData(schema=POSTGRES_SCHEMA))
 inspector = inspect(engine)
 print("✅ Connecting to DB:", DATABASE_URL)
@@ -37,6 +38,16 @@ print("✅ Connecting to DB:", DATABASE_URL)
 # ✅ This is the missing part that your route depends on
 def get_db():
     db: Session = SessionLocal()
+=======
+Base = declarative_base()
+Base.metadata = MetaData(schema=POSTGRES_SCHEMA)
+inspector = inspect(engine)
+
+
+# --- Dependency to get DB session ---
+def get_db():
+    db = SessionLocal()
+>>>>>>> 3e66df980586e26fb95e575ed6accb2aca3ae0e7
     try:
         yield db
     finally:
