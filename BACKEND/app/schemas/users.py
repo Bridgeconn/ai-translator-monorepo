@@ -9,9 +9,25 @@ from uuid import UUID
 class UserCreate(BaseModel):
     username: str
     email: EmailStr
-    password: str  # raw password; will be hashed before storing
+    password: str
     full_name: Optional[str] = None
     role: Optional[str] = None
+class UserUpdate(BaseModel):
+    username: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
+    full_name: Optional[str] = None
+    role: Optional[str] = None
+    is_active: Optional[bool] = None
+class UserResponse(BaseModel):
+    id: uuid.UUID
+    username: str
+    email: EmailStr
+    full_name: Optional[str] = None
+    role: Optional[str] = None
+    created_at: datetime
+    updated_at: Optional[str] = None
+    is_active: bool
 
 @validator('password')
 def validate_password_strength(cls, value):
@@ -55,4 +71,6 @@ class UserResponse(BaseModel):
     is_active: bool
 
     class Config:
-        orm_mode = True
+        # For Pydantic v2+, use 'model_config = ConfigDict(from_attributes=True)'
+        # if you're on FastAPI 0.110 or below (which uses Pydantic v1)
+        orm_mode = True  # Allows Pydantic to read data from ORM models

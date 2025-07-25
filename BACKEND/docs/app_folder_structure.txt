@@ -1,0 +1,22 @@
+**Folder Structure**
+
+backend/
+├── app/
+│   ├── crud/                 # (Business logic)
+│   │   ├── __init__.py
+│   │   └── user_service.py   # User CRUD logic
+│   ├── core/                 # (Not used for this example, but for config, security)
+│   ├── models/               # SQLAlchemy ORM models
+│   │   ├── __init__.py
+│   │   └── user.py           # User SQLAlchemy model
+│   ├── routers/              # FastAPI APIRouters (your API endpoints)
+│   │   ├── __init__.py
+│   │   └── users.py          # User API routes
+│   ├── schemas/              # Pydantic schemas for data validation and serialization
+│   │   ├── __init__.py
+│   │   └── user.py           # User Pydantic schemas
+│   ├── database.py           # Database engine, session, and base for models
+│   ├── main.py               # Main FastAPI application instance
+├── venv/                     # Python virtual environment (ignored by Git)
+├── requirements.txt          # Project dependencies
+└── .gitignore                # Files/folders to ignore by Git
