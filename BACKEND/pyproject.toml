@@ -1,0 +1,29 @@
+[tool.black]
+line-length = 88
+target-version = ["py38"]  # or your version: py39, py310, etc.
+skip-string-normalization = false
+
+[tool.ruff]
+line-length = 88
+target-version = "py38"  # Match your Python version
+select = ["ALL"]  # Enables all rule sets (pyflakes, flake8, isort, etc.)
+ignore = [
+  "D203",  # Conflicts with D211 (docstring style)
+  "D213",  # Google-style docstrings (optional)
+  "ANN101",  # Missing type for self (can ignore)
+  "ANN102"   # Missing type for cls (can ignore)
+]
+
+[tool.ruff.lint]
+preview = true  # Enables upcoming rules/features (optional)
+
+[tool.mypy]
+python_version = 3.8  # Change to your version
+strict = true
+ignore_missing_imports = true
+disallow_untyped_defs = true
+warn_unused_ignores = true
+no_implicit_optional = true
+
+[tool.isort]
+profile = "black"
