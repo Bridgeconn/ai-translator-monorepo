@@ -54,3 +54,14 @@ def test_create_user_weak_password():
     user["password"] = "123"
     response = client.post("/users/", json=user)
     assert response.status_code in (201, 422)
+
+client = TestClient(app)
+
+def test_update_user_not_found():
+    fake_id = str(uuid.uuid4())
+    response = client.put(f"/users/{fake_id}", json={
+        "username": "doesnotexist",
+        "email": "notfound@example.com",
+    })
+    assert response.status_code in [404, 400]  
+    assert "not found" in response.text.lower()

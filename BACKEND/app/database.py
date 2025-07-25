@@ -5,7 +5,7 @@ from sqlalchemy import create_engine, MetaData, inspect
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.schema import CreateSchema
-
+from sqlalchemy.orm import sessionmaker, Session
 load_dotenv()
 
 POSTGRES_HOST = os.getenv("POSTGRES_HOST")
@@ -34,9 +34,8 @@ Base.metadata = MetaData(schema=POSTGRES_SCHEMA)
 inspector = inspect(engine)
 
 
-# --- Dependency to get DB session ---
 def get_db():
-    db = SessionLocal()
+    db: Session = SessionLocal()
     try:
         yield db
     finally:

@@ -1,8 +1,11 @@
 from fastapi import Depends, FastAPI
 from sqlalchemy.orm import Session
 from app.database import SessionLocal, engine
-from app.models import users
+from app.routes.users import router as users_router
+from app.models import users,languages_model
 from sqlalchemy import text
+from app.database import get_db
+
 
 from app.routes import users as user_routes
 
@@ -16,13 +19,7 @@ app = FastAPI(
     description="Backend service for managing Bible translation tasks."
 )
 
-# --- Dependency to get DB session ---
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+
 
 # --- Optional: Root route for confirmation ---
 @app.get("/")
@@ -33,10 +30,9 @@ def read_root():
 @app.get("/ping-db")
 def ping_db(db: Session = Depends(get_db)):
     try:
-        db.execute(text("SELECT 1"))  # correct way
+        db.execute(text("SELECT 1"))  
         return {"status": "Database connection successful!"}
     except Exception as e:
         return {"status": "Database connection failed", "error": str(e)}
-
-
-app.include_router(user_routes.router)
+  
+app.include_router(users_router, prefix="/users", tags=["users"])
