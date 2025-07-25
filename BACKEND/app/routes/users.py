@@ -1,33 +1,29 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter,HTTPException, Depends, status
 from sqlalchemy.orm import Session
-from fastapi.responses import JSONResponse
 from app.database import get_db
-from app.schemas.users import UserCreate,UserUpdate,UserResponse
 from app.crud.users import create_user
 from app.models.users import User
 from app.crud.users import update_user
 from fastapi.encoders import jsonable_encoder
+from app.schemas.users import UserCreate,UserUpdate,UserResponse
+from app.crud.users import user_service
 
-router = APIRouter(
-    prefix="/users",
-    tags=["Users"]
-)
+
+router = APIRouter()
 
 @router.post(
     "/",
+    response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
-    responses={
-        201: {"description": "User created successfully."},
-        409: {"description": "Username or email already registered."},
-        500: {"description": "Server error during user creation."}
-    }
+    summary="Create a new user",    
 )
 def create_new_user(user: UserCreate, db: Session = Depends(get_db)):
-    create_user(db=db, user=user)
-    return JSONResponse(
-        status_code=status.HTTP_201_CREATED,
-        content={"message": "User created successfully."}
-    )
+    """
+    Register a new user with a unique username and email.
+    The password will be hashed before storage.
+    """
+    db_user = user_service.create_user(db=db, user=user)
+    return db_user
 
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -48,3 +44,4 @@ def update_user_endpoint(
         raise HTTPException(status_code=404, detail="User not found")
 
     return user
+    
