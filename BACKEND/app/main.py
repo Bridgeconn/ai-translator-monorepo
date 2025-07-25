@@ -4,8 +4,12 @@ from sqlalchemy import text
 
 from app.database import SessionLocal, engine, Base
 from app.routes import users as user_routes  # rename to avoid conflict
+<<<<<<< HEAD
 from app import models 
 from app.routes import languages
+=======
+from app import models  # this will import and register all models
+>>>>>>> bf90906184fca68d022abb0f8fc268d431c338c9
 
 
 # --- Create database tables ---

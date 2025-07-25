@@ -31,14 +31,12 @@ with engine.connect() as connection:
         connection.commit()
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 Base = declarative_base(metadata=MetaData(schema=POSTGRES_SCHEMA))
 inspector = inspect(engine)
 print("✅ Connecting to DB:", DATABASE_URL)
-
-# ✅ This is the missing part that your route depends on
+# --- Dependency to get DB session ---
 def get_db():
-    db: Session = SessionLocal()
+    db = SessionLocal()
     try:
         yield db
     finally:

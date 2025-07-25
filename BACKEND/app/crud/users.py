@@ -2,12 +2,10 @@ from sqlalchemy.orm import Session
 from app.models.users import User
 from fastapi import HTTPException, status
 from uuid import UUID
-
 from sqlalchemy.exc import IntegrityError
 from passlib.context import CryptContext
 from app.models import users
 from app.schemas.users import UserCreate
-
 def delete_user_by_id(db: Session, user_id: UUID):
     user = db.query(User).filter(User.id == user_id).first()
 
