@@ -7,46 +7,6 @@ import uuid
 
 client = TestClient(app)
 
-
-def test_delete_user_success():
-    """
-    Create a user, delete the user, confirm deletion.
-    """
-    # Step 1: Create user
-    user_data = {
-        "username": f"user_{uuid.uuid4().hex[:6]}",
-        "email": f"{uuid.uuid4().hex[:6]}@example.com",
-        "password": "TestPass123",
-        "full_name": "Test Delete User",
-        "role": "user"
-    }
-    create_response = client.post("/users/", json=user_data)
-    assert create_response.status_code == 201
-    created_user_id = create_response.json()["data"]["id"]
-    assert created_user_id is not None
-
-    # Step 2: Delete the user
-    delete_response = client.delete(f"/users/{created_user_id}")
-    assert delete_response.status_code == 200
-    assert "deleted successfully" in delete_response.json()["message"]  # ✅ fixed
-
-    # Step 3: Confirm deletion (re-delete)
-    re_delete = client.delete(f"/users/{created_user_id}")
-    assert re_delete.status_code == 404
-    assert "not found" in re_delete.json()["detail"]["message"]
-  
-
-
-def test_delete_nonexistent_user():
-    """
-    Try deleting a user with a random UUID that doesn’t exist.
-    """
-    fake_user_id = str(uuid.uuid4())
-    response = client.delete(f"/users/{fake_user_id}")
-    assert response.status_code == 404
-    assert "not found" in response.json()["detail"]["message"]
-
-
 def generate_user():
     return {
         "username": f"user_{uuid.uuid4().hex[:8]}",
@@ -104,3 +64,33 @@ def test_create_user_weak_password():
     user["password"] = "123"
     response = client.post("/users/", json=user)
     assert response.status_code in (201, 422)
+
+def test_delete_user_success():
+    """
+    Create a user, delete the user, confirm deletion.
+    """
+    # Step 1: Create user using generate_user
+    user_data = generate_user()
+    create_response = client.post("/users/", json=user_data)
+    assert create_response.status_code == 201
+    created_user_id = create_response.json()["data"]["id"]
+    assert created_user_id is not None
+
+    # Step 2: Delete the user
+    delete_response = client.delete(f"/users/{created_user_id}")
+    assert delete_response.status_code == 200
+    assert "deleted successfully" in delete_response.json()["message"]
+
+    # Step 3: Confirm deletion by trying to delete again
+    re_delete = client.delete(f"/users/{created_user_id}")
+    assert re_delete.status_code == 404
+    assert "not found" in re_delete.json()["detail"]["message"]
+  
+def test_delete_nonexistent_user():
+    """
+    Try deleting a user with a random UUID that doesn’t exist.
+    """
+    fake_user_id = str(uuid.uuid4())
+    response = client.delete(f"/users/{fake_user_id}")
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"]["message"]
