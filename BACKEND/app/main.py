@@ -5,6 +5,7 @@ from app.models import users as user_models
 from app.routes import users as user_routes, languages as language_routes
 from sqlalchemy import text
 
+from app.routes import users as user_routes
 
 # --- Create tables ---
 user_models.Base.metadata.create_all(bind=engine)

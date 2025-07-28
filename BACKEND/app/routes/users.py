@@ -1,10 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from app.crud.users import UserOperations
-from app.schemas.users import UserResponse
+from app.crud.users import UserOperations, create_user
+from app.schemas.users import UserResponse, UserCreate
 from app.database import get_db
+from fastapi.responses import JSONResponse
+from app.models.users import User
+from fastapi.encoders import jsonable_encoder
+
 
 router = APIRouter(prefix="/users", tags=["Users"])
+
+# Get all users, get user by ID, username, or email
 
 @router.get("/", summary="Get all users")
 def get_all_users(db: Session = Depends(get_db)):
@@ -31,3 +37,22 @@ def get_user_by_email(email: str, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
+
+
+# Create a new user
+
+@router.post(
+    "/",
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        201: {"description": "User created successfully."},
+        409: {"description": "Username or email already registered."},
+        500: {"description": "Server error during user creation."}
+    }
+)
+def create_new_user(user: UserCreate, db: Session = Depends(get_db)):
+    create_user(db=db, user=user)
+    return JSONResponse(
+        status_code=status.HTTP_201_CREATED,
+        content={"message": "User created successfully."}
+    )
