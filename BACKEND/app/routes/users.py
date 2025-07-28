@@ -3,7 +3,7 @@ from app.database import get_db
 from uuid import UUID
 from fastapi import APIRouter, Depends, status
 from app.schemas.users import UserCreate, ErrorResponse, SuccessResponse
-from app.crud.users import user_service,delete_user_by_id
+from app.crud.users import user_service, delete_user_by_id
 
 router = APIRouter()
 
@@ -45,4 +45,3 @@ def delete_user_route(user_id: UUID, db: Session = Depends(get_db)):
         "message": f"User with ID {user_id} deleted successfully.",
         "data": deleted_user
     }
-
