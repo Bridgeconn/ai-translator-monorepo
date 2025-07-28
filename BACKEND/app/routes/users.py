@@ -8,6 +8,7 @@ from app.models.users import User
 from fastapi.encoders import jsonable_encoder
 from app.schemas.users import UserCreate, UserResponse
 from app.crud.users import user_service
+from app.schemas.users import MessageResponse
 
 router = APIRouter()
 
@@ -25,7 +26,11 @@ def create_new_user(user: UserCreate, db: Session = Depends(get_db)):
     db_user = user_service.create_user(db=db, user=user)
     return db_user
 
-@router.delete("/{user_id}", summary="Delete user by ID")
+@router.delete(
+    "/{user_id}",
+    summary="Delete user by ID",
+    response_model=MessageResponse
+)
 def delete_user_route(user_id: UUID, db: Session = Depends(get_db)):
     deleted = delete_user_by_id(db, user_id)
     if deleted:

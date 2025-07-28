@@ -73,3 +73,6 @@ class UserResponse(BaseModel):
         # For Pydantic v2+, use 'model_config = ConfigDict(from_attributes=True)'
         # if you're on FastAPI 0.110 or below (which uses Pydantic v1)
         orm_mode = True  # Allows Pydantic to read data from ORM models
+        
+class MessageResponse(BaseModel):
+    detail: str
