@@ -1,19 +1,10 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-
-from app.database import SessionLocal, engine, Base
 from app.routes import users as user_routes  # rename to avoid conflict
-from app import models 
 from app.database import get_db, init_db_schema, Base, engine
 from contextlib import asynccontextmanager
 import logging
-
-
-# --- Create database tables ---
-Base.metadata.create_all(bind=engine)
-
-
 
 # --- Logger setup ---
 logging.basicConfig(level=logging.INFO)

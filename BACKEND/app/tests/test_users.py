@@ -84,7 +84,8 @@ def test_delete_user_success():
     # Step 3: Confirm deletion by trying to delete again
     re_delete = client.delete(f"/users/{created_user_id}")
     assert re_delete.status_code == 404
-    assert "not found" in re_delete.json()["detail"]["message"]
+    assert "not found" in re_delete.json()["detail"]
+
   
 def test_delete_nonexistent_user():
     """
@@ -93,4 +94,4 @@ def test_delete_nonexistent_user():
     fake_user_id = str(uuid.uuid4())
     response = client.delete(f"/users/{fake_user_id}")
     assert response.status_code == 404
-    assert "not found" in response.json()["detail"]["message"]
+    assert "not found" in response.json()["detail"]

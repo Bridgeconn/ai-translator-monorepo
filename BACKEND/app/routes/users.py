@@ -2,10 +2,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.crud.users import delete_user_by_id
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import JSONResponse
-from app.models.users import User
-from fastapi.encoders import jsonable_encoder
+from fastapi import APIRouter, Depends, status
 from app.schemas.users import UserCreate, ErrorResponse, SuccessResponse
 from app.crud.users import user_service
 
@@ -45,17 +42,8 @@ def delete_user_route(user_id: UUID, db: Session = Depends(get_db)):
     Returns success response if deleted, else 404 error.
     """
     deleted_user = delete_user_by_id(db, user_id)
-    
-    if deleted_user:
-        return {
-            "message": f"User with ID {user_id} deleted successfully.",
-            "data": deleted_user  # assuming `delete_user_by_id` returns the deleted User object
-        }
-
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail={
-            "message": f"User with ID {user_id} not found"
-        }
-    )
+    return {
+        "message": f"User with ID {user_id} deleted successfully.",
+        "data": deleted_user
+    }
 

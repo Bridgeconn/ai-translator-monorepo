@@ -1,6 +1,4 @@
 from sqlalchemy.orm import Session
-from app.models.users import User
-from fastapi import HTTPException, status
 from uuid import UUID
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, status
@@ -55,13 +53,17 @@ class UserService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to create user"
             )
-def delete_user_by_id(db: Session, user_id: UUID) -> Optional[User]:
+def delete_user_by_id(db: Session, user_id: UUID) -> User:
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        return None  # Changed from False to None
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with ID {user_id} not found"
+        )
     db.delete(user)
     db.commit()
-    return user  # Return the full user object
+    return user
+
        
 
 user_service = UserService()
