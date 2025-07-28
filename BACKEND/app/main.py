@@ -1,8 +1,8 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+from app.routes import users as user_routes  # rename to avoid conflict
 from app.database import get_db, init_db_schema, Base, engine
-from app.routes import users as user_routes
 from contextlib import asynccontextmanager
 import logging
 
@@ -29,7 +29,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# --- Root route ---
 @app.get("/", summary="Root Endpoint")
 def read_root():
     return {"message": "Welcome to the AI Bible Translator backend!"}
