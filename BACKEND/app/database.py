@@ -4,9 +4,14 @@ from sqlalchemy.schema import CreateSchema
 from dotenv import load_dotenv
 import urllib
 import os
+from pathlib import Path
 
-# --- Load environment variables ---
-load_dotenv()
+# ✅ Load correct env file BEFORE using any DB variables
+env_file = Path(__file__).resolve().parents[2] / ".env.test" if os.getenv("PYTEST_CURRENT_TEST") else Path(__file__).resolve().parents[2] / ".env"
+load_dotenv(dotenv_path=env_file)
+
+# # --- Load environment variables ---
+# load_dotenv()
 
 POSTGRES_HOST = os.getenv("POSTGRES_HOST")
 POSTGRES_PORT = os.getenv("POSTGRES_PORT")
@@ -31,8 +36,8 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 metadata = MetaData(schema=POSTGRES_SCHEMA)
 Base = declarative_base(metadata=metadata)
 
-# --- DB inspector ---
-inspector = inspect(engine)
+# # --- DB inspector ---
+# inspector = inspect(engine)
 
 # --- Schema creation (called from main.py on startup) ---
 def init_db_schema():

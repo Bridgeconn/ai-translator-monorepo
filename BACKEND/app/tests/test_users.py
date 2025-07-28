@@ -30,12 +30,19 @@
 #         yield db_session
 #     app.dependency_overrides[get_db] = _override
 
-from fastapi.testclient import TestClient
-from app.main import app
+# from app.tests import test_database  # ✅ This triggers the DB override
+# from fastapi.testclient import TestClient
+# from app.main import app
+# import uuid
+# import pytest
+
+#from app.tests.test_database import setup_test_db  # 
+
+from app.tests import test_database  # ✅ ensures test DB is patched
+
 import uuid
 import pytest
-
-client = TestClient(app)
+from app.tests.conftest import client
 
 def generate_user():
     return {
@@ -46,7 +53,7 @@ def generate_user():
         "role": "user"
     }
 
-def test_create_user_success():
+def test_create_user_success(client):
     user = generate_user()
     response = client.post("/users/", json=user)
     
@@ -58,7 +65,7 @@ def test_create_user_success():
 
 
 
-def test_create_user_duplicate_username():
+def test_create_user_duplicate_username(client):
     user = generate_user()
     client.post("/users/", json=user)  # create first
     duplicate = user.copy()
@@ -67,7 +74,7 @@ def test_create_user_duplicate_username():
     assert response.status_code == 409
     assert "Username already registered" in response.json()["detail"]
 
-def test_create_user_duplicate_email():
+def test_create_user_duplicate_email(client ):
     user = generate_user()
     client.post("/users/", json=user)
     duplicate = user.copy()
@@ -76,19 +83,23 @@ def test_create_user_duplicate_email():
     assert response.status_code == 409
     assert "Email already registered" in response.json()["detail"]
 
-def test_create_user_missing_fields():
+def test_create_user_missing_fields(client):
     bad_user = {"username": "onlyusername"}
     response = client.post("/users/", json=bad_user)
     assert response.status_code == 422
 
-def test_create_user_invalid_email_format():
+def test_create_user_invalid_email_format(client):
     user = generate_user()
     user["email"] = "invalid-email"
     response = client.post("/users/", json=user)
     assert response.status_code == 422
 
-def test_create_user_weak_password():
+def test_create_user_weak_password(client):
     user = generate_user()
     user["password"] = "123"
     response = client.post("/users/", json=user)
     assert response.status_code in (201, 422)
+
+def test_check_test_db_user(client):
+    response = client.get("/users/")
+    print(" Users from test DB:", response.json())
