@@ -6,7 +6,6 @@ from passlib.context import CryptContext
 from app.models.users import User
 from app.schemas.users import UserCreate
 
-
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class UserService:
