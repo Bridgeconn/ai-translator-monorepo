@@ -27,15 +27,35 @@ def create_new_user(user: UserCreate, db: Session = Depends(get_db)):
     The password will be hashed before storage.
     """
     db_user = user_service.create_user(db=db, user=user)
-     return {
+    return {
         'message': "User Created Successfully",
         "data": db_user
     }
 
-@router.delete("/{user_id}", summary="Delete user by ID")
+@router.delete(
+    "/{user_id}",
+    response_model=SuccessResponse,
+    responses={404: {"model": ErrorResponse}},
+    status_code=status.HTTP_200_OK,
+    summary="Delete user by ID"
+)
 def delete_user_route(user_id: UUID, db: Session = Depends(get_db)):
-    deleted = delete_user_by_id(db, user_id)
-    if deleted:
-        return {"detail": f"User with ID {user_id} deleted successfully."}
-    raise HTTPException(status_code=404, detail=f"User with ID {user_id} not found")
+    """
+    Delete a user by their UUID.
+    Returns success response if deleted, else 404 error.
+    """
+    deleted_user = delete_user_by_id(db, user_id)
     
+    if deleted_user:
+        return {
+            "message": f"User with ID {user_id} deleted successfully.",
+            "data": deleted_user  # assuming `delete_user_by_id` returns the deleted User object
+        }
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail={
+            "message": f"User with ID {user_id} not found"
+        }
+    )
+

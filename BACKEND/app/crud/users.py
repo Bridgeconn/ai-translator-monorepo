@@ -7,14 +7,7 @@ from fastapi import HTTPException, status
 from passlib.context import CryptContext
 from app.models.users import User
 from app.schemas.users import UserCreate
-
-def delete_user_by_id(db: Session, user_id: UUID) -> bool:
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        return False
-    db.delete(user)
-    db.commit()
-    return True
+from typing import Optional
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -62,6 +55,13 @@ class UserService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to create user"
             )
-        
+def delete_user_by_id(db: Session, user_id: UUID) -> Optional[User]:
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return None  # Changed from False to None
+    db.delete(user)
+    db.commit()
+    return user  # Return the full user object
+       
 
 user_service = UserService()
