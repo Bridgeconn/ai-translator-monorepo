@@ -38,15 +38,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-
-# --- Dependency to get DB session ---
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
 @app.get("/", summary="Root Endpoint")
 def read_root():
     return {"message": "Welcome to the AI Bible Translator backend!"}
