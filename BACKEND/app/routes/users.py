@@ -1,10 +1,9 @@
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.crud.users import delete_user_by_id
 from uuid import UUID
 from fastapi import APIRouter, Depends, status
 from app.schemas.users import UserCreate, ErrorResponse, SuccessResponse
-from app.crud.users import user_service
+from app.crud.users import user_service,delete_user_by_id
 
 router = APIRouter()
 
