@@ -8,6 +8,8 @@ from app.models.users import User # need to check this import path
 from typing import Optional, List
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Create a new user
 def create_user(db: Session, user: UserCreate):
     username_exists = db.query(users.User).filter(users.User.username == user.username).first()
     email_exists = db.query(users.User).filter(users.User.email == user.email).first()
@@ -52,6 +54,7 @@ def create_user(db: Session, user: UserCreate):
         )
 
 
+# Get user by username, email, ID and all users``
 
 class UserOperations:
 

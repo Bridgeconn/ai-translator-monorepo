@@ -17,13 +17,6 @@ app = FastAPI(
     description="Backend service for managing Bible translation tasks."
 )
 
-# # --- Dependency to get DB session ---
-# def get_db():
-#     db = SessionLocal()
-#     try:
-#         yield db
-#     finally:
-#         db.close()
 
 # --- Optional: Root route for confirmation ---
 @app.get("/")
