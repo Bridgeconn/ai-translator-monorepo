@@ -1,5 +1,5 @@
 # Define User Pydantic schemas for data validation and serialization.
-from pydantic import BaseModel,EmailStr, validator
+from pydantic import BaseModel,EmailStr
 from typing import Optional
 from datetime import datetime
 import uuid
@@ -28,6 +28,12 @@ class UserResponse(BaseModel):
     is_active: bool
 
     class Config:
-        # For Pydantic v2+, use 'model_config = ConfigDict(from_attributes=True)'
-        # if you're on FastAPI 0.110 or below (which uses Pydantic v1)
-        orm_mode = True  # Allows Pydantic to read data from ORM models
+        orm_mode = True
+
+ 
+class SuccessResponse(BaseModel):
+    message: str
+    data: UserResponse
+ 
+class ErrorResponse(BaseModel):
+    message: str

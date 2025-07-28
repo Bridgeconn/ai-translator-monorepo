@@ -3,6 +3,10 @@ from app.main import app
 from app.database import SessionLocal
 from app.models.users import User
 import uuid
+<<<<<<< HEAD
+=======
+
+>>>>>>> 43aff29d01737db5a8d952c9bb297890f5189e22
 
 client = TestClient(app)
 
@@ -60,10 +64,16 @@ def test_create_user_success():
     response = client.post("/users/", json=user)
     assert response.status_code == 201
     data = response.json()
+<<<<<<< HEAD
     assert data["username"] == user["username"]
     assert data["email"] == user["email"]
 
 
+=======
+    assert data["username"] == user["username"] # changed here 
+    assert data["email"] == user["email"]
+    
+>>>>>>> 43aff29d01737db5a8d952c9bb297890f5189e22
 def test_create_user_duplicate_username():
     user = generate_user()
     client.post("/users/", json=user)

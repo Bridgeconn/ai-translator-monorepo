@@ -6,14 +6,18 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from app.models.users import User
 from fastapi.encoders import jsonable_encoder
-from app.schemas.users import UserCreate, UserResponse
+from app.schemas.users import UserCreate, ErrorResponse, SuccessResponse
 from app.crud.users import user_service
 
 router = APIRouter()
 
 @router.post(
     "/",
-    response_model=UserResponse,
+    response_model=SuccessResponse,
+    responses={
+        409: {"model": ErrorResponse}
+    },
+ 
     status_code=status.HTTP_201_CREATED,
     summary="Create a new user",    
 )
@@ -23,7 +27,10 @@ def create_new_user(user: UserCreate, db: Session = Depends(get_db)):
     The password will be hashed before storage.
     """
     db_user = user_service.create_user(db=db, user=user)
-    return db_user
+     return {
+        'message': "User Created Successfully",
+        "data": db_user
+    }
 
 @router.delete("/{user_id}", summary="Delete user by ID")
 def delete_user_route(user_id: UUID, db: Session = Depends(get_db)):
@@ -31,3 +38,4 @@ def delete_user_route(user_id: UUID, db: Session = Depends(get_db)):
     if deleted:
         return {"detail": f"User with ID {user_id} deleted successfully."}
     raise HTTPException(status_code=404, detail=f"User with ID {user_id} not found")
+    
