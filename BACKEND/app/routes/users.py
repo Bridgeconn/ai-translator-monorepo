@@ -48,7 +48,7 @@ def update_user_endpoint(
     """
         Updating a user details
         """
-        
+    user_id = user_id.strip()    
     db_user = user_service.update_user(db, user_id, updates)  
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
