@@ -8,7 +8,7 @@ from app.schemas.sources import (
 )
 from app.crud.sources import source_service
 
-router = APIRouter(prefix="/sources", tags=["Sources"])
+router = APIRouter(tags=["sources"])
 
 @router.post(
     "/",

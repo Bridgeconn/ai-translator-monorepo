@@ -40,7 +40,6 @@ def generate_source(language_id):
         "language_id": language_id
     }
 
-
 def test_create_source_success():
     lang_id = create_fake_language_id()
     source = generate_source(lang_id)
@@ -77,7 +76,8 @@ def test_update_source_partial_success():
     lang_id = create_fake_language_id()
     source = generate_source(lang_id)
     created = client.post("/sources/", json=source).json()["data"]
-    source_id = created["id"]
+    source_id = created["source_id"]  # fixed
+
 
     update_payload = {"version_name": "Updated Version"}
     response = client.put(f"/sources/{source_id}", json=update_payload)
@@ -88,17 +88,17 @@ def test_get_source_by_id():
     lang_id = create_fake_language_id()
     source = generate_source(lang_id)
     created = client.post("/sources/", json=source).json()["data"]
-    source_id = created["id"]
+    source_id = created["source_id"]
 
     response = client.get(f"/sources/{source_id}")
     assert response.status_code == 200
-    assert response.json()["data"]["id"] == source_id
+    assert response.json()["data"]["source_id"] == source_id
 
 def test_delete_source_success():
     lang_id = create_fake_language_id()
     source = generate_source(lang_id)
     created = client.post("/sources/", json=source).json()["data"]
-    source_id = created["id"]
+    source_id = created["source_id"]
 
     response = client.delete(f"/sources/{source_id}")
     assert response.status_code == 200
