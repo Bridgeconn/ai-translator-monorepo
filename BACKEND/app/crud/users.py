@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from uuid import UUID
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from fastapi import HTTPException, status
 from passlib.context import CryptContext
@@ -53,7 +54,7 @@ class UserService:
                 detail="Failed to create user"
             )
         
-    def update_user(self, db: Session, user_id: str, updates: UserUpdate) -> User:
+    def update_user(self, db: Session, user_id: UUID, updates: UserUpdate) -> User:
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
@@ -85,4 +86,17 @@ class UserService:
             raise HTTPException(status_code=500, detail="Database error while updating user")
 
 # Singleton instance for import elsewhere
+def delete_user_by_id(db: Session, user_id: UUID) -> User:
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with ID {user_id} not found"
+        )
+    db.delete(user)
+    db.commit()
+    return user
+
+       
+
 user_service = UserService()
