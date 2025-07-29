@@ -6,49 +6,7 @@ from app.models.users import User
 from app.schemas.users import UserCreate, UserUpdate
 
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-
-class UserService:
-
-    def get_user_by_username(self, db: Session, username: str) -> User | None:
-        return db.query(User).filter(User.username == username).first()
-
-    def get_user_by_email(self, db: Session, email: str) -> User | None:
-        return db.query(User).filter(User.email == email).first()
-
-    def create_user(self, db: Session, user: UserCreate) -> User:
-        if self.get_user_by_username(db, user.username):
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Username already registered."
-            )
-        if self.get_user_by_email(db, user.email):
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Email already registered."
-            )
-
-        hashed_password = pwd_context.hash(user.password)
-        new_user = User(
-            username=user.username,
-            email=user.email,
-            password_hash=hashed_password,
-            full_name=user.full_name,
-            role=user.role
-        )
-
-        try:
-            db.add(new_user)
-            db.commit()
-            db.refresh(new_user)
-            return new_user
-        except IntegrityError:
-            db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to create user"
-            )
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class UserService:
@@ -104,12 +62,12 @@ class UserService:
         if updates.username:
             existing = db.query(User).filter(User.username == updates.username, User.id != user.id).first()
             if existing:
-                raise HTTPException(status_code=409, detail="Username already exists.")
+                raise HTTPException(status_code=409, detail="Username already registered")
 
         if updates.email:
             existing = db.query(User).filter(User.email == updates.email, User.id != user.id).first()
             if existing:
-                raise HTTPException(status_code=400, detail="Email already in use")
+                raise HTTPException(status_code=409, detail="Email already registered")
 
         # Apply updates
         for attr, value in updates.dict(exclude_unset=True).items():
@@ -125,7 +83,6 @@ class UserService:
         except SQLAlchemyError:
             db.rollback()
             raise HTTPException(status_code=500, detail="Database error while updating user")
-
 
 # Singleton instance for import elsewhere
 user_service = UserService()

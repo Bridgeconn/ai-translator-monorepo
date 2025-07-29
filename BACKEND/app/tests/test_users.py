@@ -66,3 +66,38 @@ def test_update_user_not_found():
     })
     assert response.status_code in [404, 400]  
     assert "not found" in response.text.lower()
+
+
+def test_update_user_duplicate_username():
+    user1 = generate_user()
+    user2 = generate_user()
+
+    # Create both users
+    res1 = client.post("/users/", json=user1)
+    res2 = client.post("/users/", json=user2)
+
+    id2 = res2.json()["id"]
+
+    # Attempt to update user2 to user1's username
+    updated_data = user2.copy()
+    updated_data["username"] = user1["username"]
+
+    response = client.put(f"/users/{id2}", json=updated_data)
+    assert response.status_code == 409
+    assert "Username already registered" in response.json()["detail"]
+
+def test_update_user_duplicate_email():
+    user1 = generate_user()
+    user2 = generate_user()
+
+    res1 = client.post("/users/", json=user1)
+    res2 = client.post("/users/", json=user2)
+
+    id2 = res2.json()["id"]
+
+    updated_data = user2.copy()
+    updated_data["email"] = user1["email"]
+
+    response = client.put(f"/users/{id2}", json=updated_data)
+    assert response.status_code == 409
+    assert "Email already registered" in response.json()["detail"]
