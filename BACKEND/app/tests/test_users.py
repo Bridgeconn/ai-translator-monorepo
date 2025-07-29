@@ -61,4 +61,4 @@ def test_create_user_weak_password(client):
 
 
 def test_print_db_url(db_session):
-    print("🧠 Connected DB URL:", db_session.bind.url)
+    print("Connected DB URL:", db_session.bind.url)
