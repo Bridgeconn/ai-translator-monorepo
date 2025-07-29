@@ -3,7 +3,6 @@ from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 from datetime import datetime
 import uuid
-
 class UserCreate(BaseModel):
     username: str
     email: EmailStr
@@ -39,3 +38,4 @@ class SuccessResponse(BaseModel):
  
 class ErrorResponse(BaseModel):
     message: str
+

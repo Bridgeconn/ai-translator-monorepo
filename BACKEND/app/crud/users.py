@@ -5,12 +5,23 @@ from fastapi import HTTPException, status
 from passlib.context import CryptContext
 from app.models.users import User 
 from app.schemas.users import UserCreate, UserUpdate
-
+from typing import Optional, List
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class UserService:
+    def get_user_by_username(db: Session, username: str) -> Optional[User]:
+        return db.query(User).filter(User.username == username).first()
+
+    def get_user_by_email(db: Session, email: str) -> Optional[User]:
+        return db.query(User).filter(User.email == email).first()
+
+    def get_user_by_id(db: Session, user_id) -> Optional[User]:
+        return db.query(User).filter(User.id == user_id).first()
+
+    def get_all_users(db: Session) -> List[User]:
+        return db.query(User).all()
     def get_user_by_username(self, db: Session, username: str):
         return db.query(User).filter(User.username == username).first()
 
@@ -97,6 +108,8 @@ def delete_user_by_id(db: Session, user_id: UUID) -> User:
     db.commit()
     return user
 
-       
+
+
+    
 
 user_service = UserService()

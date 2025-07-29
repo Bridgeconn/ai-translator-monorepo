@@ -76,3 +76,31 @@ def delete_user_route(user_id: UUID, db: Session = Depends(get_db)):
         "message": f"User with ID {user_id} deleted successfully.",
         "data": deleted_user
     }
+
+
+@router.get("/", summary="Get all users")
+def get_all_users(db: Session = Depends(get_db)):
+    users = user_service.get_all_users(db)
+    return users
+
+@router.get("/id/{user_id}", summary="Get user by ID")
+def get_user_by_id(user_id: str, db: Session = Depends(get_db)):
+    user = user_service.get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+@router.get("/username/{username}", summary="Get user by username")
+def get_user_by_username(username: str, db: Session = Depends(get_db)):
+    user = user_service.get_user_by_username(db, username)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+@router.get("/email/{email}", summary="Get user by email")
+def get_user_by_email(email: str, db: Session = Depends(get_db)):
+    user = user_service.get_user_by_email(db, email)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
