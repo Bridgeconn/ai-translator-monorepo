@@ -13,7 +13,6 @@ def generate_user():
         "email": f"{uuid.uuid4().hex[:8]}@example.com",
         "password": "TestPass123",
         "full_name": "Test User",
-        "role": "user"
     }
      # Register user
     response = client.post("/users/", json=user)
@@ -39,7 +38,6 @@ def test_create_user_success():
         "email": f"{uuid.uuid4().hex[:8]}@example.com",
         "password": "TestPass123",
         "full_name": "Test User",
-        "role": "user"
     }
     response = client.post("/users/", json=user)
     assert response.status_code == 201
@@ -87,7 +85,6 @@ def test_create_user_weak_password():
     "email": f"{uuid.uuid4().hex[:8]}@example.com",
     "password": "123",  # weak password
     "full_name": "Weak Password User",
-    "role": "user"
      }
     response = client.post("/users/", json=user)
     assert response.status_code in (201, 422)
@@ -107,16 +104,8 @@ def test_update_user_not_found():
 def test_update_user_duplicate_username():
     user1, headers = generate_user()
     user2, _ = generate_user()
-    # Create both users
-    # res1 = client.post("/users/", json=user1)
-    # res2 = client.post("/users/", json=user2)
-
-    # assert res1.status_code == 201
-    # assert res2.status_code == 201
-
-    # id2 = res2.json()["data"]["id"]
     response = client.get(f"/users/username/{user2['username']}", headers=headers)
-    # id2 = user2_data["id"]
+
     assert response.status_code == 200, response.text
     user2_data = response.json()
     id2 = user2_data["data"]["user_id"]  # 
@@ -133,14 +122,6 @@ def test_update_user_duplicate_username():
 def test_update_user_duplicate_email():
     user1, headers = generate_user()
     user2, _ = generate_user()
-
-    # res1 = client.post("/users/", json=user1)
-    # res2 = client.post("/users/", json=user2)
-
-    # assert res1.status_code == 201
-    # assert res2.status_code == 201
-
-    # id2 = res2.json()["data"]["id"]
     response = client.get(f"/users/username/{user2['username']}", headers=headers)
     assert response.status_code == 200, response.text
     user2_data = response.json()
@@ -160,25 +141,14 @@ def test_delete_user_success():
     """
     # Step 1: Create user using generate_user
     user, headers = generate_user()
-    # create_response = client.post("/users/", json=user) 
-    # assert create_response.status_code == 201
-    # created_user_id = create_response.json()["data"]["id"]
     response = client.get(f"/users/username/{user['username']}", headers=headers)
     assert response.status_code == 200, response.text
     user_data = response.json()
     created_user_id = user_data["data"]["user_id"]
-    # assert created_user_id is not None
-
     # Step 2: Delete the user
     delete_response = client.delete(f"/users/{created_user_id}",headers=headers)
     assert delete_response.status_code == 200
     assert "deleted successfully" in delete_response.json()["message"]
-
-    # Step 3: Confirm deletion by trying to delete again
-    # re_delete = client.delete(f"/users/{created_user_id}",headers=headers)
-    # # assert re_delete.status_code == 404
-    # assert re_delete.status_code in [401, 404]
-    # assert "not found" in re_delete.json()["detail"]
     # Step 3: Confirm deletion by trying to delete again (should be unauthorized)
     re_delete = client.delete(f"/users/{created_user_id}", headers=headers)
     assert re_delete.status_code == 401
@@ -211,12 +181,6 @@ def test_get_all_users():
 # ------------------------
 def test_get_user_by_id_valid():
     user, headers = generate_user()# added generate_user function
-    # create_response = client.post("/users/", json=user)
-    # assert create_response.status_code == 201
-    # user_id = create_response.json()["data"]["id"]
-    # response = client.get(f"/users/id/{user_id}",headers=headers)
-    # assert response.status_code == 200
-    # assert response.json()["data"]["id"] == user_id
     get_response = client.get(f"/users/username/{user['username']}", headers=headers)
     assert get_response.status_code == 200
     user_id = get_response.json()["data"]["user_id"]
@@ -236,12 +200,6 @@ def test_get_user_by_id_invalid():
 # ------------------------
 def test_get_user_by_username_valid():
     user, headers = generate_user()# # added generate_user function
-    # create_response = client.post("/users/", json=user)
-    # assert create_response.status_code == 201
-    # username = create_response.json()["data"]["username"]
-    # response = client.get(f"/users/username/{username}",headers=headers)
-    # assert response.status_code == 200
-    # assert response.json()["username"] == username
     response = client.get(f"/users/username/{user['username']}", headers=headers)
     assert response.status_code == 200
     assert response.json()["data"]["username"] == user["username"]
@@ -258,9 +216,6 @@ def test_get_user_by_username_invalid():
 # ------------------------
 def test_get_user_by_email_valid():
     user, headers = generate_user() # added generate_user function
-    # create_response = client.post("/users/", json=user)
-    # assert create_response.status_code == 201
-    # email = create_response.json()["data"]["email"]
     email = user["email"]
     response = client.get(f"/users/email/{email}",headers=headers)
     assert response.status_code == 200

@@ -46,7 +46,7 @@ class UserService:
             email=user.email,
             password_hash=hashed_password,
             full_name=user.full_name,
-            role=user.role
+            role="user"
         )
 
         try:
@@ -72,9 +72,6 @@ class UserService:
             existing = db.query(User).filter(User.username == updates.username, user_id != User.user_id).first()
             if existing:
                 raise HTTPException(status_code=409, detail="Username already registered")
-
-        # if updates.email:
-        #     existing = db.query(User).filter(User.username == updates.username, user_id != User.user_id).first()
         if updates.email:
             existing = db.query(User).filter(User.email == updates.email, User.user_id != user_id).first()
 
@@ -110,5 +107,4 @@ def delete_user_by_id(db: Session, user_id: UUID) -> User:
 
 
 user_service = UserService()
-
 ## changed id to user_id as per schema 

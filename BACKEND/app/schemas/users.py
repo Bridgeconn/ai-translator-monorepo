@@ -8,14 +8,13 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     full_name: Optional[str] = None
-    role: Optional[str] = None
+ 
 
 class UserUpdate(BaseModel):
     username: Optional[str] = Field(None, max_length=50)
     email: Optional[EmailStr] = None
     full_name: Optional[str] = Field(None, max_length=100)
     password: Optional[str] = Field(None, min_length=8)
-    role: Optional[str] = Field(None, max_length=50)
     is_active: Optional[bool] = None
     
 class UserResponse(BaseModel):
@@ -23,7 +22,7 @@ class UserResponse(BaseModel):
     username: str
     email: EmailStr
     full_name: Optional[str] = None
-    role: Optional[str] = None
+    role: str
     created_at: datetime
     updated_at: Optional[datetime] = None
     is_active: bool
@@ -39,7 +38,3 @@ class SuccessResponse(BaseModel):
 class ErrorResponse(BaseModel):
     message: str
 
-## added a login request for auth/login
-class LoginRequest(BaseModel):
-    username: str
-    password: str

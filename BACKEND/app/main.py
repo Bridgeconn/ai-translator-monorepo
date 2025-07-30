@@ -1,8 +1,5 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
-from app.database import SessionLocal, engine
-from app.routes.users import router as user_routes
-from app.models import users,languages_model
 from sqlalchemy import text
 from app.routes import users as user_routes  # rename to avoid conflict
 from app.database import get_db, init_db_schema, Base, engine

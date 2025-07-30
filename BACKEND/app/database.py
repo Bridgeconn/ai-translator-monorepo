@@ -1,7 +1,6 @@
 from sqlalchemy import create_engine, MetaData, inspect
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import sessionmaker, declarative_base ,Session
 from sqlalchemy.schema import CreateSchema
-from sqlalchemy.orm import sessionmaker, Session
 from dotenv import load_dotenv
 import urllib
 import os
