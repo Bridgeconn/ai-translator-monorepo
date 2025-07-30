@@ -19,7 +19,7 @@ class UserUpdate(BaseModel):
     is_active: Optional[bool] = None
     
 class UserResponse(BaseModel):
-    id: uuid.UUID
+    user_id: uuid.UUID  ## change id to user_id
     username: str
     email: EmailStr
     full_name: Optional[str] = None
@@ -39,3 +39,7 @@ class SuccessResponse(BaseModel):
 class ErrorResponse(BaseModel):
     message: str
 
+## added a login request for auth/login
+class LoginRequest(BaseModel):
+    username: str
+    password: str
