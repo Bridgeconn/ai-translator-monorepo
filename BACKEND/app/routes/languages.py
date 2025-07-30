@@ -17,8 +17,8 @@ def get_language_by_id(language_id: UUID, db: Session = Depends(get_db)):
     lang = language_service.get_by_id(db, language_id)
     return {"message": "Language retrieved", "data": lang}
 
-@router.get("/code/{code}", response_model=SuccessResponse)
-def get_language_by_code(code: str, db: Session = Depends(get_db)):
+@router.get("/bcp/{bcp_code}", response_model=SuccessResponse)
+def get_language_by_bcp(code: str, db: Session = Depends(get_db)):
     lang = language_service.get_by_code(db, code)
     return {"message": "Language retrieved", "data": lang}
 
