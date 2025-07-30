@@ -9,7 +9,6 @@ class UserCreate(BaseModel):
     password: str
     full_name: Optional[str] = None
  
-
 class UserUpdate(BaseModel):
     username: Optional[str] = Field(None, max_length=50)
     email: Optional[EmailStr] = None
@@ -29,7 +28,6 @@ class UserResponse(BaseModel):
 
     class Config:
         orm_mode = True
-
  
 class SuccessResponse(BaseModel):
     message: str
