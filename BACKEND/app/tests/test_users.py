@@ -1,44 +1,4 @@
-# import pytest
-# from app.database import Base, get_db, engine, SessionLocal
-# from app.main import app
-
-# # ✅ Clean DB before and after the entire test session
-# @pytest.fixture(scope="session", autouse=True)
-# def setup_database():
-#     Base.metadata.drop_all(bind=engine)
-#     Base.metadata.create_all(bind=engine)
-#     yield
-#     Base.metadata.drop_all(bind=engine)
-
-# # ✅ Create isolated DB session for each test
-# @pytest.fixture
-# def db_session():
-#     connection = engine.connect()
-#     transaction = connection.begin()
-#     session = SessionLocal(bind=connection)
-#     try:
-#         yield session
-#     finally:
-#         session.close()
-#         transaction.rollback()
-#         connection.close()
-
-# # ✅ Override FastAPI's get_db dependency to use test DB
-# @pytest.fixture(autouse=True)
-# def override_get_db(db_session):
-#     def _override():
-#         yield db_session
-#     app.dependency_overrides[get_db] = _override
-
-# from app.tests import test_database  # ✅ This triggers the DB override
-# from fastapi.testclient import TestClient
-# from app.main import app
-# import uuid
-# import pytest
-
-#from app.tests.test_database import setup_test_db  # 
-
-from app.tests import test_database  # ✅ ensures test DB is patched
+from app.tests import test_database  # ensures test DB is patched
 
 import uuid
 import pytest
@@ -57,7 +17,7 @@ def test_create_user_success(client):
     user = generate_user()
     response = client.post("/users/", json=user)
     
-    print("RESPONSE JSON:", response.json())  # ✅ 4 spaces here
+    print("RESPONSE JSON:", response.json())  # 4 spaces here
 
     assert response.status_code == 201
     assert response.json()["username"] == user["username"]
