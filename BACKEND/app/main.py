@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from app.routes import users as user_routes  # rename to avoid conflict
+from app.routes import users as user_routes, languages
 from app.database import get_db, init_db_schema, Base, engine
 from contextlib import asynccontextmanager
 import logging
@@ -45,3 +45,6 @@ def ping_db(db: Session = Depends(get_db)):
 
 # --- Include API Routers ---
 app.include_router(user_routes.router, prefix="/users", tags=["users"])
+
+# --- Include Languages Router ---
+app.include_router(languages.router, prefix="/languages", tags=["languages"])
