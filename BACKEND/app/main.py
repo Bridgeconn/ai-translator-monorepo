@@ -5,6 +5,7 @@ from app.routes import users as user_routes, languages
 from app.database import get_db, init_db_schema, Base, engine
 from contextlib import asynccontextmanager
 import logging
+from app.init_data import load_languages_from_csv
 
 # --- Logger setup ---
 logging.basicConfig(level=logging.INFO)
@@ -17,6 +18,11 @@ async def lifespan(app: FastAPI):
     init_db_schema()
     Base.metadata.create_all(bind=engine)
     logger.info(" Database schema and tables initialized.")
+
+    # Load languages AFTER tables are created
+    load_languages_from_csv()
+    logger.info("Languages loaded from CSV.")
+
     yield
     # Shutdown: you can add cleanup here if needed
     logger.info("Application shutdown completed.")
@@ -48,3 +54,4 @@ app.include_router(user_routes.router, prefix="/users", tags=["users"])
 
 # --- Include Languages Router ---
 app.include_router(languages.router, prefix="/languages", tags=["languages"])
+

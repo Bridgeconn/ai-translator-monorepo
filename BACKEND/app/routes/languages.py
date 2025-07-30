@@ -12,14 +12,29 @@ def create_language(language: LanguageCreate, db: Session = Depends(get_db)):
     new_lang = language_service.create_language(db, language)
     return {"message": "Language created successfully", "data": new_lang}
 
+@router.get("/id/{language_id}", response_model=SuccessResponse)
+def get_language_by_id(language_id: UUID, db: Session = Depends(get_db)):
+    lang = language_service.get_by_id(db, language_id)
+    return {"message": "Language retrieved", "data": lang}
+
 @router.get("/code/{code}", response_model=SuccessResponse)
 def get_language_by_code(code: str, db: Session = Depends(get_db)):
     lang = language_service.get_by_code(db, code)
     return {"message": "Language retrieved", "data": lang}
 
+@router.get("/iso/{iso_code}", response_model=SuccessResponse)
+def get_language_by_iso(iso_code: str, db: Session = Depends(get_db)):
+    lang = language_service.get_by_iso(db, iso_code)
+    return {"message": "Language retrieved", "data": lang}
+
 @router.get("/name/{name}", response_model=SuccessResponse)
 def get_language_by_name(name: str, db: Session = Depends(get_db)):
     lang = language_service.get_by_name(db, name)
+    return {"message": "Language retrieved", "data": lang}
+
+@router.get("/search/{query}", response_model=SuccessResponse)
+def get_language_by_any(query: str, db: Session = Depends(get_db)):
+    lang = language_service.get_by_any(db, query)
     return {"message": "Language retrieved", "data": lang}
 
 @router.get("/", response_model=list[LanguageResponse])

@@ -1,18 +1,23 @@
 from sqlalchemy.orm import Session
 from uuid import UUID
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from app.models.languages import Language
 from app.schemas.languages import LanguageCreate, LanguageUpdate
+from typing import Union
 
 class LanguageService:
 
     def create_language(self, db: Session, language: LanguageCreate) -> Language:
-        existing = db.query(Language).filter(Language.code == language.code).first()
+        existing = db.query(Language).filter(Language.BCP_code == language.BCP_code).first()
         if existing:
             raise HTTPException(status_code=409, detail="Language code already exists")
 
-        new_language = Language(name=language.name, code=language.code)
+        new_language = Language(
+            name=language.name,
+            BCP_code=language.BCP_code,
+            ISO_code=language.ISO_code
+        )
         try:
             db.add(new_language)
             db.commit()
@@ -22,14 +27,41 @@ class LanguageService:
             db.rollback()
             raise HTTPException(status_code=500, detail="Failed to create language")
 
+    def get_by_id(self, db: Session, language_id: UUID) -> Language:
+        language = db.query(Language).filter(Language.id == language_id).first()
+        if not language:
+            raise HTTPException(status_code=404, detail="Language not found")
+        return language
+
     def get_by_code(self, db: Session, code: str) -> Language:
-        language = db.query(Language).filter(Language.code == code).first()
+        language = db.query(Language).filter(Language.BCP_code == code).first()
+        if not language:
+            raise HTTPException(status_code=404, detail="Language not found")
+        return language
+
+    def get_by_iso(self, db: Session, iso_code: str) -> Language:
+        language = db.query(Language).filter(Language.ISO_code == iso_code).first()
         if not language:
             raise HTTPException(status_code=404, detail="Language not found")
         return language
 
     def get_by_name(self, db: Session, name: str) -> Language:
         language = db.query(Language).filter(Language.name == name).first()
+        if not language:
+            raise HTTPException(status_code=404, detail="Language not found")
+        return language
+
+    def get_by_any(self, db: Session, query: str) -> Language:
+        try:
+            query_uuid = UUID(query)
+            language = db.query(Language).filter(Language.id == query_uuid).first()
+        except ValueError:
+            language = db.query(Language).filter(
+                (Language.BCP_code == query) |
+                (Language.ISO_code == query) |
+                (Language.name == query)
+            ).first()
+
         if not language:
             raise HTTPException(status_code=404, detail="Language not found")
         return language
@@ -44,7 +76,7 @@ class LanguageService:
 
         for key, value in update_data.dict(exclude_unset=True).items():
             setattr(language, key, value)
-        
+
         db.commit()
         db.refresh(language)
         return language

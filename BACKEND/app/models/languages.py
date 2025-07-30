@@ -9,5 +9,6 @@ class Language(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(100), nullable=False)
-    code = Column(String(10), unique=True, nullable=False)
+    BCP_code = Column(String(50), unique=False, nullable=False)
+    ISO_code = Column(String(50), unique=False, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
