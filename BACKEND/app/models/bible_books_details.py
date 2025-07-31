@@ -9,3 +9,4 @@ class BibleBookDetail(Base):
     book_code = Column(String, nullable=False)
     book_number = Column(Integer, nullable=False)
     testament = Column(String, nullable=False)
+    chapter_count = Column(Integer, nullable=True)
