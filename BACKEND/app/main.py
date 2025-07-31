@@ -46,4 +46,4 @@ def ping_db(db: Session = Depends(get_db)):
 # --- Include API Routers ---
 app.include_router(user_routes.router, prefix="/users", tags=["Users"])
 
-app.include_router(auth.router,prefix="/auth", tags=["Auth"])
+app.include_router(auth.router, prefix="/auth", tags=["Auth"])
