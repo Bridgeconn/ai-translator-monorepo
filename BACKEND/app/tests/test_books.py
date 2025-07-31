@@ -53,14 +53,16 @@ def test_upload_usfm_file():
 
     with open(file_path, "rb") as file:
         response = client.post(
-            f"/books/upload/{source_id}",
+            f"/books/upload_books/?source_id={source_id}",
             files={"file": ("sample.usfm", file, "text/plain")}
         )
     assert response.status_code == 201
-    assert response.json()["message"] == "Book uploaded and parsed successfully"
+    assert response.json()["message"] == "Book uploaded and parsed successfully."
+    print("Upload response:", response.status_code, response.text)
+
 
 def test_get_all_books():
-    response = client.get("/books/")
+    response = client.get("/books/books")
     assert response.status_code == 200
     assert isinstance(response.json()["data"], list)
 
@@ -70,7 +72,7 @@ def test_get_book_by_id():
 
     file_path = "app/tests/sample.usfm"
     with open(file_path, "rb") as file:
-        upload = client.post(f"/books/upload/{source_id}", files={"file": ("sample.usfm", file)})
+        upload = client.post(f"/books/upload_books/?source_id={source_id}", files={"file": ("sample.usfm", file)})
 
     book_id = upload.json()["data"]["book_id"]
     response = client.get(f"/books/{book_id}")
@@ -83,7 +85,7 @@ def test_delete_book():
 
     file_path = "app/tests/sample.usfm"
     with open(file_path, "rb") as file:
-        upload = client.post(f"/books/upload/{source_id}", files={"file": ("sample.usfm", file)})
+        upload = client.post(f"/books/upload_books/?source_id={source_id}", files={"file": ("sample.usfm", file)})
 
     book_id = upload.json()["data"]["book_id"]
 

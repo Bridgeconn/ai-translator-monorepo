@@ -44,10 +44,11 @@ def read_source(source_id: UUID, db: Session = Depends(get_db)):
 )
 def read_sources(db: Session = Depends(get_db)):
     sources = source_service.get_all_sources(db)
+    source_responses = [SourceResponse.from_orm(src) for src in sources]
     msg = "Sources fetched successfully." if sources else "No sources found."
     return {
         "message": msg,
-        "data": sources
+        "data": source_responses
     }
 
 

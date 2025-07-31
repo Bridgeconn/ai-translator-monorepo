@@ -1,0 +1,67 @@
+book_id,book_name,book_code,book_number,testament,chapter_count
+1,Genesis,Gen,1,OT,50.0
+2,Exodus,Exo,2,OT,40.0
+3,Leviticus,Lev,3,OT,27.0
+4,Numbers,Num,4,OT,36.0
+5,Deuteronomy,Deu,5,OT,34.0
+6,Joshua,Jos,6,OT,24.0
+7,Judges,Jdg,7,OT,21.0
+8,Ruth,Rut,8,OT,4.0
+9,1 Samuel,1Sa,9,OT,31.0
+10,2 Samuel,2Sa,10,OT,24.0
+11,1 Kings,1Ki,11,OT,22.0
+12,2 Kings,2Ki,12,OT,25.0
+13,1 Chronicles,1Ch,13,OT,29.0
+14,2 Chronicles,2Ch,14,OT,36.0
+15,Ezra,Ezr,15,OT,10.0
+16,Nehemiah,Neh,16,OT,13.0
+17,Esther,Est,17,OT,10.0
+18,Job,Job,18,OT,42.0
+19,Psalms,Psa,19,OT,150.0
+20,Proverbs,Pro,20,OT,31.0
+21,Ecclesiastes,Ecc,21,OT,12.0
+22,Song of Solomon,Sng,22,OT,8.0
+23,Isaiah,Isa,23,OT,66.0
+24,Jeremiah,Jer,24,OT,52.0
+25,Lamentations,Lam,25,OT,5.0
+26,Ezekiel,Ezk,26,OT,48.0
+27,Daniel,Dan,27,OT,12.0
+28,Hosea,Hos,28,OT,14.0
+29,Joel,Jol,29,OT,3.0
+30,Amos,Amo,30,OT,9.0
+31,Obadiah,Oba,31,OT,1.0
+32,Jonah,Jon,32,OT,4.0
+33,Micah,Mic,33,OT,7.0
+34,Nahum,Nam,34,OT,3.0
+35,Habakkuk,Hab,35,OT,3.0
+36,Zephaniah,Zep,36,OT,3.0
+37,Haggai,Hag,37,OT,2.0
+38,Zechariah,Zec,38,OT,14.0
+39,Malachi,Mal,39,OT,4.0
+40,Matthew,Mat,40,NT,
+41,Mark,Mrk,41,NT,28.0
+42,Luke,Luk,42,NT,16.0
+43,John,Jhn,43,NT,24.0
+44,Acts,Act,44,NT,21.0
+45,Romans,Rom,45,NT,28.0
+46,1 Corinthians,1Co,46,NT,16.0
+47,2 Corinthians,2Co,47,NT,16.0
+48,Galatians,Gal,48,NT,13.0
+49,Ephesians,Eph,49,NT,6.0
+50,Philippians,Php,50,NT,6.0
+51,Colossians,Col,51,NT,4.0
+52,1 Thessalonians,1Th,52,NT,4.0
+53,2 Thessalonians,2Th,53,NT,5.0
+54,1 Timothy,1Ti,54,NT,3.0
+55,2 Timothy,2Ti,55,NT,6.0
+56,Titus,Tit,56,NT,4.0
+57,Philemon,Phm,57,NT,3.0
+58,Hebrews,Heb,58,NT,1.0
+59,James,Jas,59,NT,13.0
+60,1 Peter,1Pe,60,NT,5.0
+61,2 Peter,2Pe,61,NT,5.0
+62,1 John,1Jn,62,NT,3.0
+63,2 John,2Jn,63,NT,5.0
+64,3 John,3Jn,64,NT,1.0
+65,Jude,Jud,65,NT,1.0
+66,Revelation,Rev,66,NT,1.0
