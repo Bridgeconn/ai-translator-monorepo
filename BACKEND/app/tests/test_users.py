@@ -229,3 +229,47 @@ def test_get_user_by_email_invalid():
 
 
 ## in test cases we remove create response because its creating user details twice and we replace that with get response
+
+def test_logout_success():
+    user, headers = generate_user()
+    response = client.post("/auth/logout", headers=headers)
+    assert response.status_code == 200
+    assert "logged out successfully" in response.json()["message"].lower()
+
+
+def test_logout_revokes_token():
+    user, headers = generate_user()
+    
+    # Logout
+    logout = client.post("/auth/logout", headers=headers)
+    assert logout.status_code == 200
+
+    # Try accessing a protected route
+    response = client.get(f"/users/email/{user['email']}", headers=headers)
+    assert response.status_code == 401
+    assert "credentials" in response.json()["detail"].lower()
+
+
+def test_logout_without_token():
+    response = client.post("/auth/logout")  # No headers
+    assert response.status_code == 401
+    assert "not authenticated" in response.json()["detail"].lower()
+
+
+def test_logout_with_invalid_token():
+    headers = {"Authorization": "Bearer invalid.jwt.token"}
+    response = client.post("/auth/logout", headers=headers)
+    assert response.status_code == 401
+    assert "could not validate credentials" in response.json()["detail"].lower()
+
+
+def test_reuse_token_after_logout():
+    user, headers = generate_user()
+
+    # Logout
+    client.post("/auth/logout", headers=headers)
+
+    # Reuse token
+    reuse = client.get("/users/me", headers=headers)
+    assert reuse.status_code == 401
+    assert "credentials" in reuse.json()["detail"].lower()

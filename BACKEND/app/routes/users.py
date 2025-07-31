@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.models.users import User
 from app.database import get_db
 from uuid import UUID
-from app.schemas.users import UserCreate,UserUpdate, ErrorResponse, SuccessResponse,UserResponse
+from app.schemas.users import UserCreate,UserUpdate, ErrorResponse, SuccessResponse
 from app.dependencies.token import get_current_user
 from app.crud.users import user_service, delete_user_by_id
 

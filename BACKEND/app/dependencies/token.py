@@ -1,5 +1,4 @@
 # app/dependencies/token.py
-from uuid import UUID
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
@@ -22,12 +21,13 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("sub")
+        token_jti = payload.get("jti")
         if user_id is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
 
     user = db.query(User).filter(User.user_id == user_id).first()
-    if user is None:
+    if user is None or user.jti != token_jti:
         raise credentials_exception
     return user

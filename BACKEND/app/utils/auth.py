@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta , timezone
-from typing import Optional
+from uuid import uuid4
 from jose import JWTError, jwt
 import os
 from dotenv import load_dotenv
@@ -18,8 +18,14 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 def create_access_token(data: dict):
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    jti = str(uuid4())  # 🔑 Unique token ID
+
+    to_encode.update({
+        "exp": expire,
+        "jti": jti  # 👈 Add token ID to JWT payload
+    })
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt, jti
 
 
 def verify_access_token(token: str):
