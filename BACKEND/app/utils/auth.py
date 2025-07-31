@@ -18,11 +18,11 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30*24*2
 def create_access_token(data: dict):
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    jti = str(uuid4())  # 🔑 Unique token ID
+    jti = str(uuid4())  #  Unique token ID
 
     to_encode.update({
         "exp": expire,
-        "jti": jti  # 👈 Add token ID to JWT payload
+        "jti": jti  #  Add token ID to JWT payload
     })
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt, jti
