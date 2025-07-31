@@ -7,7 +7,7 @@ from app.database import get_db
 from app.models.users import User
 from app.utils.auth import verify_password, create_access_token
 
-router = APIRouter(prefix="/auth", tags=["Auth"])
+router = APIRouter()
 
 @router.post("/login")
 def login(
@@ -26,6 +26,6 @@ def login(
 ### added logout 
 @router.post("/logout")
 def logout(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    current_user.jti = None  # 🔒 revoke token
+    current_user.jti = None  #  revoke token
     db.commit()
     return {"message": "Logged out successfully"}
