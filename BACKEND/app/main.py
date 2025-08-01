@@ -6,7 +6,8 @@ from app.database import get_db, init_db_schema, Base, engine
 from contextlib import asynccontextmanager
 import logging
 from app.routes import auth
-from BACKEND.app.load_language_data import load_languages_from_csv
+from app.load_language_data import load_languages_from_csv
+
 
 # --- Logger setup ---
 logging.basicConfig(level=logging.INFO)
