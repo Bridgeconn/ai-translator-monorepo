@@ -5,7 +5,7 @@ from app.routes import users as user_routes  # rename to avoid conflict
 from app.database import get_db, init_db_schema, Base, engine
 from contextlib import asynccontextmanager
 import logging
-
+from app.routes import auth
 # --- Logger setup ---
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -44,4 +44,6 @@ def ping_db(db: Session = Depends(get_db)):
     
 
 # --- Include API Routers ---
-app.include_router(user_routes.router, prefix="/users", tags=["users"])
+app.include_router(user_routes.router, prefix="/users", tags=["Users"])
+
+app.include_router(auth.router, prefix="/auth", tags=["Auth"])
