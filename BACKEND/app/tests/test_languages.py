@@ -30,7 +30,7 @@ def test_get_language_by_code():
     lang = generate_language()
     create = client.post("/languages/", json=lang)
     code = create.json()["data"]["BCP_code"]
-    response = client.get(f"/languages/code/{code}")
+    response = client.get(f"/languages/bcp/{code}")
     assert response.status_code == 200
     assert response.json()["data"]["BCP_code"] == code
 
@@ -53,10 +53,10 @@ def test_get_language_by_name():
 def test_get_language_by_id():
     lang = generate_language()
     create = client.post("/languages/", json=lang)
-    lang_id = create.json()["data"]["id"]
+    lang_id = create.json()["data"]["language_id"]
     response = client.get(f"/languages/id/{lang_id}")
     assert response.status_code == 200
-    assert response.json()["data"]["id"] == lang_id
+    assert response.json()["data"]["language_id"] == lang_id
 
 def test_get_language_by_any_bcp():
     lang = generate_language()
@@ -85,10 +85,10 @@ def test_get_language_by_any_name():
 def test_get_language_by_any_id():
     lang = generate_language()
     create = client.post("/languages/", json=lang)
-    lang_id = create.json()["data"]["id"]
+    lang_id = create.json()["data"]["language_id"]
     response = client.get(f"/languages/search/{lang_id}")
     assert response.status_code == 200
-    assert response.json()["data"]["id"] == lang_id
+    assert response.json()["data"]["language_id"] == lang_id
 
 def test_get_all_languages():
     response = client.get("/languages/")
@@ -98,16 +98,47 @@ def test_get_all_languages():
 def test_update_language():
     lang = generate_language()
     create = client.post("/languages/", json=lang)
-    lang_id = create.json()["data"]["id"]
-    update = {"name": "Updated Name"}
+    lang_id = create.json()["data"]["language_id"]
+    update = {"name": "Updated Name", "is_active": False}
     response = client.put(f"/languages/{lang_id}", json=update)
     assert response.status_code == 200
     assert response.json()["data"]["name"] == "Updated Name"
+    assert response.json()["data"]["is_active"] == False
 
 def test_delete_language():
     lang = generate_language()
     create = client.post("/languages/", json=lang)
-    lang_id = create.json()["data"]["id"]
+    lang_id = create.json()["data"]["language_id"]
     response = client.delete(f"/languages/{lang_id}")
     assert response.status_code == 200
     assert "deleted" in response.json()["message"]
+
+#  New tests for error handling
+
+def test_update_language_not_found():
+    fake_id = str(uuid.uuid4())
+    update = {"name": "New Name"}
+    response = client.put(f"/languages/{fake_id}", json=update)
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Language with ID not found"
+
+def test_delete_language_not_found():
+    fake_id = str(uuid.uuid4())
+    response = client.delete(f"/languages/{fake_id}")
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Language with ID not found"
+
+def test_get_language_by_name_not_found():
+    response = client.get("/languages/name/unknown_lang")
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Language with name not found"
+
+def test_get_language_by_code_not_found():
+    response = client.get("/languages/bcp/unknown_code")
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Language with BCP code not found"
+
+def test_get_language_by_iso_not_found():
+    response = client.get("/languages/iso/unknown_iso")
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Language with ISO code not found"

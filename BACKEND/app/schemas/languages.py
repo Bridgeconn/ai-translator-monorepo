@@ -12,13 +12,16 @@ class LanguageUpdate(BaseModel):
     name: Optional[str] = None
     BCP_code: Optional[str] = None
     ISO_code: Optional[str] = None
+    is_active: Optional[bool] = None
 
 class LanguageResponse(BaseModel):
-    id: uuid.UUID
+    language_id: uuid.UUID
     name: str
     BCP_code: str
     ISO_code: str
+    is_active: bool
     created_at: datetime
+    updated_at: datetime
 
     class Config:
         orm_mode = True

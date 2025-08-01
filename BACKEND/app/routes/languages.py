@@ -18,8 +18,8 @@ def get_language_by_id(language_id: UUID, db: Session = Depends(get_db)):
     return {"message": "Language retrieved", "data": lang}
 
 @router.get("/bcp/{bcp_code}", response_model=SuccessResponse)
-def get_language_by_bcp(code: str, db: Session = Depends(get_db)):
-    lang = language_service.get_by_code(db, code)
+def get_language_by_bcp(bcp_code: str, db: Session = Depends(get_db)):
+    lang = language_service.get_by_code(db, bcp_code)
     return {"message": "Language retrieved", "data": lang}
 
 @router.get("/iso/{iso_code}", response_model=SuccessResponse)
