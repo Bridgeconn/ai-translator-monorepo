@@ -5,7 +5,8 @@ from app.routes import users as user_routes, languages
 from app.database import get_db, init_db_schema, Base, engine
 from contextlib import asynccontextmanager
 import logging
-from app.init_data import load_languages_from_csv
+from app.routes import auth
+from BACKEND.app.load_language_data import load_languages_from_csv
 
 # --- Logger setup ---
 logging.basicConfig(level=logging.INFO)
@@ -50,7 +51,9 @@ def ping_db(db: Session = Depends(get_db)):
     
 
 # --- Include API Routers ---
-app.include_router(user_routes.router, prefix="/users", tags=["users"])
+app.include_router(user_routes.router, prefix="/users", tags=["Users"])
+
+app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 
 # --- Include Languages Router ---
 app.include_router(languages.router, prefix="/languages", tags=["languages"])
