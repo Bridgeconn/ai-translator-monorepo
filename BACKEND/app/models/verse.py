@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, Text, DateTime, func, UniqueConstraint
+from sqlalchemy import Column, Integer, ForeignKey, Text, DateTime, Boolean, func, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -12,9 +12,12 @@ class Verse(Base):
 
     verse_number = Column(Integer, nullable=False)
     content = Column(Text, nullable=False)
-    usfm_tags = Column(Text, nullable=True)
+    usfm_tags = Column(Text, nullable=False)
+
+    is_active = Column(Boolean, nullable=False)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     chapter = relationship("Chapter", back_populates="verses")
 
