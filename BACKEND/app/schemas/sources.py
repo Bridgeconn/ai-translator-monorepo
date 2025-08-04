@@ -3,9 +3,8 @@ from typing import Optional
 from datetime import datetime
 
 class SourceCreate(BaseModel):
-    version_name: str
-    version_abbreviation: str
     language_id: UUID4
+    version_id: UUID4
     description: Optional[str] = None
 
 class SourceUpdate(BaseModel):
@@ -16,10 +15,11 @@ class SourceUpdate(BaseModel):
 
 class SourceResponse(BaseModel):
     source_id: UUID4
-    version_name: str
-    version_abbreviation: str
+    version_id: UUID4
     language_id: UUID4
     language_name: str
+    version_id: UUID4
+    version_name: str
     description: Optional[str]
     created_at: datetime
     updated_at: datetime

@@ -2,13 +2,14 @@ from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from sqlalchemy import text
-from app.routes import users as user_routes # rename to avoid conflict
-from app.routes import sources as source_routes
+from app.routes import users as user_routes, languages, sources as source_routes,books
 from app.database import get_db, init_db_schema, Base, engine
 from contextlib import asynccontextmanager
 import logging
-from app.utils.seed_bible_books_details import seed_bible_books_details
-from app.routes import books
+from app.routes import auth
+from app.load_language_data import load_languages_from_csv
+from app.utils.seed_bible_books_details import seed_book_details
+from app.models.versions import Version  # Ensure model is imported
 
 
 # --- Logger setup ---
@@ -26,7 +27,11 @@ async def lifespan(app: FastAPI):
     # Seed the bible_books_details table only if it's empty
 
     with SessionLocal() as db:
-        seed_bible_books_details(db)
+        seed_book_details(db)
+
+    # Load languages AFTER tables are created
+    load_languages_from_csv()
+    logger.info("Languages loaded from CSV.")
 
     yield
     logger.info("Application shutdown completed.")
@@ -55,6 +60,8 @@ def ping_db(db: Session = Depends(get_db)):
     
 
 # --- Include API Routers ---
-app.include_router(user_routes.router, prefix="/users", tags=["users"])
+app.include_router(user_routes.router, prefix="/users", tags=["Users"])
+app.include_router(auth.router, prefix="/auth", tags=["Auth"])
+app.include_router(languages.router, prefix="/languages", tags=["languages"])
 app.include_router(source_routes.router, prefix="/sources", tags=["sources"])
 app.include_router(books.router, prefix="/books", tags=["Books"])
