@@ -5,7 +5,7 @@ pydantic==1.10.13
 starlette==0.27.0
 python-multipart==0.0.9     # File uploads
 psycopg2-binary==2.9.9
- 
+python-jose[cryptography]==3.3.0 # For JWT
 # USFM parsing with grammar
 usfm-grammar==3.1.2
 tree-sitter==0.22.3
@@ -35,7 +35,7 @@ loguru==0.7.2                    # Better logging
 passlib[bcrypt]==1.7.4   # For password hashing
 #Email
 pydantic[email]==1.10.13
-
+email-validator==2.2.0 # added this for email validation 
 
 # Testing
 pytest==7.4.0

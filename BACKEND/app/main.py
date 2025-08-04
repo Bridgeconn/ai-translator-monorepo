@@ -1,11 +1,13 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from app.routes import users as user_routes # rename to avoid conflict
-from app.routes import sources as source_routes
+from app.routes import users as user_routes, languages,sources as source_routes
 from app.database import get_db, init_db_schema, Base, engine
 from contextlib import asynccontextmanager
 import logging
+from app.routes import auth
+from app.load_language_data import load_languages_from_csv
+
 
 # --- Logger setup ---
 logging.basicConfig(level=logging.INFO)
@@ -18,6 +20,11 @@ async def lifespan(app: FastAPI):
     init_db_schema()
     Base.metadata.create_all(bind=engine)
     logger.info(" Database schema and tables initialized.")
+
+    # Load languages AFTER tables are created
+    load_languages_from_csv()
+    logger.info("Languages loaded from CSV.")
+
     yield
     # Shutdown: you can add cleanup here if needed
     logger.info("Application shutdown completed.")
@@ -45,5 +52,10 @@ def ping_db(db: Session = Depends(get_db)):
     
 
 # --- Include API Routers ---
-app.include_router(user_routes.router, prefix="/users", tags=["users"])
+app.include_router(user_routes.router, prefix="/users", tags=["Users"])
+
+app.include_router(auth.router, prefix="/auth", tags=["Auth"])
+
+# --- Include Languages Router ---
+app.include_router(languages.router, prefix="/languages", tags=["languages"])
 app.include_router(source_routes.router, prefix="/sources", tags=["sources"])
