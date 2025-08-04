@@ -3,7 +3,8 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from sqlalchemy import text
 from app.routes import users as user_routes, languages
-from app.database import get_db, init_db_schema, Base, engine
+from app import models 
+from app.database import get_db, init_db_schema, Base, engine,SessionLocal
 from contextlib import asynccontextmanager
 import logging
 from app.routes import auth
@@ -11,6 +12,12 @@ from app.load_language_data import load_languages_from_csv
 from app.routes import sources as source_routes
 from app.utils.seed_bible_books_details import seed_bible_books_details
 from app.routes import books
+
+
+
+# --- Create database tables ---
+Base.metadata.create_all(bind=engine)
+
 
 
 # --- Logger setup ---
@@ -39,6 +46,10 @@ async def lifespan(app: FastAPI):
     logger.info("Application shutdown completed.")
 
 
+    yield
+    # Shutdown: you can add cleanup here if needed
+    logger.info("Application shutdown completed.")
+
 # --- Initialize FastAPI app ---
 app = FastAPI(
     title="AI Bible Translator Backend",
@@ -46,6 +57,15 @@ app = FastAPI(
     description="Backend service for managing Bible translation tasks.",
     lifespan=lifespan,
 )
+
+
+# --- Dependency to get DB session ---
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 @app.get("/", summary="Root Endpoint")
 def read_root():

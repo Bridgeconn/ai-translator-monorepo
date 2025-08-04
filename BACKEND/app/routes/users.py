@@ -3,16 +3,21 @@ from sqlalchemy.orm import Session
 from app.models.users import User
 from app.database import get_db
 from uuid import UUID
-from app.schemas.users import UserCreate,UserUpdate, ErrorResponse, SuccessResponse
+from app.schemas.users import UserCreate,UserUpdate, ErrorResponse, SuccessResponse,MessageResponse,UserResponse
 from app.dependencies.token import get_current_user
 from app.crud.users import user_service, delete_user_by_id
 
+from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 
 router = APIRouter()
 
 @router.get("/me")
 def get_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+
 @router.post(
     "/",
     response_model=SuccessResponse,
@@ -113,3 +118,15 @@ def get_user_by_email(email: str, db: Session = Depends(get_db),current_user: Us
 ## added a message in return and add the response model SuccessResponse in fetch user 
 ## addded current_user from get_current_user as a dependency 
 ## added a me router to get current user detail
+    return db_user
+
+@router.delete(
+    "/{user_id}",
+    summary="Delete user by ID",
+    response_model=MessageResponse
+)
+def delete_user_route(user_id: UUID, db: Session = Depends(get_db)):
+    deleted = delete_user_by_id(db, user_id)
+    if deleted:
+        return {"detail": f"User with ID {user_id} deleted successfully."}
+    raise HTTPException(status_code=404, detail=f"User with ID {user_id} not found")
