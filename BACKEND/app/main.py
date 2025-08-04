@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
+from app.database import SessionLocal
 from sqlalchemy import text
 from app.routes import users as user_routes, languages
 from app.database import get_db, init_db_schema, Base, engine
@@ -7,6 +8,9 @@ from contextlib import asynccontextmanager
 import logging
 from app.routes import auth
 from app.load_language_data import load_languages_from_csv
+from app.routes import sources as source_routes
+from app.utils.seed_bible_books_details import seed_bible_books_details
+from app.routes import books
 
 
 # --- Logger setup ---
@@ -24,10 +28,16 @@ async def lifespan(app: FastAPI):
     # Load languages AFTER tables are created
     load_languages_from_csv()
     logger.info("Languages loaded from CSV.")
+    logger.info("✅ Database schema and tables initialized.")
+
+    # Seed the bible_books_details table only if it's empty
+
+    with SessionLocal() as db:
+        seed_bible_books_details(db)
 
     yield
-    # Shutdown: you can add cleanup here if needed
     logger.info("Application shutdown completed.")
+
 
 # --- Initialize FastAPI app ---
 app = FastAPI(
@@ -58,4 +68,5 @@ app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 
 # --- Include Languages Router ---
 app.include_router(languages.router, prefix="/languages", tags=["languages"])
-
+app.include_router(source_routes.router, prefix="/sources", tags=["sources"])
+app.include_router(books.router, prefix="/books", tags=["Books"])
