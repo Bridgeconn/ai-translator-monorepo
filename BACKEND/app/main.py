@@ -1,5 +1,7 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
+from app.routes import project 
+
 from app.database import SessionLocal
 from sqlalchemy import text
 from app.routes import users as user_routes, languages
@@ -90,3 +92,6 @@ app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(languages.router, prefix="/languages", tags=["languages"])
 app.include_router(source_routes.router, prefix="/sources", tags=["sources"])
 app.include_router(books.router, prefix="/books", tags=["Books"])
+
+# --- Include Projects Router ---
+app.include_router(project.router, prefix="/projects", tags=["Projects"])

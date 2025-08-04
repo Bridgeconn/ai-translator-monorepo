@@ -118,7 +118,7 @@ def get_user_by_email(email: str, db: Session = Depends(get_db),current_user: Us
 ## added a message in return and add the response model SuccessResponse in fetch user 
 ## addded current_user from get_current_user as a dependency 
 ## added a me router to get current user detail
-    return db_user
+    # return db_user
 
 @router.delete(
     "/{user_id}",
