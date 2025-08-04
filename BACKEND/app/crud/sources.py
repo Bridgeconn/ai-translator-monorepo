@@ -1,26 +1,38 @@
 from sqlalchemy.orm import Session
 from app.models.sources import Source
 from app.models.languages import Language
+from app.models.versions import Version
 from app.schemas.sources import SourceCreate, SourceUpdate
 from fastapi import HTTPException, status
 from uuid import UUID
 
 class SourceService:
     def create_source(self, db: Session, source_data: SourceCreate) -> Source:
-        language = db.query(Language).filter(Language.id == source_data.language_id).first()
+        # Fetch language
+        language = db.query(Language).filter(Language.language_id == source_data.language_id).first()
         if not language:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Language with ID {source_data.language_id} not found"
             )
 
+        # Fetch version
+        version = db.query(Version).filter(Version.version_id == source_data.version_id).first()
+        if not version:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Version with ID {source_data.version_id} not found"
+            )
+
+        # Create Source with auto-filled names
         source = Source(
-            version_name=source_data.version_name,
-            version_abbreviation=source_data.version_abbreviation,
             language_id=source_data.language_id,
-            language_name=language.name,  # auto-fill
-            description=source_data.description
+            language_name=language.name,
+            version_id=source_data.version_id,
+            version_name=version.version_name,
+            description=source_data.description,
         )
+
         db.add(source)
         db.commit()
         db.refresh(source)
@@ -35,13 +47,16 @@ class SourceService:
     def get_all_sources(self, db: Session) -> list[Source]:
         return db.query(Source).all()
 
+    def get_sources_by_version_name(self, db: Session, version_name: str) -> list[Source]:
+        return db.query(Source).filter(Source.version_name == version_name).all()
+
     def update_source(self, db: Session, source_id: UUID, update: SourceUpdate) -> Source:
         source = db.query(Source).filter(Source.source_id == source_id).first()
         if not source:
             raise HTTPException(status_code=404, detail="Source not found")
 
         if update.language_id:
-            language = db.query(Language).filter(Language.id == update.language_id).first()
+            language = db.query(Language).filter(Language.language_id == update.language_id).first()
             if not language:
                 raise HTTPException(status_code=404, detail="Language not found")
             source.language_id = update.language_id

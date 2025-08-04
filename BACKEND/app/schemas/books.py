@@ -14,23 +14,25 @@ class BookCreate(BaseModel):
     usfm_content: str
 
 # ✅ UPDATE
-class BookUpdate(BaseModel):
+class BookUpdate(BaseModel):   
     book_name: Optional[str]
     book_code: Optional[str]
     book_number: Optional[int]
     testament: Optional[str]
-    usfm_content: Optional[str]
+    chapter_count: Optional[int]
 
 # ✅ RESPONSE
 class BookResponse(BaseModel):
     book_id: UUID
     source_id: UUID
-    book_name: str
     book_code: str
+    book_name: str
     book_number: int
     testament: str
     usfm_content: str
-    uploaded_at: datetime  # ✅ This must match your SQLAlchemy model
+    created_at: datetime
+    updated_at: datetime
+    is_active: bool
 
     class Config:
         orm_mode = True

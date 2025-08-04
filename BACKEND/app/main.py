@@ -4,15 +4,13 @@ from app.routes import project
 
 from app.database import SessionLocal
 from sqlalchemy import text
-from app.routes import users as user_routes, languages
-from app import models 
+from app.routes import users as user_routes, languages, sources as source_routes,books
 from app.database import get_db, init_db_schema, Base, engine,SessionLocal
 from contextlib import asynccontextmanager
 import logging
 from app.routes import auth
 from app.load_language_data import load_languages_from_csv
 from app.routes import sources as source_routes
-from app.utils.seed_bible_books_details import seed_bible_books_details
 from app.routes import books
 
 
@@ -20,6 +18,8 @@ from app.routes import books
 # --- Create database tables ---
 Base.metadata.create_all(bind=engine)
 
+from app.utils.seed_bible_books_details import seed_book_details
+from app.models.versions import Version  # Ensure model is imported
 
 
 # --- Logger setup ---
@@ -34,22 +34,16 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     logger.info(" Database schema and tables initialized.")
 
-    # Load languages AFTER tables are created
-    load_languages_from_csv()
-    logger.info("Languages loaded from CSV.")
-    logger.info("✅ Database schema and tables initialized.")
-
     # Seed the bible_books_details table only if it's empty
 
     with SessionLocal() as db:
-        seed_bible_books_details(db)
+        seed_book_details(db)
+
+    # Load languages AFTER tables are created
+    load_languages_from_csv()
+    logger.info("Languages loaded from CSV.")
 
     yield
-    logger.info("Application shutdown completed.")
-
-
-    yield
-    # Shutdown: you can add cleanup here if needed
     logger.info("Application shutdown completed.")
 
 # --- Initialize FastAPI app ---
