@@ -44,11 +44,31 @@ def read_source(source_id: UUID, db: Session = Depends(get_db)):
 )
 def read_sources(db: Session = Depends(get_db)):
     sources = source_service.get_all_sources(db)
+    source_responses = [SourceResponse.from_orm(src) for src in sources]
     msg = "Sources fetched successfully." if sources else "No sources found."
     return {
         "message": msg,
-        "data": sources
+        "data": source_responses
     }
+@router.get(
+    "/by_version_name/{version_name}",
+    response_model=SuccessListResponse,
+    responses={404: {"model": ErrorResponse}},
+    summary="Fetch all sources by version name"
+)
+def get_sources_by_version_name(version_name: str, db: Session = Depends(get_db)):
+    sources = source_service.get_sources_by_version_name(db, version_name)
+    if not sources:
+        return {
+            "message": f"No sources found for version_name '{version_name}'.",
+            "data": []
+        }
+    source_responses = [SourceResponse.from_orm(src) for src in sources]
+    return {
+        "message": "Sources fetched successfully.",
+        "data": source_responses
+    }
+
 
 
 @router.put(
