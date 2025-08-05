@@ -1,38 +1,53 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
 from uuid import UUID
+from typing import List
+from app.schemas.project import ProjectResponse, SuccessResponse
 from app.database import get_db
-from app.crud.project import ProjectCRUD
-from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectOut
+from app.schemas import project as schemas
+from app.crud import project as crud
+from app.dependencies.token import get_current_user  # Adjust path if needed
+from app.models.users import User  # Your User model
 
-router = APIRouter(prefix="/projects", tags=["Projects"])
+router = APIRouter()
+@router.post("/", response_model=SuccessResponse[ProjectResponse])
+def create_project(project: schemas.ProjectCreate, db: Session = Depends(get_db),
+     current_user: User = Depends(get_current_user)):
+    db_project = crud.create_project(db, project)
+    project_data = ProjectResponse.from_orm(db_project)
+    return {"message": "Project created successfully", "data": project_data}
 
-@router.post("/", response_model=ProjectOut, status_code=status.HTTP_201_CREATED)
-def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
-    return ProjectCRUD.create_project(db, project)
 
-@router.get("/", response_model=List[ProjectOut])
-def get_projects(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
-    return ProjectCRUD.get_projects(db, skip, limit)
-
-@router.get("/{project_id}", response_model=ProjectOut)
-def get_project(project_id: UUID, db: Session = Depends(get_db)):
-    db_project = ProjectCRUD.get_project_by_id(db, project_id)
+@router.get("/{project_id}", response_model=SuccessResponse)
+def get_project(project_id: UUID, db: Session = Depends(get_db),current_user: User = Depends(get_current_user)):
+    db_project = crud.get_project(db, project_id)
     if not db_project:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
-    return db_project
+        raise HTTPException(status_code=404, detail="Project not found")
+    # return {"message": "Project fetched successfully", "data": db_project}
+    return {"message": "Projects fetched successfully", "data": [schemas.ProjectResponse.from_orm(db_project)]}
 
-@router.put("/{project_id}", response_model=ProjectOut)
-def update_project(project_id: UUID, updates: ProjectUpdate, db: Session = Depends(get_db)):
-    db_project = ProjectCRUD.update_project(db, project_id, updates)
-    if not db_project:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
-    return db_project
 
-@router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_project(project_id: UUID, db: Session = Depends(get_db)):
-    db_project = ProjectCRUD.delete_project(db, project_id)
+@router.get("/", response_model=SuccessResponse)
+def list_projects(db: Session = Depends(get_db),current_user: User = Depends(get_current_user)):
+    projects = crud.get_projects(db)
+    # return {"message": "Projects fetched successfully", "data": projects}
+    return {"message": "Projects fetched successfully", "data": [schemas.ProjectResponse.from_orm(p) for p in projects]}
+
+
+@router.put("/{project_id}", response_model=SuccessResponse)
+def update_project(project_id: UUID, project: schemas.ProjectUpdate, db: Session = Depends(get_db),current_user: User = Depends(get_current_user)):
+    db_project = crud.update_project(db, project_id, project)
     if not db_project:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
-    return None
+        raise HTTPException(status_code=404, detail="Project not found")
+    # return {"message": "Project updated successfully", "data": db_project}
+    return {"message": "Project updated successfully", "data": schemas.ProjectResponse.from_orm(db_project)}
+
+
+@router.delete("/{project_id}", response_model=SuccessResponse)
+def delete_project(project_id: UUID, db: Session = Depends(get_db),current_user: User = Depends(get_current_user)):
+    db_project = crud.delete_project(db, project_id)
+    if not db_project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    # return {"message": "Project deleted successfully", "data": db_project}
+    return {"message": "Project deleted successfully", "data": schemas.ProjectResponse.from_orm(db_project)}
+

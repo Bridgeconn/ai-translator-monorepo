@@ -16,7 +16,7 @@ class Book(Base):
     book_number = Column(Integer, nullable=False, comment="Book number")
     testament = Column(String(2), nullable=False, comment="Testament (OT/NT)")
     usfm_content = Column(Text, nullable=False, comment="Raw USFM content of the book")
-
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, comment="Created timestamp")
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False, comment="Last updated timestamp")
     is_active = Column(Boolean, default=True, nullable=False, comment="Active/inactive status")
