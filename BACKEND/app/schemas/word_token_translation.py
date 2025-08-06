@@ -17,6 +17,7 @@ class WordTokenCreate(WordTokenBase):
 class WordTokenUpdate(BaseModel):
     translated_text: Optional[str]
     is_reviewed: Optional[bool]
+    is_active: Optional[bool] 
 
 class WordTokenOut(WordTokenBase):
     word_token_id: UUID

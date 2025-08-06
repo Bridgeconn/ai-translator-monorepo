@@ -22,4 +22,3 @@ class WordTokenTranslation(Base):
 
     project = relationship("Project", back_populates="word_tokens")
 
-# Inside app/models/project.py (add this)

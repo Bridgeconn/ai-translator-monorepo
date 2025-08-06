@@ -1,6 +1,5 @@
-# app/utils/tokenizer.py
+
 import re
 
 def tokenize_text(text: str):
-    # Simple whitespace + punctuation tokenizer
-    return re.findall(r'\b\w+\b', text.lower())
+    return re.findall(r'\b[^\W\d_]+\b', text.lower(), flags=re.UNICODE)
