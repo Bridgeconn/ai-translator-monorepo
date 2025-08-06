@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from uuid import UUID, uuid4
-from app.models.book import Book
+from app.models.books import Book
 from app.utils.usfm_parser import parse_usfm_and_save
 from app.models.books_details import BookDetail
 from fastapi import HTTPException

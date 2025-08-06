@@ -6,7 +6,7 @@ from sqlalchemy.orm import relationship
 
 from app.database import Base
 
-from app.database import Base
+
 
 class Source(Base):
     __tablename__ = "sources"

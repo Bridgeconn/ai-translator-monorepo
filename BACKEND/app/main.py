@@ -11,7 +11,7 @@ from app.routes import auth
 from app.load_language_data import load_languages_from_csv
 from app.routes import sources as source_routes
 from app.routes import books
-
+from app.routes import translation
 
 
 # --- Create database tables ---
@@ -88,3 +88,9 @@ app.include_router(books.router, prefix="/books", tags=["Books"])
 
 # --- Include Projects Router ---
 app.include_router(project.router, prefix="/projects", tags=["Projects"])
+
+# --- Include Translation Router ---
+      
+app.include_router(translation.router, prefix="/translation", tags=["Translation"]) 
+
+
