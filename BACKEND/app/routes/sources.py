@@ -31,7 +31,7 @@ def create_source(source: SourceCreate, db: Session = Depends(get_db)):
     summary="Fetch a source by ID"
 )
 def read_source(source_id: UUID, db: Session = Depends(get_db)):
-    source = source_service.get_source(db, source_id)
+    source = source_service.get_source_by_id(db, source_id)
     return {
         "message": "Source fetched successfully.",
         "data": source
