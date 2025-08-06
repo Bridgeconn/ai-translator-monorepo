@@ -26,10 +26,6 @@ class ProjectResponse(ProjectBase):
     progress: float
     total_items: int
     completed_items: int
-    
-    @property
-    def id(self):
-     return self.project_id
 
     class Config:
         orm_mode = True
