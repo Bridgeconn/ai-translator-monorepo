@@ -19,12 +19,13 @@ class VersionService:
     def get_all_versions(self, db: Session, version_name: Optional[str] = None, is_active: Optional[bool] = None):
         query = db.query(Version)
 
-        if version_name:
-            query = query.filter(Version.version_name.ilike(f"%{version_name}%"))
+        if version_name is not None:
+           query = query.filter(Version.version_name.ilike(f"%{version_name}%"))
         if is_active is not None:
-            query = query.filter(Version.is_active == is_active)
+           query = query.filter(Version.is_active == is_active)
 
         return query.all()
+
 
     def create_version(self, db: Session, version: VersionCreate) -> Version:
         existing = db.query(Version).filter(Version.version_abbr == version.version_abbr).first()
@@ -52,6 +53,27 @@ class VersionService:
                 detail="Failed to create version"
             )
 
+    # Add this inside the VersionService class
+
+    def get_by_version_name(self, db: Session, version_name: str) -> Version:
+        version = db.query(Version).filter(Version.version_name == version_name).first()
+        if not version:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Version with name '{version_name}' not found"
+            )
+        return version
+
+    def get_by_version_abbr(self, db: Session, version_abbr: str) -> Version:
+        version = db.query(Version).filter(Version.version_abbr == version_abbr).first()
+        if not version:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Version with abbreviation '{version_abbr}' not found"
+            )
+        return version
+        
+
     def update_version(self, db: Session, version_id: UUID, version_data: VersionUpdate) -> Version:
         version = self.get_version_by_id(db, version_id)
         
@@ -65,8 +87,12 @@ class VersionService:
 
     def delete_version(self, db: Session, version_id: UUID) -> Version:
         version = self.get_version_by_id(db, version_id)
-        db.delete(version)
+
+        version.is_active = False
+
         db.commit()
+        db.refresh(version)
         return version
+
 
 version_service = VersionService()

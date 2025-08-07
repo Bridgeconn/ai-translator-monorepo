@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine, MetaData, inspect
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import sessionmaker, declarative_base ,Session
 from sqlalchemy.schema import CreateSchema
 from dotenv import load_dotenv
 import urllib
@@ -43,7 +43,7 @@ def init_db_schema():
 
 # --- Dependency for DB session ---
 def get_db():
-    db = SessionLocal()
+    db: Session = SessionLocal()
     try:
         yield db
     finally:

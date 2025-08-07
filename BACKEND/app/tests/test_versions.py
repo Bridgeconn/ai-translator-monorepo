@@ -56,7 +56,7 @@ def test_update_version_success():
 
     update_data = {
         "version_name": f"Updated Name {uuid.uuid4().hex[:4]}",
-        "version_abbr": f"UA{uuid.uuid4().hex[:4]}",  # 👈 ensure uniqueness
+        "version_abbr": f"UA{uuid.uuid4().hex[:4]}",  # ensure uniqueness
         "is_active": False
     }
 

@@ -1,34 +1,31 @@
 from sqlalchemy.orm import Session
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Query
 from uuid import UUID
-
+from typing import Optional
 from app.database import get_db
-from app.schemas.versions import VersionCreate, VersionUpdate, VersionOut, SuccessResponse, ErrorResponse
+from app.schemas.versions import VersionCreate, VersionUpdate, SuccessResponse, ErrorResponse, VersionOut
 from app.crud.versions import version_service
-from typing import Optional, List
-from fastapi import Query
 
 router = APIRouter()
 
+# 1. Get all versions
 @router.get(
     "/",
     response_model=SuccessResponse,
     summary="List all Bible versions"
 )
-def list_all_versions(
-    version_name: Optional[str] = Query(None),
-    is_active: Optional[bool] = Query(None),
-    db: Session = Depends(get_db)
-):
+def list_all_versions(db: Session = Depends(get_db)):
     """
-    Get all Bible versions with optional filtering by name and active status.
+    Get a list of all available Bible versions.
     """
-    versions = version_service.get_all_versions(db, version_name, is_active)
+    versions = version_service.get_all_versions(db)
     return {
-        "message": "Filtered versions list fetched successfully",
-        "data": versions
+        "message": "List of versions fetched successfully",
+        "data": [VersionOut.from_orm(v) for v in versions]
     }
 
+
+# 2. Create version
 @router.post(
     "/",
     response_model=SuccessResponse,
@@ -46,6 +43,43 @@ def create_version_route(version: VersionCreate, db: Session = Depends(get_db)):
         "data": new_version
     }
 
+# 3. Get version by name
+@router.get(
+    "/by-name/{version_name}",
+    response_model=SuccessResponse,
+    responses={404: {"model": ErrorResponse}},
+    status_code=status.HTTP_200_OK,
+    summary="Get version by version_name"
+)
+def get_version_by_name(version_name: str, db: Session = Depends(get_db)):
+    """
+    Retrieve a Bible version using its name.
+    """
+    version = version_service.get_by_version_name(db, version_name)
+    return {
+        "message": f"Version with name '{version_name}' fetched successfully",
+        "data": version
+    }
+
+# 4. Get version by abbreviation
+@router.get(
+    "/by-abbr/{version_abbr}",
+    response_model=SuccessResponse,
+    responses={404: {"model": ErrorResponse}},
+    status_code=status.HTTP_200_OK,
+    summary="Get version by version_abbr"
+)
+def get_version_by_abbr(version_abbr: str, db: Session = Depends(get_db)):
+    """
+    Retrieve a Bible version using its abbreviation.
+    """
+    version = version_service.get_by_version_abbr(db, version_abbr)
+    return {
+        "message": f"Version with abbreviation '{version_abbr}' fetched successfully",
+        "data": version
+    }
+
+# 5. Get version by ID
 @router.get(
     "/{version_id}",
     response_model=SuccessResponse,
@@ -63,22 +97,7 @@ def get_version_by_id(version_id: UUID, db: Session = Depends(get_db)):
         "data": version
     }
 
-@router.get(
-    "/",
-    response_model=SuccessResponse,
-    status_code=status.HTTP_200_OK,
-    summary="List all Bible versions"
-)
-def list_all_versions(db: Session = Depends(get_db)):
-    """
-    Get a list of all available Bible versions.
-    """
-    versions = version_service.get_all_versions(db)
-    return {
-        "message": "List of versions fetched successfully",
-        "data": versions
-    }
-
+# 6. Update version by ID
 @router.put(
     "/{version_id}",
     response_model=SuccessResponse,
@@ -96,6 +115,7 @@ def update_version_route(version_id: UUID, version_data: VersionUpdate, db: Sess
         "data": updated
     }
 
+# 7. Delete version by ID
 @router.delete(
     "/{version_id}",
     response_model=SuccessResponse,
