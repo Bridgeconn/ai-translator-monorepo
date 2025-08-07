@@ -28,6 +28,8 @@ class UserResponse(BaseModel):
     updated_at: Optional[datetime] = None
     is_active: bool
 
+    class Config:
+        orm_mode = True  # <-- This is important!
 @validator('password')
 def validate_password_strength(cls, value):
         if not re.search(r'[A-Z]', value):
@@ -59,18 +61,18 @@ class UserUpdate(BaseModel):
         return value
 
 
-class UserResponse(BaseModel):
-    id: UUID
-    username: str
-    email: EmailStr
-    full_name: Optional[str]
-    role: Optional[str]
-    created_at: Optional[datetime]
-    updated_at: Optional[datetime]
-    is_active: bool
+# class UserResponse(BaseModel):
+#     id: UUID
+#     username: str
+#     email: EmailStr
+#     full_name: Optional[str]
+#     role: Optional[str]
+#     created_at: Optional[datetime]
+#     updated_at: Optional[datetime]
+#     is_active: bool
 
-    class Config:
-        orm_mode = True
+#     class Config:
+#         orm_mode = True
  
 class SuccessResponse(BaseModel):
     message: str
