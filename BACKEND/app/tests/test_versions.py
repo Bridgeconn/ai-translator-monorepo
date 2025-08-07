@@ -76,11 +76,42 @@ def test_delete_version_success():
     assert delete_resp.status_code == 200
     assert "deleted successfully" in delete_resp.json()["message"]
 
-    # Confirm deletion
+    # Confirm deletion (soft-delete: expect 404)
     recheck = client.get(f"/versions/{version_id}")
-    assert recheck.status_code == 404
+    assert recheck.status_code == 404  # only if GET filters is_active=True
+
 
 def test_delete_nonexistent_version():
     fake_id = str(uuid.uuid4())
     response = client.delete(f"/versions/{fake_id}")
+    assert response.status_code == 404
+
+def test_get_version_by_name_success():
+    version = generate_version()
+    create_resp = client.post("/versions/", json=version)
+    assert create_resp.status_code == 201
+
+    response = client.get(f"/versions/by-name/{version['version_name']}")
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["version_name"] == version["version_name"]
+    assert data["version_abbr"] == version["version_abbr"]
+
+def test_get_version_by_abbr_success():
+    version = generate_version()
+    create_resp = client.post("/versions/", json=version)
+    assert create_resp.status_code == 201
+
+    response = client.get(f"/versions/by-abbr/{version['version_abbr']}")
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["version_abbr"] == version["version_abbr"]
+    assert data["version_name"] == version["version_name"]
+
+def test_get_version_by_name_not_found():
+    response = client.get("/versions/by-name/NonExistentVersionName")
+    assert response.status_code == 404
+
+def test_get_version_by_abbr_not_found():
+    response = client.get("/versions/by-abbr/NXVA1234")
     assert response.status_code == 404

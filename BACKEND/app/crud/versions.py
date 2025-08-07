@@ -8,7 +8,7 @@ from typing import Optional
 
 class VersionService:
     def get_version_by_id(self, db: Session, version_id: UUID) -> Version:
-        version = db.query(Version).filter(Version.version_id == version_id).first()
+        version = db.query(Version).filter(Version.version_id == version_id, Version.is_active == True).first()
         if not version:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
