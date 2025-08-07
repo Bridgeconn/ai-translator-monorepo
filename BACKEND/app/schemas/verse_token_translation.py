@@ -3,33 +3,33 @@ from uuid import UUID
 from datetime import datetime
 from typing import Optional
 
-
-# 🔹 Base Schema
-class VerseTokenTranslationBase(BaseModel):
+#REQUEST schema (for POST): only needs project_id
+class VerseTokenTranslationCreate(BaseModel):
     project_id: UUID
-    verse_id: UUID
-    verse_translated_text: Optional[str] = None
-    is_reviewed: Optional[bool] = False
-    is_active: bool
 
-
-# 🔹 Create Schema
-class VerseTokenTranslationCreate(VerseTokenTranslationBase):
-    pass
-
-
-# 🔹 Update Schema
-class VerseTokenTranslationUpdate(BaseModel):
-    verse_translated_text: Optional[str] = None
-    is_reviewed: Optional[bool] = None
-    is_active: Optional[bool] = None
-
-
-# 🔹 Response Schema
-class VerseTokenTranslationOut(VerseTokenTranslationBase):
+class VerseTokenTranslationOut(BaseModel):
     verse_token_id: UUID
+    project_id: UUID
+    token_text: str
+    is_reviewed: bool
+    is_active: bool
     created_at: datetime
     updated_at: datetime
 
+class VerseTokenTranslationResponse(BaseModel):
+    verse_token_id: UUID
+    verse_id: UUID
+    project_id: UUID
+    token_text: str
+    verse_translated_text: Optional[str] = None
+    is_reviewed: bool
+    is_active: bool
+    created_at: datetime
+    updated_at: Optional[datetime]
+
     class Config:
         orm_mode = True
+
+class MessageOnlyResponse(BaseModel):
+    message: str
+      

@@ -1,68 +1,38 @@
 from fastapi import APIRouter, Depends, HTTPException
+from app.database import get_db
 from sqlalchemy.orm import Session
 from uuid import UUID
+from app.crud.verse_token_translation import create_verse_tokens_for_project
+from app.schemas.project import SuccessResponse
+
+from app.models.verse_token_translation import VerseTokenTranslation
+from app.schemas.verse_token_translation import VerseTokenTranslationResponse, MessageOnlyResponse
 from typing import List
-from app.schemas.project import SuccessResponse  # ✅ This will work!
-# from app.schemas import SuccessResponse 
-from app.schemas.verse_token_translation import (
-    VerseTokenTranslationCreate,
-    VerseTokenTranslationUpdate,
-    VerseTokenTranslationOut
-)
-from app.database import get_db
-from app.crud import verse_token_translation as crud
-from app.dependencies.token import get_current_user
-from app.models.users import User
+
+from app.crud.verse_token_translation import get_verse_token_by_id
 
 router = APIRouter()
 
-@router.post("/", response_model=SuccessResponse[VerseTokenTranslationOut])
-def create_translation(
-    translation: VerseTokenTranslationCreate,
-    db: Session = Depends(get_db)
-):
-    db_translation = crud.create_translation(db, translation)
+@router.post(
+    "/generate-verse-tokens/{project_id}",
+    response_model=MessageOnlyResponse   
+)
+def generate_verse_tokens(project_id: UUID, db: Session = Depends(get_db)):
+    tokens = create_verse_tokens_for_project(db, project_id)
     return {
-        "message": "Verse token translation created successfully",
-        "data": db_translation
+        "message": f"{len(tokens)} verse tokens created successfully."
     }
 
-@router.get("/{verse_token_id}", response_model=SuccessResponse)
-def get_translation(
-    verse_token_id: UUID,
-    db: Session = Depends(get_db)
-):
-    db_translation = crud.get_translation(db, verse_token_id)
-    if not db_translation:
-        raise HTTPException(status_code=404, detail="Translation not found")
-    return {
-        "message": "Verse token translation fetched successfully",
-        "data": [db_translation]
-    }
+@router.get("/verse-token-translations/by-project/{project_id}", response_model=List[VerseTokenTranslationResponse])
+def get_tokens_by_project(project_id: UUID, db: Session = Depends(get_db)):
+    tokens = db.query(VerseTokenTranslation).filter(VerseTokenTranslation.project_id == project_id).all()
+    
+    if not tokens:
+        raise HTTPException(status_code=404, detail="No verse tokens found for this project.")
+    
+    return tokens
 
-
-@router.get("/by-project/{project_id}", response_model=SuccessResponse)
-def get_by_project(
-    project_id: UUID,
-    db: Session = Depends(get_db)
-):
-    translations = crud.get_by_project(db, project_id)
-    return {
-        "message": "Translations for project fetched successfully",
-        "data": translations
-    }
-
-
-@router.put("/{verse_token_id}", response_model=SuccessResponse)
-def update_translation(
-    verse_token_id: UUID,
-    translation: VerseTokenTranslationUpdate,
-    db: Session = Depends(get_db)
-):
-    db_translation = crud.update_translation(db, verse_token_id, translation)
-    if not db_translation:
-        raise HTTPException(status_code=404, detail="Translation not found")
-    return {
-        "message": "Verse token translation updated successfully",
-        "data": db_translation
-    }
+@router.get("/verse-token-translations/by-id/{verse_token_id}")
+def get_verse_token(verse_token_id: UUID, db: Session = Depends(get_db)):
+    token = get_verse_token_by_id(db, verse_token_id)
+    return {"message": "Verse token retrieved successfully.", "data": token}

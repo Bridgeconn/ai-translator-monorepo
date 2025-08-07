@@ -89,4 +89,4 @@ app.include_router(books.router, prefix="/books", tags=["Books"])
 
 # --- Include Projects Router ---
 app.include_router(project.router, prefix="/projects", tags=["Projects"])
-app.include_router(verse_token_translation.router, prefix="/verse-token-translations", tags=["Verse Token Translations"])
+app.include_router(verse_token_translation.router, prefix="/verse-token-translation", tags=["Verse Token Translation"])

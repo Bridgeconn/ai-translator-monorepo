@@ -27,6 +27,9 @@ class UserResponse(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime] = None
     is_active: bool
+    
+    class Config:
+        orm_mode = True
 
 @validator('password')
 def validate_password_strength(cls, value):
@@ -58,20 +61,6 @@ class UserUpdate(BaseModel):
             raise ValueError("Password must be alphanumeric.")
         return value
 
-
-class UserResponse(BaseModel):
-    id: UUID
-    username: str
-    email: EmailStr
-    full_name: Optional[str]
-    role: Optional[str]
-    created_at: Optional[datetime]
-    updated_at: Optional[datetime]
-    is_active: bool
-
-    class Config:
-        orm_mode = True
- 
 class SuccessResponse(BaseModel):
     message: str
     data: UserResponse
