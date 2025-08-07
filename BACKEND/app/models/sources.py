@@ -6,6 +6,8 @@ from sqlalchemy.orm import relationship
 
 from app.database import Base
 
+from app.database import Base
+
 class Source(Base):
     __tablename__ = "sources"
 
@@ -19,3 +21,4 @@ class Source(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     is_active = Column(Boolean, nullable=False, default=True)
     projects = relationship("Project", back_populates="source") 
+    
