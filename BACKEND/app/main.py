@@ -25,7 +25,7 @@ async def lifespan(app: FastAPI):
     # Startup: init schema + tables
     init_db_schema()
     Base.metadata.create_all(bind=engine)
-    logger.info("✅ Database schema and tables initialized.")
+    logger.info("Database schema and tables initialized.")
 
     # Seed the bible_books_details table only if it's empty
 
@@ -68,6 +68,6 @@ app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(languages.router, prefix="/languages", tags=["languages"])
 app.include_router(source_routes.router, prefix="/sources", tags=["sources"])
 app.include_router(books.router, prefix="/books", tags=["Books"])
-app.include_router(word_tokens.router)
+app.include_router(word_tokens.router, prefix="/word-tokens")
 app.include_router(word_token_translation.router, prefix="/api", tags=["Word Token Translation"])
 

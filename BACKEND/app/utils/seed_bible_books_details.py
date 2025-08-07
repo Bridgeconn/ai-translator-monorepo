@@ -11,7 +11,7 @@ def seed_book_details(db: Session):
 
     with open(file_path, newline='', encoding='utf-8') as csvfile:
         reader = csv.DictReader(csvfile)
-        print("📘 Detected CSV headers:", reader.fieldnames)
+        print("Detected CSV headers:", reader.fieldnames)
 
         inserted = 0
         for row in reader:
@@ -19,7 +19,7 @@ def seed_book_details(db: Session):
 
             existing = db.query(BookDetail).filter_by(book_number=number).first()
             if existing:
-                #print(f"⏩ Skipping existing book_number {number} - {row['book_name']}")
+                #print(f" Skipping existing book_number {number} - {row['book_name']}")
                 continue
 
             book = BookDetail(
@@ -35,4 +35,4 @@ def seed_book_details(db: Session):
             inserted += 1
 
         db.commit()
-        print(f"✅ Done. Inserted {inserted} new books.")
+        print(f"Done. Inserted {inserted} new books.")

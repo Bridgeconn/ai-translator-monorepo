@@ -28,7 +28,7 @@ def upload_book(source_id: UUID, file: UploadFile = File(...), db: Session = Dep
             book_id=book.book_id,
             book_name=book.book_name,
             book_code=book.book_code,
-            chapters_created=chapter_count,   # ✅ no len()
+            chapters_created=chapter_count,   # no len()
             verses_created=verse_count 
         )
     )
