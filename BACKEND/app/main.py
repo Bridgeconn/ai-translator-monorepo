@@ -1,25 +1,13 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
-from app.routes import project
-from app.database import SessionLocal
 from sqlalchemy import text
-from app.routes import users as user_routes, languages, sources as source_routes,books
+from app.routes import users as user_routes, languages, sources as source_routes,books ,auth ,project
 from app.database import get_db, init_db_schema, Base, engine,SessionLocal
 from contextlib import asynccontextmanager
 import logging
-from app.routes import auth
 from app.load_language_data import load_languages_from_csv
-from app.routes import sources as source_routes
-from app.routes import books
-
-
-
-# --- Create database tables ---
-Base.metadata.create_all(bind=engine)
-
 from app.utils.seed_bible_books_details import seed_book_details
 from app.models.versions import Version  # Ensure model is imported
-
 
 # --- Logger setup ---
 logging.basicConfig(level=logging.INFO)

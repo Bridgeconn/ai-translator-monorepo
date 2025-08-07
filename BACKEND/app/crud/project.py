@@ -29,6 +29,9 @@ def get_project(db: Session, project_id: UUID):
 def get_projects(db: Session):
     return db.query(models.Project).all()
 
+def get_projects_by_source_id(db: Session, source_id: UUID):
+    return db.query(models.Project).filter(models.Project.source_id == source_id).all()
+    
 
 def update_project(db: Session, project_id: UUID, project: schemas.ProjectUpdate):
     db_project = db.query(models.Project).filter(models.Project.project_id == project_id).first()
