@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from app.routes import users as user_routes, languages, sources as source_routes,books ,auth ,project
+from app.routes import users as user_routes, languages, sources as source_routes,books ,auth ,project , verse_token_translation
 from app.database import get_db, init_db_schema, Base, engine,SessionLocal
 from contextlib import asynccontextmanager
 import logging
@@ -76,3 +76,4 @@ app.include_router(books.router, prefix="/books", tags=["Books"])
 
 # --- Include Projects Router ---
 app.include_router(project.router, prefix="/projects", tags=["Projects"])
+app.include_router(verse_token_translation.router, prefix="/verse-token-translation", tags=["Verse Token Translation"])

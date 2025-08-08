@@ -8,6 +8,7 @@ from uuid import UUID
 
 class SourceService:
     def create_source(self, db: Session, source_data: SourceCreate) -> Source:
+        # Fetch language
         existing_source = db.query(Source).filter(
             Source.language_id == source_data.language_id,
             Source.version_id == source_data.version_id
@@ -25,6 +26,23 @@ class SourceService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Language with ID {source_data.language_id} not found"
             )
+
+        # Fetch version
+        version = db.query(Version).filter(Version.version_id == source_data.version_id).first()
+        if not version:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Version with ID {source_data.version_id} not found"
+            )
+
+        # Create Source with auto-filled names
+        source = Source(
+            language_id=source_data.language_id,
+            language_name=language.name,
+            version_id=source_data.version_id,
+            version_name=version.version_name,
+            description=source_data.description,
+        )
 
     # Fetch version
         version = db.query(Version).filter(Version.version_id == source_data.version_id).first()

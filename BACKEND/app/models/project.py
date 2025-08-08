@@ -26,5 +26,5 @@ class Project(Base):
     source = relationship("Source", back_populates="projects")
     target_language = relationship("Language", foreign_keys=[target_language_id], back_populates="target_projects")
     # word_tokens = relationship("WordTokenTranslation", back_populates="project")
-    # verse_tokens = relationship("VerseTokenTranslation", back_populates="project")
+    verse_tokens = relationship("VerseTokenTranslation", back_populates="project")
     # drafts = relationship("TranslationDraft", back_populates="project")
