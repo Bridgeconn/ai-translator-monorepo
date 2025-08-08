@@ -4,6 +4,8 @@ from app.routes import project
 from app.database import SessionLocal
 from sqlalchemy import text
 from app.routes import users as user_routes, languages, sources as source_routes,books
+
+from app.routes import versedraft
 from app.database import get_db, init_db_schema, Base, engine
 from contextlib import asynccontextmanager
 import logging
@@ -94,3 +96,5 @@ app.include_router(project.router, prefix="/projects", tags=["Projects"])
 app.include_router(translation.router, prefix="/translation", tags=["Translation"]) 
 
 
+
+app.include_router(versedraft.router, prefix="/export", tags=["usfm"])

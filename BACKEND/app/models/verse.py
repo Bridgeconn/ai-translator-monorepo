@@ -18,7 +18,9 @@ class Verse(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     chapter = relationship("Chapter", back_populates="verses")
-
+    verse_token_translations = relationship("VerseTokenTranslation", back_populates="verse")
+    
     __table_args__ = (
         UniqueConstraint("chapter_id", "verse_number", name="uq_chapter_verse"),
     )
+ 
