@@ -45,7 +45,7 @@ class SuccessResponse(BaseModel):
 class ErrorResponse(BaseModel):
     message: str
 
-#  USED FOR FILE UPLOAD RESPONSE
+# USED FOR FILE UPLOAD RESPONSE
 class BookUploadResponse(BaseModel):
     book_id: UUID
     book_name: str

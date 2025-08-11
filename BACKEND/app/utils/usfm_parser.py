@@ -53,7 +53,7 @@ def parse_usfm_and_save(usfm_text: str, db: Session, book_id) -> Tuple[int, int]
                     chapter_id=chapter_id,
                     verse_number=verse_number,
                     content=verse_text,
-                    usfm_tags=usfm_tag,  # optional, unless needed
+                    usfm_tags= "\\" + usfm_tag,  # optional, unless needed
                     created_at=datetime.utcnow()
                 )
                 db.add(verse)

@@ -3,9 +3,6 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
 from sqlalchemy.orm import relationship
-
-from app.database import Base
-
 from app.database import Base
 
 class Source(Base):
