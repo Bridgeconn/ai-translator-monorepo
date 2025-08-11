@@ -1,21 +1,23 @@
-# app/utils/vachan_ai.py
+import os
+from dotenv import load_dotenv
 import httpx
 import time
 from fastapi import HTTPException
+
+# Load environment variables
+load_dotenv()
 
 VACHAN_LOGIN_URL = "https://api.vachanengine.org/v2/ai/token"
 VACHAN_TRANSLATE_URL = "https://api.vachanengine.org/v2/ai/model/text/translate"
 VACHAN_JOB_STATUS_URL = "https://api.vachanengine.org/v2/ai/model/job"
 
-# Hardcoded login credentials (per your request)
-USERNAME = "slimywhite2@gmail.com"
-PASSWORD = "Demon@9827"
+USERNAME = os.getenv("VACHAN_USERNAME")
+PASSWORD = os.getenv("VACHAN_PASSWORD")
 
 MAX_RETRIES = 15
-POLL_INTERVAL = 2  # seconds
+POLL_INTERVAL = 2
 
 def get_access_token():
-    """Login to Vachan AI and return access token."""
     try:
         resp = httpx.post(VACHAN_LOGIN_URL, data={
             "username": USERNAME,
@@ -28,6 +30,9 @@ def get_access_token():
         return token
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Vachan login failed: {str(e)}")
+
+# Rest of your functions stay the same...
+
 
 def request_translation(token: str, text: str, src_lang: str, tgt_lang: str):
     """Send translation request and return job_id."""
