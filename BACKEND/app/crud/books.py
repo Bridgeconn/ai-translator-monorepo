@@ -37,7 +37,6 @@ def create_book_with_usfm(db: Session, source_id: UUID, usfm_text: str):
     db.add(book)
     db.commit()
     db.refresh(book)
-
     chapters, verses = parse_usfm_and_save(usfm_text, db, book.book_id)
 
     return book, chapters, verses
@@ -48,7 +47,11 @@ def get_all_books(db: Session):
 
 
 def get_book_by_id(book_id: UUID, db: Session):
-    return db.query(Book).filter(Book.book_id == book_id).first()
+
+    book_id =  db.query(Book).filter(Book.book_id == book_id).first()
+    if not book_id:
+        raise HTTPException(status_code=404, detail="Book not found")
+    return book_id
 
 
 def delete_book_by_id(book_id: UUID, db: Session):
@@ -99,7 +102,11 @@ def update_book_with_detail_sync(book_id: UUID, payload: BookUpdate, db: Session
     return book
 
 def get_books_by_source(db: Session, source_id: UUID):
-    return db.query(Book).filter(Book.source_id == source_id).all()
+
+    is_Source = db.query(Book).filter(Book.source_id == source_id).all()
+    if not is_Source:
+        raise HTTPException(status_code=404, detail="No books found for this source_id")
+    return is_Source
 
 
 def get_book_by_source_and_name(db: Session, source_id: UUID, name: str):

@@ -2,7 +2,6 @@ from sqlalchemy import Column, String, Text, Boolean, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
-
 from app.database import Base
 
 class Source(Base):
