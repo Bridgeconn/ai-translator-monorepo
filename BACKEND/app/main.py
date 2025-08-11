@@ -8,7 +8,7 @@ import logging
 from app.load_language_data import load_languages_from_csv
 from app.utils.seed_bible_books_details import seed_book_details
 from app.models.versions import Version  # Ensure model is imported
-
+from app.routes import versions
 # --- Logger setup ---
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -66,7 +66,8 @@ def ping_db(db: Session = Depends(get_db)):
 
 # --- Include API Routers ---
 app.include_router(user_routes.router, prefix="/users", tags=["users"])
-app.include_router(version_routes.router, prefix="/versions", tags=["versions"])
+app.include_router(versions.router, prefix="/versions", tags=["versions"])
+
 
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 

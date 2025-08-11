@@ -6,12 +6,12 @@ from app.models.books_details import BookDetail
 def seed_book_details(db: Session):
     file_path = os.path.join(os.path.dirname(__file__), "../data/bible_books_details.csv")
     if not os.path.isfile(file_path):
-        print(f"CSV file not found at {file_path}")
+        # print(f"CSV file not found at {file_path}")
         return
 
     with open(file_path, newline='', encoding='utf-8') as csvfile:
         reader = csv.DictReader(csvfile)
-        print("📘 Detected CSV headers:", reader.fieldnames)
+        # print("📘 Detected CSV headers:", reader.fieldnames)
 
         inserted = 0
         for row in reader:
@@ -35,4 +35,4 @@ def seed_book_details(db: Session):
             inserted += 1
 
         db.commit()
-        print(f"✅ Done. Inserted {inserted} new books.")
+        # print(f"✅ Done. Inserted {inserted} new books.")

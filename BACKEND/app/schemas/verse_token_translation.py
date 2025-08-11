@@ -33,3 +33,7 @@ class VerseTokenTranslationResponse(BaseModel):
 class MessageOnlyResponse(BaseModel):
     message: str
       
+#adding some changes for the update api of translation and review
+
+class ManualTranslationUpdate(BaseModel):
+    translated_text: str

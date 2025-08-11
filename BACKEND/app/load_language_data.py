@@ -8,12 +8,12 @@ def load_languages_from_csv():
     db: Session = SessionLocal()
     try:
         if db.query(Language).first():
-            print("Languages already loaded. Skipping.")
+            # print("Languages already loaded. Skipping.")
             return  # Skip if data exists
 
         file_path = os.path.join("docs", "languages.csv")
         if not os.path.exists(file_path):
-            print(f"CSV file not found: {file_path}")
+            # print(f"CSV file not found: {file_path}")
             return
 
         with open(file_path, newline='', encoding='utf-8') as csvfile:
@@ -27,10 +27,10 @@ def load_languages_from_csv():
                 db.add(language)
 
         db.commit()
-        print("Languages imported successfully.")
+        # print("Languages imported successfully.")
 
     except Exception as e:
-        print("Error loading languages:", e)
+        # print("Error loading languages:", e)
         db.rollback()
     finally:
         db.close()
