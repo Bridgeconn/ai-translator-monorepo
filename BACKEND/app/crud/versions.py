@@ -8,7 +8,7 @@ from typing import Optional
 
 class VersionService:
     def get_version_by_id(self, db: Session, version_id: UUID) -> Version:
-        version = db.query(Version).filter(Version.version_id == version_id, Version.is_active == True).first()
+        version = db.query(Version).filter(Version.version_id == version_id).first()
         if not version:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -18,6 +18,11 @@ class VersionService:
 
     def get_all_versions(self, db: Session, version_name: Optional[str] = None, is_active: Optional[bool] = None):
         query = db.query(Version)
+        if not query.first():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No versions found"
+            )
 
         if version_name is not None:
            query = query.filter(Version.version_name.ilike(f"%{version_name}%"))
@@ -28,11 +33,19 @@ class VersionService:
 
 
     def create_version(self, db: Session, version: VersionCreate) -> Version:
-        existing = db.query(Version).filter(Version.version_abbr == version.version_abbr).first()
-        if existing:
+        existing_abbr = db.query(Version).filter(Version.version_abbr == version.version_abbr).first()
+
+        if existing_abbr:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Version abbreviation already exists"
+            )
+        existing_name = db.query(Version).filter(Version.version_name == version.version_name).first()
+
+        if existing_name:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Version name already exists"
             )
         
         new_version = Version(
@@ -52,8 +65,6 @@ class VersionService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to create version"
             )
-
-    # Add this inside the VersionService class
 
     def get_by_version_name(self, db: Session, version_name: str) -> Version:
         version = db.query(Version).filter(Version.version_name == version_name).first()
@@ -87,12 +98,14 @@ class VersionService:
 
     def delete_version(self, db: Session, version_id: UUID) -> Version:
         version = self.get_version_by_id(db, version_id)
-
-        version.is_active = False
-
+        if not version:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Version with ID {version_id} not found"
+            )
+    
+        db.delete(version)
         db.commit()
-        db.refresh(version)
         return version
-
 
 version_service = VersionService()

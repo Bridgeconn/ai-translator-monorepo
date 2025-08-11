@@ -21,7 +21,7 @@ def list_all_versions(db: Session = Depends(get_db)):
     versions = version_service.get_all_versions(db)
     return {
         "message": "List of versions fetched successfully",
-        "data": [VersionOut.from_orm(v) for v in versions]
+        "data": [v.__dict__ for v in versions]
     }
 
 
