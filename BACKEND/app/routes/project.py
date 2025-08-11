@@ -12,7 +12,7 @@ from app.models.users import User  # Your User model
 router = APIRouter()
 @router.post("/", response_model=SuccessResponse[ProjectResponse])
 def create_project(project: schemas.ProjectCreate, db: Session = Depends(get_db),
-     current_user: User = Depends(get_current_user)):
+    current_user: User = Depends(get_current_user)):
     db_project = crud.create_project(db, project)
     project_data = ProjectResponse.from_orm(db_project)
     return {"message": "Project created successfully", "data": project_data}
