@@ -1,9 +1,11 @@
-# app/schemas/word_token_translation.py
 from pydantic import BaseModel
 from uuid import UUID
 from typing import Optional
 from datetime import datetime
 
+# -------------------------
+# Word Token Schemas
+# -------------------------
 class WordTokenBase(BaseModel):
     token_text: str
     frequency: int
@@ -27,3 +29,33 @@ class WordTokenOut(WordTokenBase):
 
     class Config:
         orm_mode = True
+
+# -------------------------
+# Word Token Translation Schemas
+# -------------------------
+class WordTokenTranslationBase(BaseModel):
+    translated_text: str
+    source_language: str
+    target_language: str
+
+class WordTokenTranslationCreate(WordTokenTranslationBase):
+    word_token_id: UUID
+
+class WordTokenTranslationUpdate(BaseModel):
+    translated_text: Optional[str]
+    source_language: Optional[str]
+    target_language: Optional[str]
+
+class WordTokenTranslationResponse(BaseModel):
+    word_token_id: UUID
+    translated_text: Optional[str]
+    source_language: Optional[str] = None
+    target_language: Optional[str] = None
+
+    class Config:
+        orm_mode = True
+
+class WordTokenTranslationRequest(BaseModel):
+    word_token_id: UUID
+    source_language: str
+    target_language: str
