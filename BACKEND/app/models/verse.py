@@ -9,14 +9,12 @@ class Verse(Base):
 
     verse_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     chapter_id = Column(UUID(as_uuid=True), ForeignKey("chapters.chapter_id"), nullable=False)
-
     verse_number = Column(Integer, nullable=False)
     content = Column(Text, nullable=False)
     usfm_tags = Column(Text, nullable=False)
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
-
     chapter = relationship("Chapter", back_populates="verses")
     verse_token_translations = relationship("VerseTokenTranslation", back_populates="verse")
     
