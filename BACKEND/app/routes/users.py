@@ -3,16 +3,16 @@ from sqlalchemy.orm import Session
 from app.models.users import User
 from app.database import get_db
 from uuid import UUID
-from app.schemas.users import UserCreate,UserUpdate, ErrorResponse, SuccessResponse
+from app.schemas.users import UserCreate,UserUpdate, ErrorResponse, SuccessResponse,MessageResponse
 from app.dependencies.token import get_current_user
 from app.crud.users import user_service, delete_user_by_id
-
 
 router = APIRouter()
 
 @router.get("/me")
 def get_me(current_user: User = Depends(get_current_user)):
     return current_user
+
 @router.post(
     "/",
     response_model=SuccessResponse,
@@ -88,28 +88,23 @@ def get_all_users(db: Session = Depends(get_db),current_user: User = Depends(get
     users = user_service.get_all_users(db)
     return users
 
-@router.get("/id/{user_id}",response_model=SuccessResponse,responses={404: {"model": ErrorResponse}}, summary="Get user by ID")###
+@router.get("/id/{user_id}",response_model=SuccessResponse,responses={404: {"model": ErrorResponse}}, summary="Get user by ID")
 def get_user_by_id(user_id: str, db: Session = Depends(get_db),current_user: User = Depends(get_current_user)):
     user = user_service.get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return {"data": user, "message": "User fetched successfully"} ###
+    return {"data": user, "message": "User fetched successfully"}
 
-@router.get("/username/{username}",response_model=SuccessResponse, summary="Get user by username")##
+@router.get("/username/{username}",response_model=SuccessResponse, summary="Get user by username")
 def get_user_by_username(username: str, db: Session = Depends(get_db),current_user: User = Depends(get_current_user)):
     user = user_service.get_user_by_username(db, username)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return {"data": user, "message": "User fetched successfully"}###
+    return {"data": user, "message": "User fetched successfully"}
 
 @router.get("/email/{email}",response_model=SuccessResponse, summary="Get user by email")
 def get_user_by_email(email: str, db: Session = Depends(get_db),current_user: User = Depends(get_current_user)):
     user = user_service.get_user_by_email(db, email)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return {"data": user, "message": "User fetched successfully"}### added a message in return 
-
-
-## added a message in return and add the response model SuccessResponse in fetch user 
-## addded current_user from get_current_user as a dependency 
-## added a me router to get current user detail
+    return {"data": user, "message": "User fetched successfully"}
