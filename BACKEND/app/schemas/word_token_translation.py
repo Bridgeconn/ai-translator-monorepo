@@ -12,14 +12,18 @@ class WordTokenBase(BaseModel):
     translated_text: Optional[str] = None
     is_reviewed: Optional[bool] = False
     is_active: Optional[bool] = True
+    book_name: Optional[str] = None   
+
 
 class WordTokenCreate(WordTokenBase):
     project_id: UUID
+    book_name: str
 
 class WordTokenUpdate(BaseModel):
     translated_text: Optional[str]
     is_reviewed: Optional[bool]
-    is_active: Optional[bool] 
+    is_active: Optional[bool]
+    book_name: Optional[str] 
 
 class WordTokenOut(WordTokenBase):
     word_token_id: UUID

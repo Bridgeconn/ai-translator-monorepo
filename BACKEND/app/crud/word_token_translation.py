@@ -9,9 +9,6 @@ from app.utils.vachan_ai import translate_text_with_polling
 from app.models.project import Project
 from app.models.languages import Language
 
-def get_tokens_by_project(db: Session, project_id: UUID):
-    return db.query(WordTokenTranslation).filter_by(project_id=project_id).all()
-
 def update_translation(db: Session, word_token_id: UUID, update_data: WordTokenUpdate):
     db_token = db.query(WordTokenTranslation).filter_by(word_token_id=word_token_id).first()
     if not db_token:

@@ -12,6 +12,7 @@ class WordTokenTranslation(Base):
 
     word_token_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     project_id = Column(UUID(as_uuid=True), ForeignKey('projects.project_id'))
+    book_name = Column(String(255), nullable=False)
     token_text = Column(String(255), nullable=False)
     frequency = Column(Integer, default=1)
     translated_text = Column(Text)
@@ -19,6 +20,7 @@ class WordTokenTranslation(Base):
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(TIMESTAMP, default=func.current_timestamp())
     updated_at = Column(TIMESTAMP, default=func.current_timestamp(), onupdate=func.current_timestamp())
-
+    
     project = relationship("Project", back_populates="word_tokens")
+
 

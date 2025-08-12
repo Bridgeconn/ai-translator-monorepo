@@ -9,12 +9,9 @@ from app.database import get_db
 from app.schemas.word_token_translation import WordTokenTranslationRequest, WordTokenTranslationResponse
 from app.crud.word_token_translation import translate_and_store_word_token
 router = APIRouter(
-    prefix="/api/word_token_translation",
+    prefix="/word_token_translation",
     tags=["Word Token Translation"]
 )
-@router.get("/project/{project_id}", response_model=List[WordTokenOut])
-def get_word_tokens(project_id: UUID, db: Session = Depends(get_db)):
-    return crud.get_tokens_by_project(db, project_id)
 
 @router.put("/{word_token_id}", response_model=WordTokenOut)
 def update_token(word_token_id: UUID, update: WordTokenUpdate, db: Session = Depends(get_db)):
