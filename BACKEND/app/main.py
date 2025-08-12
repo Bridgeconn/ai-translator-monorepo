@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from sqlalchemy import text
-from app.routes import users as user_routes, languages,sources as source_routes, versions as version_routes, auth,books as book_routes
+from app.routes import users as user_routes, languages,sources as source_routes, versions as version_routes, auth,books as book_routes , project as project_routes
 from app.database import get_db, init_db_schema, Base, engine
 from contextlib import asynccontextmanager
 import logging
@@ -62,3 +62,4 @@ app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(languages.router, prefix="/languages", tags=["languages"])
 app.include_router(source_routes.router, prefix="/sources", tags=["sources"])
 app.include_router(book_routes.router, prefix="/books", tags=["Books"]) 
+app.include_router(project_routes.router, prefix="/projects", tags=["Projects"])

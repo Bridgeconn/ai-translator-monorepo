@@ -2,6 +2,8 @@ from sqlalchemy import Column, String, Text, Boolean, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
+from sqlalchemy.orm import relationship
+
 from app.database import Base
 
 class Source(Base):
@@ -16,3 +18,4 @@ class Source(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     is_active = Column(Boolean, nullable=False, default=True)
+    projects = relationship("Project", back_populates="source") 

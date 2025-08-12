@@ -107,4 +107,3 @@ def delete_user_by_id(db: Session, user_id: UUID) -> User:
 
 
 user_service = UserService()
-## changed id to user_id as per schema 
