@@ -2,15 +2,14 @@ import uuid
 from datetime import datetime
 from sqlalchemy import text
 from fastapi.testclient import TestClient
-from unittest.mock import patch
 
 from app.main import app
 from app.database import SessionLocal
 from app.models.word_token_translation import WordTokenTranslation
 
 # Constants for test URLs
-GEN_TOKENS_URL = "/word_tokens/word_tokens/generate"
-GET_TOKENS_BY_PROJECT_URL = "/word_tokens/word_tokens/project"
+GEN_TOKENS_URL = "/word_tokens/generate"
+GET_TOKENS_BY_PROJECT_URL = "/word_tokens/project"
 UPDATE_TOKEN_URL = "/api/word_token_translation"
 
 client = TestClient(app)
@@ -50,6 +49,11 @@ def cleanup_test_data():
                 "DELETE FROM projects WHERE name LIKE 'TEST_%'"
             )
         )
+        db.execute(
+            text(
+                "DELETE FROM sources WHERE language_name LIKE 'TEST_%'"
+            )
+        )
         db.commit()
 
 
@@ -67,7 +71,6 @@ def create_fake_source_project_book():
             ),
             {"id": source_id, "language_name": f"{test_prefix}_Lang", "version_name": f"{test_prefix}_Ver"}
         )
-        db.commit()
 
         # Insert Project
         project_id = uuid.uuid4()
@@ -83,7 +86,6 @@ def create_fake_source_project_book():
                 "ttype": "test_translation"
             }
         )
-        db.commit()
 
         # Insert Book
         book_id = uuid.uuid4()
@@ -99,6 +101,27 @@ def create_fake_source_project_book():
                 "bname": f"{test_prefix}_Genesis"
             }
         )
+
+        # Insert Chapter
+        chapter_id = uuid.uuid4()
+        db.execute(
+            text(
+                "INSERT INTO chapters (chapter_id, book_id, chapter_number, is_active) "
+                "VALUES (:cid, :bid, 1, true)"
+            ),
+            {"cid": chapter_id, "bid": book_id}
+        )
+
+        # Insert Verse with dummy content
+        verse_id = uuid.uuid4()
+        db.execute(
+            text(
+                "INSERT INTO verses (verse_id, chapter_id, verse_number, content, usfm_tags, is_active) "
+                "VALUES (:vid, :cid, 1, 'In the beginning God created the heaven and the earth.', '{}', true)"
+            ),
+            {"vid": verse_id, "cid": chapter_id}
+        )
+
         db.commit()
 
     return test_prefix, project_id, f"{test_prefix}_Genesis"
@@ -115,12 +138,17 @@ def test_generate_tokens():
 
 def test_get_tokens_by_project():
     test_prefix, project_id, book_name = create_fake_source_project_book()
-    client.post(f"{GEN_TOKENS_URL}/{project_id}?book_name={book_name}")
 
-    response = client.get(f"{GET_TOKENS_BY_PROJECT_URL}/{project_id}?book_name={book_name}")
+    # Generate tokens first
+    gen_resp = client.post(f"{GEN_TOKENS_URL}/{project_id}?book_name={book_name}")
+    assert gen_resp.status_code == 200
+
+    url = f"{GET_TOKENS_BY_PROJECT_URL}/{project_id}"
+    response = client.get(url)
     assert response.status_code == 200
     tokens = response.json()
     assert isinstance(tokens, list)
+    
 
 
 def test_update_token_translation():
@@ -152,5 +180,3 @@ def test_update_token_translation():
     assert response.status_code == 200
     assert response.json()["translated_text"] == "सत्य"
     assert response.json()["is_reviewed"] is True
-
-

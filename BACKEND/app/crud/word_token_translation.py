@@ -1,10 +1,8 @@
-# app/crud/word_token_translation.py
 from sqlalchemy.orm import Session
 from app.models.word_token_translation import WordTokenTranslation
-from app.schemas.word_token_translation import WordTokenUpdate
 from uuid import UUID
 from fastapi import HTTPException
-from app.schemas.word_token_translation import WordTokenTranslationRequest, WordTokenTranslationResponse,WordTokenOut
+from app.schemas.word_token_translation import WordTokenTranslationRequest, WordTokenTranslationResponse,WordTokenOut,WordTokenUpdate
 from app.utils.vachan_ai import translate_text_with_polling
 from app.models.project import Project
 from app.models.languages import Language
@@ -55,4 +53,4 @@ def translate_and_store_word_token(db: Session, data: WordTokenTranslationReques
     db.commit()
     db.refresh(token_obj)
 
-    return token_obj  # Now returns full ORM object -> Pydantic model will handle fields
+    return token_obj  

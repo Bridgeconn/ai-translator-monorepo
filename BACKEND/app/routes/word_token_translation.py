@@ -1,13 +1,10 @@
-# app/routes/word_token_translation.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from uuid import UUID
 from typing import List
-from app.schemas.word_token_translation import WordTokenOut, WordTokenUpdate
 from app.crud import word_token_translation as crud
 from app.database import get_db
-from app.schemas.word_token_translation import WordTokenTranslationRequest, WordTokenTranslationResponse,WordTokenOut
-from app.crud.word_token_translation import translate_and_store_word_token
+from app.schemas.word_token_translation import WordTokenTranslationRequest, WordTokenTranslationResponse,WordTokenOut,WordTokenUpdate
 router = APIRouter(
     prefix="/word_token_translation",
     tags=["Word Token Translation"]
@@ -25,4 +22,4 @@ def translate_word_token(data: WordTokenTranslationRequest, db: Session = Depend
     """
     Translate a word token using Vachan AI and return the result.
     """
-    return translate_and_store_word_token(db, data)
+    return crud.translate_and_store_word_token(db, data)

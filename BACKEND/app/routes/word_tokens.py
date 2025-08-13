@@ -2,8 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from uuid import UUID
 import traceback
-from typing import Optional
-from typing import List
+from typing import Optional,List
 from app.schemas.word_token_translation import WordTokenOut
 from app.database import get_db
 from app.crud.word_tokens import extract_and_store_word_tokens, get_tokens_all, get_token_by_project_and_text
@@ -30,4 +29,9 @@ def get_token_by_project_token_text(project_id: UUID, token_text: str, db: Sessi
 
 @router.get("/project/{project_id}", response_model=List[WordTokenOut])
 def get_all_tokens(project_id: UUID, book_name: Optional[str] = None, db: Session = Depends(get_db)):
-    return get_tokens_all(db, project_id, book_name)
+    get_all = get_tokens_all(db, project_id, book_name)
+    if not get_all:
+        raise HTTPException(status_code=404, detail="Tokens not found")
+    return get_all
+
+    

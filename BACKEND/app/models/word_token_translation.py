@@ -19,8 +19,7 @@ class WordTokenTranslation(Base):
     is_reviewed = Column(Boolean, default=False)
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(TIMESTAMP, default=func.current_timestamp())
-    updated_at = Column(TIMESTAMP, default=func.current_timestamp(), onupdate=func.current_timestamp())
-    
+    updated_at = Column(TIMESTAMP, default=func.current_timestamp(), onupdate=func.current_timestamp()) 
     project = relationship("Project", back_populates="word_tokens")
 
 

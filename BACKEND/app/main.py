@@ -12,8 +12,6 @@ from app.models.versions import Version  # Ensure model is imported
 from app.routes import word_token_translation
 from app.routes import word_tokens
 
-
-
 # --- Logger setup ---
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
