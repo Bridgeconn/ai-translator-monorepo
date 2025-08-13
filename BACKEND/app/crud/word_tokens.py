@@ -44,7 +44,7 @@ def extract_and_store_word_tokens(db: Session, project_id: UUID, book_name: str)
     for word, freq in token_counter.items():
         existing_token = (
             db.query(WordTokenTranslation)
-            .filter_by(project_id=project_id, token_text=word)
+            .filter_by(project_id=project_id, token_text=word, book_name=book_name)
             .first()
         )
 
@@ -69,7 +69,7 @@ def get_token_by_project_and_text(db: Session, project_id: UUID, token_text: str
     return db.query(WordTokenTranslation).filter(
         WordTokenTranslation.project_id == project_id,
         WordTokenTranslation.token_text == token_text
-    ).first()
+    ).all()
 def get_tokens_all(db: Session, project_id: UUID, book_name: Optional[str] = None):
     if book_name:
         return db.query(WordTokenTranslation).filter_by(project_id=project_id, book_name=book_name).all()

@@ -16,7 +16,7 @@ def create_project(project:ProjectCreate, db: Session = Depends(get_db), current
 
 
 @router.get("/{project_id}", response_model=SuccessResponse)
-def get_project_id(project_id: UUID, db: Session = Depends(get_db),current_user: User = Depends(get_current_user)):
+def get_project_id(project_id: UUID, db: Session = Depends(get_db)):
     db_project = crud.get_project_by_id(db, project_id)
     if not db_project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -24,7 +24,7 @@ def get_project_id(project_id: UUID, db: Session = Depends(get_db),current_user:
 
 
 @router.get("/", response_model=SuccessResponse)
-def list_projects(db: Session = Depends(get_db),current_user: User = Depends(get_current_user)):
+def list_projects(db: Session = Depends(get_db)):
     projects = crud.get_projects(db)
     return {"message": "Projects fetched successfully", "data": [ProjectResponse.from_orm(p) for p in projects]}
 

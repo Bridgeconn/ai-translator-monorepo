@@ -6,7 +6,7 @@ from typing import List
 from app.schemas.word_token_translation import WordTokenOut, WordTokenUpdate
 from app.crud import word_token_translation as crud
 from app.database import get_db
-from app.schemas.word_token_translation import WordTokenTranslationRequest, WordTokenTranslationResponse
+from app.schemas.word_token_translation import WordTokenTranslationRequest, WordTokenTranslationResponse,WordTokenOut
 from app.crud.word_token_translation import translate_and_store_word_token
 router = APIRouter(
     prefix="/word_token_translation",
@@ -20,7 +20,7 @@ def update_token(word_token_id: UUID, update: WordTokenUpdate, db: Session = Dep
         raise HTTPException(status_code=404, detail="Token not found")
     return updated
 
-@router.post("/translate", response_model=WordTokenTranslationResponse)
+@router.post("/translate", response_model=WordTokenOut)
 def translate_word_token(data: WordTokenTranslationRequest, db: Session = Depends(get_db)):
     """
     Translate a word token using Vachan AI and return the result.

@@ -61,5 +61,4 @@ class WordTokenTranslationResponse(BaseModel):
 
 class WordTokenTranslationRequest(BaseModel):
     word_token_id: UUID
-    source_language: str
-    target_language: str
+   
