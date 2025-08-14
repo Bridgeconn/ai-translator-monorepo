@@ -7,13 +7,13 @@ from datetime import datetime
 from typing import List
 
 
-# ✅ CREATE
+# CREATE
 class BookCreate(BaseModel):
     source_id: UUID
     book_id: str
     usfm_content: str
 
-# ✅ UPDATE
+# UPDATE
 class BookUpdate(BaseModel):   
     book_name: Optional[str]
     book_code: Optional[str]
@@ -21,7 +21,7 @@ class BookUpdate(BaseModel):
     testament: Optional[str]
     chapter_count: Optional[int]
 
-# ✅ RESPONSE
+# RESPONSE
 class BookResponse(BaseModel):
     book_id: UUID
     source_id: UUID
@@ -37,7 +37,7 @@ class BookResponse(BaseModel):
     class Config:
         orm_mode = True
 
-# ✅ REUSEABLE RESPONSE WRAPPERS
+# REUSEABLE RESPONSE WRAPPERS
 class SuccessResponse(BaseModel):
     message: str
     data: BookResponse
@@ -45,7 +45,7 @@ class SuccessResponse(BaseModel):
 class ErrorResponse(BaseModel):
     message: str
 
-# ✅ USED FOR FILE UPLOAD RESPONSE
+# USED FOR FILE UPLOAD RESPONSE
 class BookUploadResponse(BaseModel):
     book_id: UUID
     book_name: str

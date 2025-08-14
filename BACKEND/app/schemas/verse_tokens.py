@@ -21,6 +21,7 @@ class VerseTokenTranslationResponse(BaseModel):
     verse_id: UUID
     project_id: UUID
     token_text: str
+    book_name: str
     verse_translated_text: Optional[str] = None
     is_reviewed: bool
     is_active: bool

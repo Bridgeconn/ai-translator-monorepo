@@ -20,6 +20,8 @@ router = APIRouter()
 
 @router.post("/upload_books/", response_model=UploadSuccessResponse, status_code=201, responses={400: {"model": ErrorResponse}})
 def upload_book(source_id: UUID, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    if file.filename.split(".")[-1].lower() != "usfm":
+        raise HTTPException(status_code=400, detail="Invalid file type. Only .usfm files are allowed.")
     content = file.file.read().decode("utf-8")
     book, chapter_count, verse_count = create_book_with_usfm(db, source_id, content)
     return UploadSuccessResponse(
@@ -28,7 +30,7 @@ def upload_book(source_id: UUID, file: UploadFile = File(...), db: Session = Dep
             book_id=book.book_id,
             book_name=book.book_name,
             book_code=book.book_code,
-            chapters_created=chapter_count,   # ✅ no len()
+            chapters_created=chapter_count,   # no len()
             verses_created=verse_count 
         )
     )
