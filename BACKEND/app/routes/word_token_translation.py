@@ -5,10 +5,7 @@ from typing import List
 from app.crud import word_token_translation as crud
 from app.database import get_db
 from app.schemas.word_token_translation import WordTokenTranslationRequest, WordTokenTranslationResponse,WordTokenOut,WordTokenUpdate
-router = APIRouter(
-    prefix="/word_token_translation",
-    tags=["Word Token Translation"]
-)
+router = APIRouter()
 
 @router.put("/{word_token_id}", response_model=WordTokenOut)
 def update_token(word_token_id: UUID, update: WordTokenUpdate, db: Session = Depends(get_db)):

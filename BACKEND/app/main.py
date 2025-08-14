@@ -8,9 +8,8 @@ from contextlib import asynccontextmanager
 import logging
 from app.load_language_data import load_languages_from_csv
 from app.utils.seed_bible_books_details import seed_book_details
-from app.models.versions import Version  # Ensure model is imported
-from app.routes import word_token_translation
-from app.routes import word_tokens
+from app.models.versions import Version
+from app.routes import word_token_translation, word_tokens
 
 # --- Logger setup ---
 logging.basicConfig(level=logging.INFO)
