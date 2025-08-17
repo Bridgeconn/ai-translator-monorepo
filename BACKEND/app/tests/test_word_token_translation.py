@@ -159,7 +159,6 @@ def test_get_tokens_by_project():
 
 def test_update_token_translation():
     test_prefix, project_id, book_name = create_fake_source_project_book()
-
     with SessionLocal() as db:
         token_id = uuid.uuid4()
         db_token = WordTokenTranslation(
@@ -176,13 +175,15 @@ def test_update_token_translation():
         )
         db.add(db_token)
         db.commit()
-
     update_data = {
         "word_token_id": str(token_id),
         "translated_text": "सत्य",
-        "is_reviewed": True
+        "is_reviewed": True,
+        "book_name": book_name
     }
-    response = client.put(f"{UPDATE_TOKEN_URL}/{update_data['word_token_id']}", json=update_data)
-    assert response.status_code == 200
-    assert response.json()["translated_text"] == "सत्य"
-    assert response.json()["is_reviewed"] is True
+
+    response = client.put(f"/api/{update_data['word_token_id']}", json=update_data)
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["translated_text"] == "सत्य"
+    assert data["is_reviewed"] is True
