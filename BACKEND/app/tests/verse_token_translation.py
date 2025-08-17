@@ -6,10 +6,6 @@ from app.tests.test_word_token_translation import create_fake_source_project_boo
 
 client = TestClient(app)
 
-# Invalid IDs for negative tests
-INVALID_PROJECT_ID = "00000000-0000-0000-0000-000000000000"
-INVALID_TOKEN_ID = "00000000-0000-0000-0000-000000000000"
-
 
 def test_generate_tokens():
     test_prefix, project_id, book_name = create_fake_source_project_book()
