@@ -19,6 +19,12 @@ def cleanup_test_data():
     with SessionLocal() as db:
         db.execute(
             text(
+                "DELETE FROM verse_token_translation WHERE project_id IN "
+                "(SELECT project_id FROM projects WHERE name LIKE 'TEST_%')"
+            )
+        )
+        db.execute(
+            text(
                 "DELETE FROM word_token_translation WHERE project_id IN "
                 "(SELECT project_id FROM projects WHERE name LIKE 'TEST_%')"
             )
@@ -64,25 +70,42 @@ def create_fake_source_project_book():
     with SessionLocal() as db:
         # Insert Source
         source_id = uuid.uuid4()
+        version_id = uuid.uuid4()
+        db.execute(
+        text("""
+            INSERT INTO versions (version_id, version_name, version_abbr) 
+            VALUES (:id, :name, :abbr)
+        """),
+        {"id": version_id, "name": f"{test_prefix}_Version", "abbr": f"{test_prefix}_V"}
+    )
+        lang_id = str(uuid.uuid4())
+        db.execute(
+        text("""
+            INSERT INTO languages (language_id, name, "ISO_code") 
+            VALUES (:id, :name, :code)
+        """),
+        {"id": lang_id, "name": "TestLang", "code": f"TST{lang_id[:4]}"}
+    )
         db.execute(
             text(
-                "INSERT INTO sources (source_id, language_name, version_name, is_active) "
-                "VALUES (:id, :language_name, :version_name, true)"
+                "INSERT INTO sources (source_id,version_id,language_id, language_name, version_name, is_active) "
+                "VALUES (:id,:vid,:lid, :language_name, :version_name, true)"
             ),
-            {"id": source_id, "language_name": f"{test_prefix}_Lang", "version_name": f"{test_prefix}_Ver"}
+            {"id": source_id,"vid": version_id, "lid": lang_id, "language_name": f"{test_prefix}_Lang", "version_name": f"{test_prefix}_Ver"}
         )
 
         # Insert Project
         project_id = uuid.uuid4()
         db.execute(
             text(
-                "INSERT INTO projects (project_id, name, source_id, translation_type, is_active) "
-                "VALUES (:pid, :pname, :sid, :ttype, true)"
+                "INSERT INTO projects (project_id, name, source_id, target_language_id, translation_type, is_active) "
+                "VALUES (:pid, :pname, :sid,:tid, :ttype, true)"
             ),
             {
                 "pid": project_id,
                 "pname": f"{test_prefix}_Project",
                 "sid": source_id,
+                "tid": lang_id,
                 "ttype": "test_translation"
             }
         )
@@ -153,7 +176,6 @@ def test_get_tokens_by_project():
 
 def test_update_token_translation():
     test_prefix, project_id, book_name = create_fake_source_project_book()
-
     with SessionLocal() as db:
         token_id = uuid.uuid4()
         db_token = WordTokenTranslation(
@@ -170,13 +192,15 @@ def test_update_token_translation():
         )
         db.add(db_token)
         db.commit()
-
     update_data = {
         "word_token_id": str(token_id),
         "translated_text": "सत्य",
-        "is_reviewed": True
+        "is_reviewed": True,
+        "book_name": book_name
     }
-    response = client.put(f"{UPDATE_TOKEN_URL}/{update_data['word_token_id']}", json=update_data)
-    assert response.status_code == 200
-    assert response.json()["translated_text"] == "सत्य"
-    assert response.json()["is_reviewed"] is True
+
+    response = client.put(f"/api/{update_data['word_token_id']}", json=update_data)
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["translated_text"] == "सत्य"
+    assert data["is_reviewed"] is True

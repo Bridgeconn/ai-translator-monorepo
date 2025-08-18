@@ -1,5 +1,5 @@
 # schemas.py
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from uuid import UUID
 from typing import List, Optional
 
@@ -25,12 +25,19 @@ class ProjectUpdate(BaseModel):
     completed_items: Optional[int]
     is_active: Optional[bool]
 
-class ProjectResponse(ProjectBase):
+class ProjectResponse(BaseModel):
     project_id: UUID
-    status: str
-    progress: float
-    total_items: int
-    completed_items: int
+    name: str
+    source_id: UUID
+    target_language_id: UUID
+    translation_type: str
+    selected_books: Optional[List[str]] = Field(default_factory=list)
+    # Fix the ValidationError by making these optional with defaults
+    status: Optional[str] = "created"
+    progress: Optional[int] = 0
+    total_items: Optional[int] = 0
+    completed_items: Optional[int] = 0
+    is_active: bool = True
 
     class Config:
         orm_mode = True
