@@ -10,9 +10,10 @@ from app.models.users import User
 router = APIRouter()
 @router.post("/", response_model=SuccessResponse[ProjectResponse])
 def create_project(project:ProjectCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if not project.name or not project.source_id or not project.target_language_id: HTTPException(status_code=400, detail="Name, source_id and target_language_id are required")
     db_project = crud.create_project(db, project)
     project_data = ProjectResponse.from_orm(db_project)
-    return {"message": "Project created successfully", "data": project_data}
+    return {"message": "Project created successfully", "data": project_data} 
 
 
 @router.get("/{project_id}", response_model=SuccessResponse)

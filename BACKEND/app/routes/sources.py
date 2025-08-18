@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
 from uuid import UUID
 from app.database import get_db
@@ -18,6 +18,8 @@ router = APIRouter()
     summary="Create a new source"
 )
 def create_source(source: SourceCreate, db: Session = Depends(get_db)):
+    if not source.language_id or not source.version_id:
+        raise HTTPException(status_code=400, detail="Language ID and Version ID are required")
     created = source_service.create_source(db, source)
     return {
         "message": "Source created successfully.",

@@ -7,6 +7,9 @@ from app.tests.test_word_token_translation import create_fake_source_project_boo
 client = TestClient(app)
 
 
+INVALID_PROJECT_ID = '00000000-0000-0000-0000-000000000000'
+INVALID_TOKEN_ID = '00000000-0000-0000-0000-000000000000'   
+
 def test_generate_tokens():
     test_prefix, project_id, book_name = create_fake_source_project_book()
     url = f"/verse_tokens/generate-verse-tokens/{project_id}?book_name={book_name}"
@@ -19,12 +22,10 @@ def test_generate_tokens():
 
 def test_get_tokens_by_project():
     test_prefix, project_id, book_name = create_fake_source_project_book()
-
-    # 🔑 Generate tokens first
+    #  Generate tokens first
     gen_url = f"/verse_tokens/generate-verse-tokens/{project_id}?book_name={book_name}"
     gen_resp = client.post(gen_url)
     assert gen_resp.status_code == 200
-
     # Now fetch tokens
     url = f"/verse_tokens/verse-token-translations/by-project/{project_id}"
     response = client.get(url)

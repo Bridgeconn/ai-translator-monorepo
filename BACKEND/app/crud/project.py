@@ -15,6 +15,10 @@ def create_project(db: Session, project: schemas.ProjectCreate):
     if not target_lang:
         raise HTTPException(status_code=400, detail=f"Invalid target_language_id: {project.target_language_id} not found ")
 
+    # Validate translation_type
+    if project.translation_type not in ["verse", "word"]:
+        raise HTTPException(status_code=400, detail=f"Invalid translation_type: {project.translation_type}")
+
     db_project = project_models.Project(
         name=project.name,
         source_id=project.source_id,

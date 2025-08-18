@@ -70,25 +70,42 @@ def create_fake_source_project_book():
     with SessionLocal() as db:
         # Insert Source
         source_id = uuid.uuid4()
+        version_id = uuid.uuid4()
+        db.execute(
+        text("""
+            INSERT INTO versions (version_id, version_name, version_abbr) 
+            VALUES (:id, :name, :abbr)
+        """),
+        {"id": version_id, "name": f"{test_prefix}_Version", "abbr": f"{test_prefix}_V"}
+    )
+        lang_id = str(uuid.uuid4())
+        db.execute(
+        text("""
+            INSERT INTO languages (language_id, name, "ISO_code") 
+            VALUES (:id, :name, :code)
+        """),
+        {"id": lang_id, "name": "TestLang", "code": f"TST{lang_id[:4]}"}
+    )
         db.execute(
             text(
-                "INSERT INTO sources (source_id, language_name, version_name, is_active) "
-                "VALUES (:id, :language_name, :version_name, true)"
+                "INSERT INTO sources (source_id,version_id,language_id, language_name, version_name, is_active) "
+                "VALUES (:id,:vid,:lid, :language_name, :version_name, true)"
             ),
-            {"id": source_id, "language_name": f"{test_prefix}_Lang", "version_name": f"{test_prefix}_Ver"}
+            {"id": source_id,"vid": version_id, "lid": lang_id, "language_name": f"{test_prefix}_Lang", "version_name": f"{test_prefix}_Ver"}
         )
 
         # Insert Project
         project_id = uuid.uuid4()
         db.execute(
             text(
-                "INSERT INTO projects (project_id, name, source_id, translation_type, is_active) "
-                "VALUES (:pid, :pname, :sid, :ttype, true)"
+                "INSERT INTO projects (project_id, name, source_id, target_language_id, translation_type, is_active) "
+                "VALUES (:pid, :pname, :sid,:tid, :ttype, true)"
             ),
             {
                 "pid": project_id,
                 "pname": f"{test_prefix}_Project",
                 "sid": source_id,
+                "tid": lang_id,
                 "ttype": "test_translation"
             }
         )

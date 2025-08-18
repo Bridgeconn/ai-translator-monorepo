@@ -11,11 +11,33 @@ client = TestClient(app)
 def cleanup_sources_and_languages():
     """
     Runs before and after each test to clean up test data.
+    Ensures deletion order respects FK constraints.
     """
     yield  # run the test
     db = SessionLocal()
     try:
-        # Clean dependent tables respecting FK constraints
+        # --- Delete dependent data in the correct order ---
+        
+        # Delete word & verse token translations linked to projects
+        db.execute(text("""
+            DELETE FROM word_token_translation
+            WHERE project_id IN (SELECT project_id FROM projects WHERE name LIKE 'Test%')
+        """))
+        db.execute(text("""
+            DELETE FROM verse_token_translation
+            WHERE project_id IN (SELECT project_id FROM projects WHERE name LIKE 'Test%')
+        """))
+
+        # Delete projects that reference test languages or names
+        db.execute(text("""
+            DELETE FROM projects
+            WHERE name LIKE 'Test%'
+               OR target_language_id IN (
+                   SELECT language_id FROM languages WHERE name LIKE 'TestLang%'
+               )
+        """))
+
+        # Delete verses → chapters → books (cascade manually)
         db.execute(text("""
             DELETE FROM verses 
             WHERE chapter_id IN (
@@ -23,8 +45,7 @@ def cleanup_sources_and_languages():
                 WHERE book_id IN (
                     SELECT book_id FROM books 
                     WHERE source_id IN (
-                        SELECT source_id FROM sources 
-                        WHERE version_name LIKE 'Test%' OR version_name LIKE 'Updated%'
+                        SELECT source_id FROM sources WHERE version_name LIKE 'Test%'
                     )
                 )
             )
@@ -34,62 +55,72 @@ def cleanup_sources_and_languages():
             WHERE book_id IN (
                 SELECT book_id FROM books 
                 WHERE source_id IN (
-                    SELECT source_id FROM sources 
-                    WHERE version_name LIKE 'Test%' OR version_name LIKE 'Updated%'
+                    SELECT source_id FROM sources WHERE version_name LIKE 'Test%'
                 )
             )
         """))
         db.execute(text("""
             DELETE FROM books 
             WHERE source_id IN (
-                SELECT source_id FROM sources 
-                WHERE version_name LIKE 'Test%' OR version_name LIKE 'Updated%'
+                SELECT source_id FROM sources WHERE version_name LIKE 'Test%'
             )
         """))
+
+        # Delete sources created during tests
         db.execute(text("""
             DELETE FROM sources 
             WHERE version_name LIKE 'Test%' OR version_name LIKE 'Updated%'
         """))
+
+        # Delete test languages
         db.execute(text("""
             DELETE FROM languages 
-            WHERE name = 'TestLang'
+            WHERE name LIKE 'TestLang%'
         """))
+
+        # Delete test versions
         db.execute(text("""
             DELETE FROM versions 
-            WHERE version_name = 'TestVersion'
+            WHERE version_name LIKE 'Test%' OR version_name LIKE 'Updated%'
         """))
-        db.execute(text("DELETE FROM versions WHERE version_name LIKE 'Test%' OR version_name LIKE 'Updated%'"))
+
         db.commit()
     finally:
         db.close()
 
+
+
 def create_fake_language_id():
     db = SessionLocal()
     lang_id = str(uuid.uuid4())
+    unique_name = f"TestLang_{lang_id[:4]}"
     db.execute(
         text("""
             INSERT INTO languages (language_id, name, "ISO_code") 
             VALUES (:id, :name, :code)
         """),
-        {"id": lang_id, "name": "TestLang", "code": f"TST{lang_id[:4]}"}
+        {"id": lang_id, "name": unique_name, "code": f"TST{lang_id[:4]}"}
     )
     db.commit()
     db.close()
     return lang_id
 
+
 def create_fake_version_id():
     db = SessionLocal()
     version_id = str(uuid.uuid4())
+    unique_name = f"TestVersion_{version_id[:4]}"
     db.execute(
         text("""
             INSERT INTO versions (version_id, version_name, version_abbr) 
             VALUES (:id, :name, :abbr)
         """),
-        {"id": version_id, "name": "TestVersion", "abbr": "TV"}
+        {"id": version_id, "name": unique_name, "abbr": f"TV{version_id[:4]}"}
     )
     db.commit()
     db.close()
     return version_id
+
 
 def generate_source(language_id, version_id):
     return {
@@ -191,7 +222,7 @@ def test_delete_nonexistent_source():
     assert response.status_code == 404
 def test_create_duplicate_source_should_fail():
     db = SessionLocal()
-    
+
     # Create language
     lang_id = str(uuid.uuid4())
     db.execute(
@@ -199,17 +230,18 @@ def test_create_duplicate_source_should_fail():
             INSERT INTO languages (language_id, name, "ISO_code") 
             VALUES (:id, :name, :code)
         """),
-        {"id": lang_id, "name": "TestLang", "code": f"TST{lang_id[:4]}"}
+        {"id": lang_id, "name": f"TestLang_{lang_id[:4]}", "code": f"TST{lang_id[:4]}"}
     )
-    
-    # Create version
+
+    # Create version with unique name each run
     version_id = str(uuid.uuid4())
+    unique_version_name = f"TestVersion_{version_id[:4]}"
     db.execute(
         text("""
             INSERT INTO versions (version_id, version_name, version_abbr) 
             VALUES (:id, :name, :abbr)
         """),
-        {"id": version_id, "name": "TestVersion", "abbr": "TV"}
+        {"id": version_id, "name": unique_version_name, "abbr": f"TV{version_id[:4]}"}
     )
     db.commit()
     db.close()
@@ -218,15 +250,15 @@ def test_create_duplicate_source_should_fail():
     payload = {
         "language_id": lang_id,
         "version_id": version_id,
-        "version_name": "Test Version",
-        "version_abbreviation": "TST",
+        "version_name": unique_version_name,
+        "version_abbreviation": f"TV{version_id[:4]}",
         "source_language": "English",
         "description": "First test source"
     }
     response1 = client.post("/sources/", json=payload)
-    assert response1.status_code == 201
+    assert response1.status_code == 201, response1.json()
 
-    # Try creating the same source again (should fail)
+    # Try creating the same source again (should fail at source-level uniqueness)
     response2 = client.post("/sources/", json=payload)
-    assert response2.status_code == 400
+    assert response2.status_code == 400, response2.json()
     assert "already exists" in response2.json()["detail"]

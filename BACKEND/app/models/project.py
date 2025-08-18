@@ -10,8 +10,8 @@ class Project(Base):
     
     project_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False)
-    source_id = Column(UUID(as_uuid=True), ForeignKey('sources.source_id'))
-    target_language_id = Column(UUID(as_uuid=True), ForeignKey('languages.language_id'))
+    source_id = Column(UUID(as_uuid=True), ForeignKey('sources.source_id',ondelete="CASCADE"), nullable=False)
+    target_language_id = Column(UUID(as_uuid=True), ForeignKey('languages.language_id'), nullable=False)
     translation_type = Column(String(255), nullable=False)
     selected_books = Column(JSON)
     status = Column(String(255), default='created')

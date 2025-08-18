@@ -111,7 +111,7 @@ def test_create_project_success(create_test_language, create_test_source):
         "name": "Test Project",
         "source_id": create_test_source,
         "target_language_id": create_test_language,
-        "translation_type": "ai-assisted",
+        "translation_type": "word",
         "selected_books": ["GEN", "EXO"],
         "is_active": True
     }
@@ -127,7 +127,7 @@ def test_create_project_unauthenticated():
         "name": "Unauthorized Project",
         "source_id": str(uuid.uuid4()),
         "target_language_id": str(uuid.uuid4()),
-        "translation_type": "ai-assisted",
+        "translation_type": "word",
         "selected_books": ["GEN"],
         "is_active": True
     }
@@ -144,7 +144,7 @@ def test_get_project_by_id(create_test_language, create_test_source):
         "name": "Fetch Project",
         "source_id": create_test_source,
         "target_language_id": create_test_language,
-        "translation_type": "manual",
+        "translation_type": "word",
         "selected_books": ["GEN"],
         "is_active": True
     }
@@ -169,7 +169,7 @@ def test_get_project_by_id(create_test_language, create_test_source):
     assert project["name"] == "Fetch Project"
     assert project["source_id"] == create_test_source
     assert project["target_language_id"] == create_test_language
-    assert project["translation_type"] == "manual"
+    assert project["translation_type"] == "word"
 
 def test_get_all_projects():
     headers = create_and_login_user()
@@ -184,7 +184,7 @@ def test_update_project(create_test_language, create_test_source):
         "name": "Project to Update",
         "source_id": create_test_source,
         "target_language_id": create_test_language,
-        "translation_type": "manual",
+        "translation_type": "word",
         "selected_books": ["GEN"],
         "is_active": True
     }
@@ -195,7 +195,7 @@ def test_update_project(create_test_language, create_test_source):
     # Update project
     update_payload = {
         "name": "Updated Project Name",
-        "translation_type": "ai-assisted",
+        "translation_type": "word",
         "selected_books": ["GEN", "EXO"],
         "is_active": False
     }
@@ -212,7 +212,7 @@ def test_delete_project(create_test_language, create_test_source):
         "name": "Project to Delete",
         "source_id": create_test_source,
         "target_language_id": create_test_language,
-        "translation_type": "manual",
+        "translation_type": "word",
         "selected_books": ["GEN"],
         "is_active": True
     }
