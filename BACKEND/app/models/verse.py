@@ -19,4 +19,4 @@ class Verse(Base):
     __table_args__ = (
         UniqueConstraint("chapter_id", "verse_number", name="uq_chapter_verse"),
     )
-    verse_translations = relationship("VerseTokenTranslation", back_populates="verse", cascade="all, delete-orphan")
+    verse_token_translation = relationship("VerseTokenTranslation", back_populates="verse", cascade="all, delete-orphan")

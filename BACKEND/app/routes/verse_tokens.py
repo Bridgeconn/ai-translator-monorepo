@@ -28,7 +28,7 @@ def generate_verse_tokens(project_id: UUID, book_name: str, db: Session = Depend
         raise HTTPException(status_code=500, detail=str(e))
     
 
-@router.get("/verse-token-translations/by-project/{project_id}", response_model=List[VerseTokenTranslationResponse])
+@router.get("/by-project/{project_id}", response_model=List[VerseTokenTranslationResponse])
 def get_tokens_by_project(project_id: UUID, book_name: Optional[str] = None, db: Session = Depends(get_db)):
     token = get_verse_tokens_by_project(db, project_id, book_name)
     
@@ -37,7 +37,8 @@ def get_tokens_by_project(project_id: UUID, book_name: Optional[str] = None, db:
     
     return token
 
-@router.get("/verse-token-translations/by-id/{verse_token_id}")
+@router.get("/by-id/{verse_token_id}")
 def get_verse_token(verse_token_id: UUID, db: Session = Depends(get_db)):
     token = get_verse_token_by_verse_id(db, verse_token_id)
     return {"message": "Verse token retrieved successfully.", "data": token}
+

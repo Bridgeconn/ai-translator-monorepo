@@ -75,3 +75,4 @@ def get_verse_token_by_verse_id(db: Session, verse_token_id: UUID):
 
     return token
 
+

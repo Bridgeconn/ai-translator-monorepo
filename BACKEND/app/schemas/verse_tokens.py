@@ -33,4 +33,3 @@ class VerseTokenTranslationResponse(BaseModel):
 
 class MessageOnlyResponse(BaseModel):
     message: str
-      

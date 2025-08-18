@@ -19,7 +19,7 @@ def cleanup_test_data():
     with SessionLocal() as db:
         db.execute(
             text(
-                "DELETE FROM verse_token_translation WHERE project_id IN "
+                "DELETE FROM verse_tokens WHERE project_id IN "
                 "(SELECT project_id FROM projects WHERE name LIKE 'TEST_%')"
             )
         )

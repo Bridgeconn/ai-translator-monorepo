@@ -28,3 +28,4 @@ class Project(Base):
     word_tokens = relationship("WordTokenTranslation", back_populates="project", cascade="all, delete")
     verse_tokens = relationship("VerseTokenTranslation", back_populates="project", cascade="all, delete")
     # drafts = relationship("TranslationDraft", back_populates="project")
+    verse_token_translation = relationship("VerseTokenTranslation", back_populates="project")
