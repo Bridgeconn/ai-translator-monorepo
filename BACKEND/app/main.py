@@ -1,8 +1,9 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
-from app.database import SessionLocal
 from sqlalchemy import text
-from app.routes import users as user_routes, languages,sources as source_routes, versions as version_routes, auth,books as book_routes , project as project_routes,translation
+from app.routes import users as user_routes, languages,sources as source_routes,\
+ versions as version_routes, auth,books as book_routes , project as project_routes,translation,\
+ word_token_translation, word_tokens,verse_tokens
 from app.database import get_db, init_db_schema, Base, engine
 from contextlib import asynccontextmanager
 import logging
@@ -14,7 +15,6 @@ from app.load_language_data import load_languages_from_csv
 Base.metadata.create_all(bind=engine)
 
 from app.utils.seed_bible_books_details import seed_book_details
-from app.models.versions import Version  # Ensure model is imported
 
 
 # --- Logger setup ---
@@ -68,3 +68,7 @@ app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(languages.router, prefix="/languages", tags=["languages"])
 app.include_router(source_routes.router, prefix="/sources", tags=["sources"])
 app.include_router(translation.router, prefix="/translation", tags=["Translation"]) 
+
+app.include_router(word_tokens.router, prefix="/word_tokens", tags=["Word Tokens"])
+app.include_router(word_token_translation.router, prefix="/api", tags=["Word Token Translation"])
+app.include_router(verse_tokens.router, prefix="/verse_tokens", tags=["Verse Tokens"])
