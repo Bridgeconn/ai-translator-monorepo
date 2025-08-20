@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef } from "react";
 import {
   Layout,
   Button,
@@ -9,7 +9,7 @@ import {
   Typography,
   Space,
   Avatar,
-} from 'antd';
+} from "antd";
 import {
   SwapOutlined,
   CopyOutlined,
@@ -17,9 +17,9 @@ import {
   CloseOutlined,
   EditOutlined,
   UserOutlined,
-  UploadOutlined
-} from '@ant-design/icons';
-import FileUploadTextArea from './FileUploadTextArea';
+  UploadOutlined,
+} from "@ant-design/icons";
+import FileUploadTextArea from "./FileUploadTextArea";
 
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
@@ -50,32 +50,36 @@ export default function DefaultLayout() {
   };
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout style={{ minHeight: "100vh" }}>
       {/* Header */}
-      <Header style={{
-        backgroundColor: 'white',
-        borderBottom: '1px solid #d9d9d9',
-        padding: '0 24px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: '32px',
-            height: '32px',
-            backgroundColor: '#722ed1',
-            borderRadius: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white',
-            fontWeight: 'bold',
-            fontSize: '14px'
-          }}>
+      <Header
+        style={{
+          backgroundColor: "white",
+          borderBottom: "1px solid #d9d9d9",
+          padding: "0 24px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div
+            style={{
+              width: "32px",
+              height: "32px",
+              backgroundColor: "#722ed1",
+              borderRadius: "4px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "white",
+              fontWeight: "bold",
+              fontSize: "14px",
+            }}
+          >
             文A
           </div>
-          <Title level={3} style={{ margin: 0, color: '#000' }}>
+          <Title level={3} style={{ margin: 0, color: "#000" }}>
             Zero Draft Generator
           </Title>
         </div>
@@ -85,20 +89,29 @@ export default function DefaultLayout() {
         </Space>
       </Header>
 
-      <Content style={{ padding: '0 24px' }}>
+      <Content style={{ padding: "0 24px" }}>
         {/* Controls Row */}
-        <div style={{
-          padding: '16px 0',
-          borderBottom: '1px solid #d9d9d9'
-        }}>
+        <div
+          style={{
+            padding: "16px 0",
+            borderBottom: "1px solid #d9d9d9",
+          }}
+        >
           <Row justify="space-between" align="middle" gutter={[16, 16]}>
             {/* Left - Tabs */}
             <Col xs={24} sm={8} md={6}>
               <Space.Compact>
-                <Button type="primary" style={{ backgroundColor: '#ffc0cb', borderColor: '#ffc0cb', color: '#000' }}>Text</Button>
-                <Button >
-                  Bible
+                <Button
+                  type="primary"
+                  style={{
+                    backgroundColor: "#ffc0cb",
+                    borderColor: "#ffc0cb",
+                    color: "#000",
+                  }}
+                >
+                  Text
                 </Button>
+                <Button>Bible</Button>
               </Space.Compact>
             </Col>
 
@@ -116,7 +129,7 @@ export default function DefaultLayout() {
                   </Space>
                 </Col>
                 <Col>
-                  <SwapOutlined style={{ fontSize: '16px', color: '#999' }} />
+                  <SwapOutlined style={{ fontSize: "16px", color: "#999" }} />
                 </Col>
                 <Col>
                   <Space>
@@ -139,7 +152,7 @@ export default function DefaultLayout() {
                     defaultValue="verse"
                     style={{
                       width: 100,
-                      backgroundColor: '#ffc0cb'
+                      backgroundColor: "#ffc0cb",
                     }}
                   >
                     <Option value="verse">Verse</Option>
@@ -155,7 +168,7 @@ export default function DefaultLayout() {
         </div>
 
         {/* Editor Panels */}
-        <div style={{ padding: '24px 0' }}>
+        <div style={{ padding: "24px 0" }}>
           <Row gutter={24}>
             {/* Source Panel */}
             <Col xs={24} xl={12}>
@@ -165,20 +178,20 @@ export default function DefaultLayout() {
                   <Button
                     type="text"
                     icon={<CloseOutlined />}
-                    style={{ color: '#ff7a00' }}
+                    style={{ color: "#ff7a00" }}
                     onClick={handleClearContent}
                   />
                 }
                 style={{
-                  border: '1px solid #d9d9d9',
-                  borderRadius: '0',
-                  header:{
-                    backgroundColor: '#f5f5f5',
-                    borderBottom: '1px solid #d9d9d9'
+                  border: "1px solid #d9d9d9",
+                  borderRadius: "0",
+                  header: {
+                    backgroundColor: "#f5f5f5",
+                    borderBottom: "1px solid #d9d9d9",
                   },
                   body: {
-                    minHeight: '300px',
-                    padding: '16px'
+                    minHeight: "300px",
+                    padding: "16px",
                   },
                 }}
                 actions={[
@@ -187,13 +200,13 @@ export default function DefaultLayout() {
                     icon={<UploadOutlined />}
                     key="upload"
                     onClick={handleUploadClick}
-                  />
+                  />,
                 ]}
               >
-                <FileUploadTextArea 
+                <FileUploadTextArea
                   ref={sourceRef}
-                  isSource={true} 
-                  value={sourceText} 
+                  isSource={true}
+                  value={sourceText}
                   onChange={handleSourceChange}
                   onFileUpload={handleFileUpload}
                 />
@@ -208,28 +221,32 @@ export default function DefaultLayout() {
                   <Button
                     type="text"
                     icon={<EditOutlined />}
-                    style={{ color: '#999' }}
+                    style={{ color: "#999" }}
                   />
                 }
                 style={{
-                  border: '1px solid #d9d9d9',
-                  borderRadius: '0',
-                  body:{ minHeight: '300px', padding: '16px'},
+                  border: "1px solid #d9d9d9",
+                  borderRadius: "0",
+                  body: { minHeight: "300px", padding: "16px" },
                   header: {
-                    backgroundColor: '#f5f5f5',
-                    borderBottom: '1px solid #d9d9d9'
-                  }
+                    backgroundColor: "#f5f5f5",
+                    borderBottom: "1px solid #d9d9d9",
+                  },
                 }}
                 actions={[
                   <Button type="text" icon={<CopyOutlined />} key="copy1" />,
                   <Button type="text" icon={<CopyOutlined />} key="copy2" />,
-                  <Button type="text" icon={<DownloadOutlined />} key="download" />
+                  <Button
+                    type="text"
+                    icon={<DownloadOutlined />}
+                    key="download"
+                  />,
                 ]}
               >
-                <FileUploadTextArea 
-                  isSource={false} 
-                  value={targetText} 
-                  onChange={setTargetText} 
+                <FileUploadTextArea
+                  isSource={false}
+                  value={targetText}
+                  onChange={setTargetText}
                 />
               </Card>
             </Col>
