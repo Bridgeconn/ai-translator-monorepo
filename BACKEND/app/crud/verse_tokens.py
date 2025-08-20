@@ -5,7 +5,7 @@ from app.models import verse_tokens
 from app.models.project import Project
 from app.models.verse import Verse
 from app.models.chapter import Chapter
-from app.models.book import Book
+from app.models.books import Book
 from app.models.verse_tokens import VerseTokenTranslation
 from uuid import UUID
 from sqlalchemy.orm import joinedload

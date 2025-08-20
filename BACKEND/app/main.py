@@ -68,7 +68,6 @@ app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(languages.router, prefix="/languages", tags=["languages"])
 app.include_router(source_routes.router, prefix="/sources", tags=["sources"])
 app.include_router(translation.router, prefix="/translation", tags=["Translation"]) 
-
 app.include_router(word_tokens.router, prefix="/word_tokens", tags=["Word Tokens"])
 app.include_router(word_token_translation.router, prefix="/api", tags=["Word Token Translation"])
 app.include_router(verse_tokens.router, prefix="/verse_tokens", tags=["Verse Tokens"])

@@ -9,7 +9,7 @@ from app.models.verse import Verse
 from app.models.project import Project
 from app.utils.tokenizer import tokenize_text
 from app.models.chapter import Chapter
-from app.models.book import Book
+from app.models.books import Book
 
 def extract_and_store_word_tokens(db: Session, project_id: UUID, book_name: str):
     # Get the source_id associated with the project

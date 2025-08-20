@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.models.translationdraft import TranslationDraft
-from app.models.wordtokentranslation import WordTokenTranslation
+from app.models.word_token_translation import WordTokenTranslation
 from app.models.books import Book
 from app.models.project import Project
 
