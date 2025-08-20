@@ -1,51 +1,59 @@
-import { 
-  Layout, 
-  Button, 
-  Select, 
-  Row, 
-  Col, 
-  Card, 
-  Typography, 
-  Space, 
+import { useState, useRef } from 'react';
+import {
+  Layout,
+  Button,
+  Select,
+  Row,
+  Col,
+  Card,
+  Typography,
+  Space,
   Avatar,
 } from 'antd';
-import { 
-  SwapOutlined, 
-  ShareAltOutlined, 
-  CopyOutlined, 
-  DownloadOutlined, 
-  CloseOutlined, 
-  EditOutlined, 
-  UserOutlined 
+import {
+  SwapOutlined,
+  CopyOutlined,
+  DownloadOutlined,
+  CloseOutlined,
+  EditOutlined,
+  UserOutlined,
+  UploadOutlined
 } from '@ant-design/icons';
-
+import FileUploadTextArea from './FileUploadTextArea';
 
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
 const { Option } = Select;
 
 export default function DefaultLayout() {
-  const sampleText = (
-    <div style={{ lineHeight: '1.6' }}>
-      <Text>
-        <Text strong>1</Text>In the beginning God created the heavens and the earth. <Text strong>2</Text>Now the earth was formless and empty, darkness was over the surface of the deep, and the Spirit of God was hovering over the waters.
-      </Text>
-      <br /><br />
-      <Text>
-        <Text strong>3</Text>And God said, "Let there be light," and there was light. <Text strong>4</Text>God saw that the light was good, and he separated the light from the darkness. <Text strong>5</Text>God called the light "day," and the darkness he called "night." And there was evening, and there was morning—the first day.
-      </Text>
-      <br /><br />
-      <Text>
-        <Text strong>6</Text>And God said, "Let there be a vault between the waters to separate water from water."
-      </Text>
-    </div>
-  );
+  const [sourceText, setSourceText] = useState("");
+  const [targetText, setTargetText] = useState("");
+  const sourceRef = useRef(null);
+
+  const handleFileUpload = (content) => {
+    setSourceText(content);
+    setTargetText(content); // Copy to target panel as well
+  };
+
+  const handleSourceChange = (content) => {
+    setSourceText(content);
+    setTargetText(content); // Sync target with source changes
+  };
+
+  const handleClearContent = () => {
+    setSourceText("");
+    setTargetText("");
+  };
+
+  const handleUploadClick = () => {
+    sourceRef.current?.triggerUpload();
+  };
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
       {/* Header */}
-      <Header style={{ 
-        backgroundColor: 'white', 
+      <Header style={{
+        backgroundColor: 'white',
         borderBottom: '1px solid #d9d9d9',
         padding: '0 24px',
         display: 'flex',
@@ -79,16 +87,16 @@ export default function DefaultLayout() {
 
       <Content style={{ padding: '0 24px' }}>
         {/* Controls Row */}
-        <div style={{ 
-          padding: '16px 0', 
-          borderBottom: '1px solid #d9d9d9' 
+        <div style={{
+          padding: '16px 0',
+          borderBottom: '1px solid #d9d9d9'
         }}>
           <Row justify="space-between" align="middle" gutter={[16, 16]}>
             {/* Left - Tabs */}
             <Col xs={24} sm={8} md={6}>
               <Space.Compact>
-                <Button>Text</Button>
-                <Button type="primary" style={{ backgroundColor: '#ffc0cb', borderColor: '#ffc0cb', color: '#000' }}>
+                <Button type="primary" style={{ backgroundColor: '#ffc0cb', borderColor: '#ffc0cb', color: '#000' }}>Text</Button>
+                <Button >
                   Bible
                 </Button>
               </Space.Compact>
@@ -127,9 +135,9 @@ export default function DefaultLayout() {
             <Col xs={24} sm={8} md={6}>
               <Row justify="end" gutter={8}>
                 <Col>
-                  <Select 
-                    defaultValue="verse" 
-                    style={{ 
+                  <Select
+                    defaultValue="verse"
+                    style={{
                       width: 100,
                       backgroundColor: '#ffc0cb'
                     }}
@@ -154,13 +162,14 @@ export default function DefaultLayout() {
               <Card
                 title="Source"
                 extra={
-                  <Button 
-                    type="text" 
-                    icon={<CloseOutlined />} 
+                  <Button
+                    type="text"
+                    icon={<CloseOutlined />}
                     style={{ color: '#ff7a00' }}
+                    onClick={handleClearContent}
                   />
                 }
-                style={{ 
+                style={{
                   border: '1px solid #d9d9d9',
                   borderRadius: '0',
                   header:{
@@ -173,14 +182,21 @@ export default function DefaultLayout() {
                   },
                 }}
                 actions={[
-                  <Button 
-                    type="text" 
-                    icon={<ShareAltOutlined />}
-                    key="share"
+                  <Button
+                    type="text"
+                    icon={<UploadOutlined />}
+                    key="upload"
+                    onClick={handleUploadClick}
                   />
                 ]}
               >
-                {sampleText}
+                <FileUploadTextArea 
+                  ref={sourceRef}
+                  isSource={true} 
+                  value={sourceText} 
+                  onChange={handleSourceChange}
+                  onFileUpload={handleFileUpload}
+                />
               </Card>
             </Col>
 
@@ -189,20 +205,20 @@ export default function DefaultLayout() {
               <Card
                 title="Target"
                 extra={
-                  <Button 
-                    type="text" 
+                  <Button
+                    type="text"
                     icon={<EditOutlined />}
                     style={{ color: '#999' }}
                   />
                 }
-                style={{ 
+                style={{
                   border: '1px solid #d9d9d9',
                   borderRadius: '0',
                   body:{ minHeight: '300px', padding: '16px'},
                   header: {
                     backgroundColor: '#f5f5f5',
                     borderBottom: '1px solid #d9d9d9'
-                  } 
+                  }
                 }}
                 actions={[
                   <Button type="text" icon={<CopyOutlined />} key="copy1" />,
@@ -210,7 +226,11 @@ export default function DefaultLayout() {
                   <Button type="text" icon={<DownloadOutlined />} key="download" />
                 ]}
               >
-                {sampleText}
+                <FileUploadTextArea 
+                  isSource={false} 
+                  value={targetText} 
+                  onChange={setTargetText} 
+                />
               </Card>
             </Col>
           </Row>
