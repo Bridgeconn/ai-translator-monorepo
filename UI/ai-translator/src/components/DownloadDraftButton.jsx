@@ -1,4 +1,4 @@
-import { Button, Dropdown, Menu } from "antd";
+import { Button, Dropdown } from "antd";
 import { DownloadOutlined } from "@ant-design/icons";
 import { jsPDF } from "jspdf";
 import { Document, Packer, Paragraph, TextRun } from "docx";
@@ -70,25 +70,34 @@ export default function DownloadDraftButton({ style, content }) {
     }
   };
 
-  const menu = (
-    <Menu>
-      <Menu.Item key="txt" onClick={() => handleDownload("txt")}>
-        Text (.txt)
-      </Menu.Item>
-      <Menu.Item key="docx" onClick={() => handleDownload("docx")}>
-        Docx (.docx)
-      </Menu.Item>
-      <Menu.Item key="pdf" onClick={() => handleDownload("pdf")}>
-        PDF (.pdf)
-      </Menu.Item>
-      <Menu.Item key="usfm" onClick={() => handleDownload("usfm")}>
-        USFM (.usfm)
-      </Menu.Item>
-    </Menu>
-  );
+  //AntD v5 menu format
+  const menu = {
+    items: [
+      {
+        key: "txt",
+        label: "Text (.txt)",
+        onClick: () => handleDownload("txt"),
+      },
+      {
+        key: "docx",
+        label: "Docx (.docx)",
+        onClick: () => handleDownload("docx"),
+      },
+      {
+        key: "pdf",
+        label: "PDF (.pdf)",
+        onClick: () => handleDownload("pdf"),
+      },
+      {
+        key: "usfm",
+        label: "USFM (.usfm)",
+        onClick: () => handleDownload("usfm"),
+      },
+    ],
+  };
 
   return (
-    <Dropdown overlay={menu} placement="bottomRight" trigger={["click"]}>
+    <Dropdown menu={menu} placement="bottomRight" trigger={["click"]}>
       <Button
         type="primary"
         icon={<DownloadOutlined />}
@@ -99,4 +108,3 @@ export default function DownloadDraftButton({ style, content }) {
     </Dropdown>
   );
 }
-
