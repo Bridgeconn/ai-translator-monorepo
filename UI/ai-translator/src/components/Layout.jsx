@@ -208,8 +208,13 @@ export default function DefaultLayout() {
                 actions={[
                   <Button type="text" icon={<CopyOutlined />} key="copy1" />,
                   <Button type="text" icon={<CopyOutlined />} key="copy2" />,
-                  <DownloadDraftButton key="download" />
+                  <DownloadDraftButton 
+                    key="download" 
+                    style={{ padding: "0 8px", height: "32px" }} 
+                    content={sampleText}   // pass target text here
+                  />
                 ]}
+                
               >
                 {sampleText}
               </Card>
