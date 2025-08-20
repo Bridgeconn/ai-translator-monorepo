@@ -1,3 +1,4 @@
+import DownloadDraftButton from './DownloadDraftButton';
 import { 
   Layout, 
   Button, 
@@ -207,7 +208,7 @@ export default function DefaultLayout() {
                 actions={[
                   <Button type="text" icon={<CopyOutlined />} key="copy1" />,
                   <Button type="text" icon={<CopyOutlined />} key="copy2" />,
-                  <Button type="text" icon={<DownloadOutlined />} key="download" />
+                  <DownloadDraftButton key="download" />
                 ]}
               >
                 {sampleText}
