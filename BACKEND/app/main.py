@@ -8,6 +8,7 @@ from app.database import get_db, init_db_schema, Base, engine
 from contextlib import asynccontextmanager
 import logging
 from app.load_language_data import load_languages_from_csv
+from fastapi.middleware.cors import CORSMiddleware
 
 
 
@@ -47,6 +48,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# --- CORS Middleware ---
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # React frontend
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 @app.get("/", summary="Root Endpoint")
 def read_root():
     return {"message": "Welcome to the AI Bible Translator backend!"}
@@ -59,6 +70,8 @@ def ping_db(db: Session = Depends(get_db)):
         return {"status": "Database connection successful!"}
     except Exception as e:
         return {"status": "Database connection failed", "error": str(e)}
+    
+    
     
 
 # --- Include API Routers ---
