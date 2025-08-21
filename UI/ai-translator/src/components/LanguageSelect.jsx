@@ -1,27 +1,27 @@
-import { useEffect, useState } from "react";
 import { Select, Spin } from "antd";
+import { useQuery } from "@tanstack/react-query";
 
 const { Option } = Select;
 
 export default function LanguageSelect({ label, value, onChange }) {
-  const [languages, setLanguages] = useState([]);
-  const [loading, setLoading] = useState(false);
+  // React Query for fetching languages
+  const {
+    data: languages = [],
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["languages"],
+    queryFn: async () => {
+      const res = await fetch("http://localhost:8000/languages/");
+      if (!res.ok) throw new Error("Failed to fetch languages");
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes caching
+  });
 
-  useEffect(() => {
-    const fetchLanguages = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch("http://localhost:8000/languages/");
-        const data = await response.json();
-        setLanguages(data);
-      } catch (error) {
-        console.error("Error fetching languages:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchLanguages();
-  }, []);
+  if (isError) {
+    return <div>Error loading languages</div>;
+  }
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -30,9 +30,11 @@ export default function LanguageSelect({ label, value, onChange }) {
         showSearch
         placeholder="Select language"
         style={{ width: 180 }}
-        loading={loading}
-        value={value ? value.language_id : undefined} // controlled by id
-        notFoundContent={loading ? <Spin size="small" /> : "No language found"}
+        loading={isLoading}
+        value={value ? value.language_id : undefined}
+        notFoundContent={
+          isLoading ? <Spin size="small" /> : "No language found"
+        }
         filterOption={(input, option) =>
           option?.children
             ?.toString()
@@ -40,9 +42,8 @@ export default function LanguageSelect({ label, value, onChange }) {
             ?.includes(input.toLowerCase())
         }
         onChange={(id) => {
-          // find full object
           const langObj = languages.find((lang) => lang.language_id === id);
-          onChange(langObj); // still send full object up
+          onChange(langObj);
         }}
       >
         {languages.map((lang) => (
