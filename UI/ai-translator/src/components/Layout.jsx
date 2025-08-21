@@ -1,79 +1,45 @@
-import React, { useState } from "react";
-import {
-  Layout,
-  Button,
-  Select,
-  Row,
-  Col,
-  Card,
-  Typography,
-  Space,
+import { 
+  Layout, 
+  Button, 
+  Select, 
+  Row, 
+  Col, 
+  Card, 
+  Typography, 
+  Space, 
   Avatar,
-  message,
-} from "antd";
-import {
-  SwapOutlined,
-  ShareAltOutlined,
-  DownloadOutlined,
-  CloseOutlined,
-  EditOutlined,
-  UserOutlined,
-} from "@ant-design/icons";
+} from 'antd';
+import { 
+  SwapOutlined, 
+  ShareAltOutlined, 
+  CopyOutlined, 
+  DownloadOutlined, 
+  CloseOutlined, 
+  EditOutlined, 
+  UserOutlined 
+} from '@ant-design/icons';
+
 
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
 const { Option } = Select;
 
 export default function DefaultLayout() {
-  const [sourceText, setSourceText] = useState("Input text appears here...");
-  const [targetText, setTargetText] = useState("Translation appears here...");
-  const [isTargetEdited, setIsTargetEdited] = useState(false);
-
-  // Copy function// Copy function
-const handleCopy = (content) => {
-  try {
-    navigator.clipboard.writeText(content);
-    alert("✅ Copied!");
-  } catch (err) {
-    console.error("Failed to copy: ", err);
-    alert("❌ Copy failed!");
-  }
-};
-
-// Paste function
-const handlePaste = async (setContent) => {
-  try {
-    const clipText = await navigator.clipboard.readText();
-    setContent(clipText);
-    alert("📥 Pasted!");
-  } catch (err) {
-    console.error("Failed to paste: ", err);
-    alert("❌ Paste failed!");
-  }
-};
-
-
-  // Sync Source -> Target until Target is manually edited
-  const handleSourceChange = (e) => {
-    const newText = e.target.value;
-    setSourceText(newText);
-    if (!isTargetEdited) {
-      setTargetText(newText);
-    }
-  };
-
-  const handleTargetChange = (e) => {
-    setTargetText(e.target.value);
-    setIsTargetEdited(true);
-  };
-
-  const handleClearAll = () => {
-    setSourceText("");
-    setTargetText("");
-    setIsTargetEdited(false); // reset manual edit flag
-    alert("🗑️ All text cleared!");
-  };
-  
+  const sampleText = (
+    <div style={{ lineHeight: '1.6' }}>
+      <Text>
+        <Text strong>1</Text>In the beginning God created the heavens and the earth. <Text strong>2</Text>Now the earth was formless and empty, darkness was over the surface of the deep, and the Spirit of God was hovering over the waters.
+      </Text>
+      <br /><br />
+      <Text>
+        <Text strong>3</Text>And God said, "Let there be light," and there was light. <Text strong>4</Text>God saw that the light was good, and he separated the light from the darkness. <Text strong>5</Text>God called the light "day," and the darkness he called "night." And there was evening, and there was morning—the first day.
+      </Text>
+      <br /><br />
+      <Text>
+        <Text strong>6</Text>And God said, "Let there be a vault between the waters to separate water from water."
+      </Text>
+    </div>
+  );
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
@@ -110,8 +76,12 @@ const handlePaste = async (setContent) => {
           </Title>
         </div>
         <Space>
-          <Text>John Doe</Text>
-          <Avatar icon={<UserOutlined />} />
+          <Text style={{ color: "#000" }}>
+            {user.full_name || user.username || "User"}
+          </Text>
+          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={["click"]}>
+            <Avatar icon={<UserOutlined />} style={{ cursor: "pointer" }} />
+          </Dropdown>
         </Space>
       </Header>
 
@@ -259,19 +229,11 @@ const handlePaste = async (setContent) => {
                   borderRadius: "0",
                 }}
                 actions={[
-                  <Button
-                    type="text"
-                    key="copy"
-                    onClick={() => handleCopy(targetText)}
-                  >
-                    📋
-                  </Button>,
-                  <Button
-                    type="text"
-                    icon={<DownloadOutlined />}
-                    key="download"
-                  />,
+                  <Button type="text" icon={<CopyOutlined />} key="copy1" />,
+                  <Button type="text" icon={<CopyOutlined />} key="copy2" />,
+                  <Button type="text" icon={<DownloadOutlined />} key="download" />
                 ]}
+                
               >
                 <textarea
                   value={targetText}
