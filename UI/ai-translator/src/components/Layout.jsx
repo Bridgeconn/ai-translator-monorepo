@@ -1,3 +1,6 @@
+import { useNavigate } from "react-router-dom";
+import { authAPI } from "./api";
+
 import DownloadDraftButton from './DownloadDraftButton';
 import { 
   Layout, 
@@ -9,6 +12,8 @@ import {
   Typography, 
   Space, 
   Avatar,
+  Dropdown,
+  message
 } from 'antd';
 import { 
   SwapOutlined, 
@@ -17,15 +22,40 @@ import {
   DownloadOutlined, 
   CloseOutlined, 
   EditOutlined, 
-  UserOutlined 
+  UserOutlined,
+  LogoutOutlined,
 } from '@ant-design/icons';
-
 
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
 const { Option } = Select;
 
 export default function DefaultLayout() {
+  const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+  const handleLogout = async () => {
+    try {
+      await authAPI.logout();
+      message.success("Logged out successfully");
+      navigate("/login");
+    } catch (error) {
+      message.error("Logout failed");
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      navigate("/login");
+    }
+  };
+
+  const userMenuItems = [
+    {
+      key: "signout",
+      label: "Sign Out",
+      icon: <LogoutOutlined />,
+      onClick: handleLogout,
+    },
+  ];
+
   const sampleText = (
     <div style={{ lineHeight: '1.6' }}>
       <Text>
@@ -73,8 +103,12 @@ export default function DefaultLayout() {
           </Title>
         </div>
         <Space>
-          <Text>John Doe</Text>
-          <Avatar icon={<UserOutlined />} />
+          <Text style={{ color: "#000" }}>
+            {user.full_name || user.username || "User"}
+          </Text>
+          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={["click"]}>
+            <Avatar icon={<UserOutlined />} style={{ cursor: "pointer" }} />
+          </Dropdown>
         </Space>
       </Header>
 
