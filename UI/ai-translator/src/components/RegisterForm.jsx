@@ -1,141 +1,194 @@
-import React from 'react';
-import { Form, Input, Button, Card, Typography, Space, message } from 'antd';
-import { UserOutlined, LockOutlined, MailOutlined, IdcardOutlined } from '@ant-design/icons';
-import { Link, useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
-import { authAPI } from './api';
+import React, { useState } from "react";
+import {
+  Form,
+  Input,
+  Button,
+  Typography,
+  Card,
+  Space,
+  message,
+} from "antd";
+import {
+  UserOutlined,
+  LockOutlined,
+  MailOutlined,
+  IdcardOutlined,
+} from "@ant-design/icons";
+import { Link, useNavigate } from "react-router-dom";
+import { authAPI } from "./api";
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 export default function RegisterForm() {
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const [form] = Form.useForm();
 
-  const registerMutation = useMutation({
-    mutationFn: authAPI.register,
-    onSuccess: () => {
-      message.success('Registration successful! Please login.');
-      form.resetFields();
-      navigate('/login');
-    },
-    onError: (error) => {
-      console.error('Registration error:', error);
-      const errorMessage = error.response?.data?.detail || 'Registration failed';
-      message.error(errorMessage);
+  const onFinish = async (values) => {
+    try {
+      setLoading(true);
+      await authAPI.register(values);
+      message.success("Registration successful! Please login.");
+      navigate("/login");
+    } catch (error) {
+      message.error(error.response?.data?.detail || "Registration failed");
+    } finally {
+      setLoading(false);
     }
-  });
-
-  const handleRegister = (values) => {
-    const { confirm_password, ...userData } = values; // remove confirm_password
-    registerMutation.mutate(userData);
   };
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      display: 'flex', 
-      justifyContent: 'center', 
-      alignItems: 'center',
-      backgroundColor: '#f0f2f5',
-      padding: '20px'
-    }}>
-      <Card style={{ width: '100%', maxWidth: 400, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{
-            width: 64,
-            height: 64,
-            backgroundColor: '#722ed1',
-            borderRadius: 8,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white',
-            fontWeight: 'bold',
-            fontSize: 24,
-            margin: '0 auto 16px'
-          }}>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        minHeight: "100vh",
+        backgroundColor: "#f5f6fa",
+      }}
+    >
+      <Card
+        style={{
+          width: 400,
+          padding: 20,
+          boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+          borderRadius: "12px",
+        }}
+      >
+        <Space direction="vertical" style={{ width: "100%" }} align="center">
+          <div
+            style={{
+              backgroundColor: "#722ed1",
+              borderRadius: "8px",
+              width: "50px",
+              height: "50px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "white",
+              fontSize: "24px",
+            }}
+          >
             文A
           </div>
-          <Title level={2} style={{ margin: 0, color: '#722ed1' }}>
+          <Title level={3} style={{ marginBottom: 0, color: "#722ed1" }}>
             Create Account
           </Title>
-        </div>
+        </Space>
 
-        <Form form={form} onFinish={handleRegister} layout="vertical" size="large">
+        <Form
+          name="register"
+          onFinish={onFinish}
+          layout="vertical"
+          style={{ marginTop: 20 }}
+        >
+          {/* Full Name */}
           <Form.Item
             name="full_name"
-            rules={[{ required: true, message: 'Please enter your full name!' }]}
+            rules={[
+              { required: true, message: "Please enter your full name!" },
+              {
+                pattern: /^[A-Za-z ]+$/,
+                message: "Full name can only contain letters and spaces!",
+              },
+              {
+                validator(_, value) {
+                  if (!value || value.trim().length === 0) {
+                    return Promise.reject(
+                      new Error("Full name cannot be empty or spaces only!")
+                    );
+                  }
+                  return Promise.resolve();
+                },
+              },
+            ]}
           >
             <Input prefix={<IdcardOutlined />} placeholder="Full Name" />
           </Form.Item>
 
+          {/* Username */}
           <Form.Item
             name="username"
             rules={[
-              { required: true, message: 'Please enter a username!' },
-              { min: 3, message: 'Username must be at least 3 characters!' }
+              { required: true, message: "Please enter a username!" },
+              {
+                pattern: /^[A-Za-z0-9_]+$/,
+                message:
+                  "Username can only contain letters, numbers, and underscores!",
+              },
             ]}
           >
             <Input prefix={<UserOutlined />} placeholder="Username" />
           </Form.Item>
 
+          {/* Email */}
           <Form.Item
             name="email"
             rules={[
-              { required: true, message: 'Please enter your email!' },
-              { type: 'email', message: 'Please enter a valid email!' }
+              { required: true, message: "Please enter your email!" },
+              { type: "email", message: "Please enter a valid email!" },
             ]}
           >
             <Input prefix={<MailOutlined />} placeholder="Email" />
           </Form.Item>
 
+          {/* Password */}
           <Form.Item
             name="password"
             rules={[
-              { required: true, message: 'Please enter a password!' },
-              { min: 6, message: 'Password must be at least 6 characters!' }
+              { required: true, message: "Please enter a password!" },
+              {
+                min: 6,
+                message: "Password must be at least 6 characters!",
+              },
             ]}
           >
-            <Input.Password prefix={<LockOutlined />} placeholder="Password" />
+            <Input.Password
+              prefix={<LockOutlined />}
+              placeholder="Password"
+            />
           </Form.Item>
 
+          {/* Confirm Password */}
           <Form.Item
-            name="confirm_password"
-            dependencies={['password']}
+            name="confirmPassword"
+            dependencies={["password"]}
             rules={[
-              { required: true, message: 'Please confirm your password!' },
+              { required: true, message: "Please confirm your password!" },
               ({ getFieldValue }) => ({
                 validator(_, value) {
-                  if (!value || getFieldValue('password') === value) {
+                  if (!value || getFieldValue("password") === value) {
                     return Promise.resolve();
                   }
-                  return Promise.reject(new Error('Passwords do not match!'));
+                  return Promise.reject(
+                    new Error("Passwords do not match!")
+                  );
                 },
               }),
             ]}
           >
-            <Input.Password prefix={<LockOutlined />} placeholder="Confirm Password" />
+            <Input.Password
+              prefix={<LockOutlined />}
+              placeholder="Confirm Password"
+            />
           </Form.Item>
 
-          <Form.Item style={{ marginBottom: 16 }}>
+          <Form.Item>
             <Button
               type="primary"
               htmlType="submit"
+              loading={loading}
               block
-              loading={registerMutation.isPending}
-              style={{ backgroundColor: '#722ed1', borderColor: '#722ed1' }}
+              style={{
+                background: "linear-gradient(90deg, #722ed1, #b37feb)",
+                border: "none",
+              }}
             >
               Create Account
             </Button>
           </Form.Item>
 
-          <div style={{ textAlign: 'center' }}>
-            <Space>
-              <Text type="secondary">Already have an account?</Text>
-              <Link to="/login" style={{ color: '#722ed1' }}>
-                Sign In
-              </Link>
-            </Space>
+          <div style={{ textAlign: "center" }}>
+            Already have an account? <Link to="/login">Sign In</Link>
           </div>
         </Form>
       </Card>
