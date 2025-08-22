@@ -13,7 +13,7 @@ class VerseTokenTranslation(Base):
     verse_token_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     project_id = Column(UUID(as_uuid=True), ForeignKey('projects.project_id',ondelete="CASCADE"), nullable=False)
     book_name = Column(String(255), nullable=False)
-    verse_id = Column(UUID(as_uuid=True), ForeignKey('verses.verse_id'), nullable=False)
+    verse_id = Column(UUID(as_uuid=True), ForeignKey('verses.verse_id',ondelete="CASCADE"), nullable=False)
     token_text = Column(Text, nullable=False)  #Required for your use case
     verse_translated_text = Column(Text)  #Optional translated text
     is_reviewed = Column(Boolean, default=False)
