@@ -1,7 +1,7 @@
-
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000'; // Your FastAPI backend
+// CHANGED: Use 127.0.0.1 instead of localhost
+const API_BASE_URL = 'http://127.0.0.1:8000'; // Your FastAPI backend
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -37,17 +37,23 @@ api.interceptors.response.use(
 
 export const authAPI = {
   login: async (credentials) => {
-    // FastAPI OAuth2PasswordRequestForm expects form data
-    const formData = new FormData();
-    formData.append('username', credentials.username);
-    formData.append('password', credentials.password);
-    
-    const response = await api.post('/auth/login', formData, {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-    });
-    return response.data;
+    try {
+      // Create URLSearchParams for form data
+      const params = new URLSearchParams();
+      params.append('username', credentials.username);
+      params.append('password', credentials.password);
+      
+      const response = await api.post('/auth/login', params, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Login error:', error.response?.data || error.message);
+      throw error;
+    }
   },
 
   register: async (userData) => {

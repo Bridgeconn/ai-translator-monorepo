@@ -73,8 +73,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Allow frontend to call backend
 origins = [
-    "http://localhost:5174",  # Vite dev server
-    "http://127.0.0.1:5174",  # sometimes browser uses this
+    "http://localhost:5173",  # Vite dev server
+    "http://127.0.0.1:5173",  # sometimes browser uses this
 ]
 
 app.add_middleware(
