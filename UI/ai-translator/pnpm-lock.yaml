@@ -8,15 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@ant-design/icons':
-        specifier: ^6.0.0
-        version: 6.0.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@tanstack/react-query':
-        specifier: ^5.51.23
-        version: 5.85.5(react@18.3.1)
-      antd:
-        specifier: ^5.27.0
-        version: 5.27.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       axios:
         specifier: ^1.7.4
         version: 1.11.0
@@ -29,6 +20,16 @@ importers:
       jspdf:
         specifier: ^3.0.1
         version: 3.0.1
+        version: 6.0.0(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      '@tanstack/react-query':
+        specifier: ^5.85.5
+        version: 5.85.5(react@19.1.1)
+      antd:
+        specifier: ^5.27.0
+        version: 5.27.0(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      dayjs:
+        specifier: ^1.11.13
+        version: 1.11.13
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -2334,10 +2335,10 @@ snapshots:
 
   '@tanstack/query-core@5.85.5': {}
 
-  '@tanstack/react-query@5.85.5(react@18.3.1)':
+  '@tanstack/react-query@5.85.5(react@19.1.1)':
     dependencies:
       '@tanstack/query-core': 5.85.5
-      react: 18.3.1
+      react: 19.1.1
 
   '@types/estree@1.0.8': {}
 
