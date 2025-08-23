@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConfigProvider } from 'antd';
 import LoginForm from './components/LoginForm';
 import RegisterForm from './components/RegisterForm';
-import DefaultLayout from './components/Layout';
+import MainLayout from './components/MainLayout'; // Updated import
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,10 +39,11 @@ function App() {
               path="/dashboard" 
               element={
                 <ProtectedRoute>
-                  <DefaultLayout />
+                  <MainLayout />
                 </ProtectedRoute>
               } 
             />
+            {/* Add more protected routes here when other developers create the pages */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
@@ -51,5 +52,3 @@ function App() {
     </ConfigProvider>
   );
 }
-
-export default App;
