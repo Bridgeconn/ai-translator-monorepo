@@ -190,7 +190,7 @@ const SourcesListPage = () => {
             <Card
   loading={isLoading}
   style={{ borderRadius: 8 }}
-  bodyStyle={{ padding: "16px" }}
+  styles={{ padding: "16px" }}
   actions={[
     <UploadOutlined
       key="upload"

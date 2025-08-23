@@ -9,6 +9,7 @@ import {
   Space,
   Typography,
   Card,
+  Spin,
 } from "antd";
 import {
   UploadOutlined,
@@ -18,7 +19,7 @@ import {
 import DownloadDraftButton from "./DownloadDraftButton";
 import LanguageSelect from "./LanguageSelect";
 import vachanApi from "../api/vachan";
-import Papa from "papaparse"; // ✅ CSV parser
+import Papa from "papaparse"; // CSV parser
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -33,7 +34,7 @@ async function getAccessToken() {
   const resp = await vachanApi.post("/token", params, {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
   });
-  console.log("✅ Token response:", resp.data);
+  console.log(" Token response:", resp.data);
 
   return resp.data.access_token;
 }
@@ -78,7 +79,7 @@ async function pollJobStatus(token, jobId, onStatusUpdate) {
       return jobId;
     }
     if (status?.includes("failed")) {
-      throw new Error("❌ Translation job failed");
+      throw new Error(" Translation job failed");
     }
 
     await new Promise((r) => setTimeout(r, 3000)); // poll every 3s
@@ -108,13 +109,13 @@ export default function QuickTranslationPage() {
   const [isTargetEdited, setIsTargetEdited] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [statusMsg, setStatusMsg] = useState("");
-
+  const [loading, setLoading] = useState(false);
 
   // ------------------ Copy & Paste Logic ------------------
   const handleCopy = (content) => {
     try {
       navigator.clipboard.writeText(content);
-      message.success("✅ Copied!");
+      message.success(" Copied!");
     } catch (err) {
       console.error("Failed to copy: ", err);
       message.error(" Copy failed!");
@@ -143,10 +144,13 @@ export default function QuickTranslationPage() {
   const handleSourceChange = (e) => {
     const newText = e.target.value;
     setSourceText(newText);
+  
+    // ✅ Whenever source is cleared or replaced, reset target
     if (!isTargetEdited) {
-      setTargetText(newText);
+      setTargetText("");
     }
   };
+  
 
   const handleTargetChange = (e) => {
     setTargetText(e.target.value);
@@ -175,6 +179,7 @@ export default function QuickTranslationPage() {
     }
   
     try {
+      setLoading(true)
       const token = await getAccessToken(
         import.meta.env.VITE_VACHAN_USERNAME,
         import.meta.env.VITE_VACHAN_PASSWORD
@@ -204,7 +209,7 @@ export default function QuickTranslationPage() {
         } else if (uploadedFile.name.endsWith(".txt")) {
           fileToSend = uploadedFile; // send directly
         } else {
-          message.error("❌ Unsupported file format. Please use .txt, .usfm, or .docx");
+          message.error(" Unsupported file format. Please use .txt, .usfm, or .docx");
           return;
         }
       } else {
@@ -249,11 +254,13 @@ export default function QuickTranslationPage() {
       }
 
       setTargetText(translations.join("\n"));
-      setIsTargetEdited(true);
-      message.success("✅ Translation complete!");
+      setIsTargetEdited(false);
+      message.success("Translation complete!");
+      setLoading(false);
     } catch (err) {
       console.error(err);
-      message.error("❌ Translation failed");
+      setLoading(false);
+      message.error(" Translation failed");
     }
   };
 
@@ -358,15 +365,17 @@ export default function QuickTranslationPage() {
               >
                 📋 Copy
               </Button>,
-              <DownloadDraftButton content={targetText} />, // ✅ pass target text
+              <DownloadDraftButton content={targetText} />, //  pass target text
             ]}
-          >
+          > 
+            <Spin spinning={loading} tip="Translating...">
             <TextArea
               rows={12}
               value={targetText}
               onChange={handleTargetChange}
               placeholder="Translated text will appear here..."
             />
+            </Spin>
           </Card>
         </Col>
       </Row>
