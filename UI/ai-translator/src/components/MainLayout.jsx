@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { authAPI } from './api';
 import { 
@@ -7,7 +7,9 @@ import {
   Dropdown,
   message,
   Typography,
-  Menu
+  Menu,
+  Modal,
+  Input
 } from 'antd';
 import { 
   UserOutlined,
@@ -15,7 +17,8 @@ import {
   HomeOutlined,
   FileTextOutlined,
   FolderOutlined,
-  ThunderboltOutlined
+  ThunderboltOutlined,
+  KeyOutlined
 } from '@ant-design/icons';
 
 const { Header, Sider, Content } = Layout;
@@ -25,6 +28,9 @@ export default function MainLayout({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
 
   const handleLogout = async () => {
     try {
@@ -39,7 +45,36 @@ export default function MainLayout({ children }) {
     }
   };
 
+  const handlePasswordReset = async () => {
+    if (!newPassword) {
+      message.error("Please enter a new password");
+      return;
+    }
+
+    try {
+      await authAPI.updateUser(user.user_id, { password: newPassword });
+      message.success("Password updated successfully. Please log in again.");
+
+      // ✅ Auto logout after reset
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      navigate("/login");
+    } catch (error) {
+      console.error(error);
+      message.error("Failed to update password");
+    } finally {
+      setPasswordModalVisible(false);
+      setNewPassword("");
+    }
+  };
+
   const userMenuItems = [
+    {
+      key: "resetPassword",
+      label: "Reset Password",
+      icon: <KeyOutlined />,
+      onClick: () => setPasswordModalVisible(true),
+    },
     {
       key: "signout",
       label: "Sign Out",
@@ -200,6 +235,21 @@ export default function MainLayout({ children }) {
           {children}
         </Content>
       </Layout>
+
+      {/* Reset Password Modal */}
+      <Modal
+        title="Reset Password"
+        open={passwordModalVisible}
+        onOk={handlePasswordReset}
+        onCancel={() => setPasswordModalVisible(false)}
+        okText="Update Password"
+      >
+        <Input.Password
+          placeholder="Enter new password"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+        />
+      </Modal>
     </Layout>
   );
 }

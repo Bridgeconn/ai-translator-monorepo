@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:8000'; // Your FastAPI backend
@@ -69,5 +68,11 @@ export const authAPI = {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
     }
+  },
+
+  // ✅ New: updateUser for password reset (or other profile updates)
+  updateUser: async (userId, updates) => {
+    const response = await api.put(`/users/${userId}`, updates);
+    return response.data;
   }
 };

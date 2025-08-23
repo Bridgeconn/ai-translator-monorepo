@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 import logging
 from app.load_language_data import load_languages_from_csv
 from app.utils.seed_bible_books_details import seed_book_details
+from fastapi.middleware.cors import CORSMiddleware
 
 
 # --- Logger setup ---
@@ -39,6 +40,18 @@ app = FastAPI(
     version="1.0.0",
     description="Backend service for managing Bible translation tasks.",
     lifespan=lifespan,
+)
+origins = [
+    "http://localhost:5173",   # React dev
+    "http://127.0.0.1:5173",   # Sometimes needed
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,        
+    allow_credentials=True,
+    allow_methods=["*"],          
+    allow_headers=["*"],         
 )
 
 @app.get("/", summary="Root Endpoint")
