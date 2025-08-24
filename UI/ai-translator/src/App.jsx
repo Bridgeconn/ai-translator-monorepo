@@ -2,7 +2,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import QuickTranslationPage from "./components/QuickTranslationPage";
 import SourcesListPage from "./pages/SourcesListPage";
-import MainLayout from "./components/MainLayout"; // sidebar layout
+import MainLayout from "./components/MainLayout_t"; // sidebar layout
 
 function App() {
   return (
