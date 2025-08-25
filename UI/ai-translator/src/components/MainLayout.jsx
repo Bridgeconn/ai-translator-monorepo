@@ -30,6 +30,7 @@ export default function MainLayout({ children }) {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
   const handleLogout = async () => {
@@ -46,24 +47,33 @@ export default function MainLayout({ children }) {
   };
 
   const handlePasswordReset = async () => {
+    if (!currentPassword) {
+      message.error("Please enter your current password");
+      return;
+    }
+
     if (!newPassword) {
       message.error("Please enter a new password");
       return;
     }
 
-    try {
-      await authAPI.updateUser(user.user_id, { password: newPassword });
-      message.success("Password updated successfully. Please log in again.");
+    if (newPassword.length < 6) {
+      message.error("New password must be at least 6 characters");
+      return;
+    }
 
-      // ✅ Auto logout after reset
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      navigate("/login");
+    try {
+      await authAPI.updateUser(user.user_id, { 
+        current_password: currentPassword, 
+        password: newPassword 
+      });
+      message.success("Password updated successfully");
     } catch (error) {
       console.error(error);
       message.error("Failed to update password");
     } finally {
       setPasswordModalVisible(false);
+      setCurrentPassword("");
       setNewPassword("");
     }
   };
@@ -83,7 +93,6 @@ export default function MainLayout({ children }) {
     },
   ];
 
-  // Navigation items for sidebar
   const navigationItems = [
     {
       key: '/dashboard',
@@ -111,7 +120,6 @@ export default function MainLayout({ children }) {
     navigate(key);
   };
 
-  // Get current selected key based on pathname
   const selectedKey = location.pathname;
 
   return (
@@ -129,7 +137,6 @@ export default function MainLayout({ children }) {
           zIndex: 100
         }}
       >
-        {/* Logo */}
         <div style={{
           height: '64px',
           display: 'flex',
@@ -153,7 +160,6 @@ export default function MainLayout({ children }) {
           </div>
         </div>
 
-        {/* Navigation Menu */}
         <Menu
           mode="vertical"
           selectedKeys={[selectedKey]}
@@ -184,9 +190,7 @@ export default function MainLayout({ children }) {
         />
       </Sider>
 
-      {/* Main Layout */}
       <Layout style={{ marginLeft: 80 }}>
-        {/* Header */}
         <Header style={{ 
           backgroundColor: 'white', 
           borderBottom: '1px solid #f0f0f0',
@@ -225,7 +229,6 @@ export default function MainLayout({ children }) {
           </div>
         </Header>
 
-        {/* Content */}
         <Content style={{ 
           marginTop: 64,
           padding: '24px',
@@ -245,7 +248,13 @@ export default function MainLayout({ children }) {
         okText="Update Password"
       >
         <Input.Password
-          placeholder="Enter new password"
+          placeholder="Enter current password"
+          value={currentPassword}
+          onChange={(e) => setCurrentPassword(e.target.value)}
+          style={{ marginBottom: "12px" }}
+        />
+        <Input.Password
+          placeholder="Enter new password (min 6 characters)"
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
         />
