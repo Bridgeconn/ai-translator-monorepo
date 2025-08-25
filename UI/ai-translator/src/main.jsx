@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
+import 'antd/dist/reset.css'; // or 'antd/dist/antd.css' for older versions
 
 const queryClient = new QueryClient();
 
