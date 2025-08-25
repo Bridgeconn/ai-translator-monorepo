@@ -52,42 +52,7 @@ export default function DefaultLayout() {
   return (
     <Layout style={{ minHeight: "100vh" }}>
       {/* Header */}
-      <Header
-        style={{
-          backgroundColor: "white",
-          borderBottom: "1px solid #d9d9d9",
-          padding: "0 24px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <div
-            style={{
-              width: "32px",
-              height: "32px",
-              backgroundColor: "#722ed1",
-              borderRadius: "4px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "white",
-              fontWeight: "bold",
-              fontSize: "14px",
-            }}
-          >
-            文A
-          </div>
-          <Title level={3} style={{ margin: 0, color: "#000" }}>
-            Zero Draft Generator
-          </Title>
-        </div>
-        <Space>
-          <Text>John Doe</Text>
-          <Avatar icon={<UserOutlined />} />
-        </Space>
-      </Header>
+      
 
       <Content style={{ padding: "0 24px" }}>
         {/* Controls Row */}

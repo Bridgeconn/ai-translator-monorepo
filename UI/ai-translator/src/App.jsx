@@ -1,15 +1,28 @@
+import React from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+} from "react-router-dom";
+import ZeroDraftGenerator from "./components/Projects";
 import DefaultLayout from "./components/Layout";
-function App() {
-  // const bearCount = useStore((state) => state.bearCount);
-  // const user = useStore((state) => state.user);
-  // const increaseBearCount = useStore((state) => state.increaseBearCount);
-  // const fetchUser = useStore((state) => state.fetchUser);
+import Dashboard from "./components/DashBoard";
+import MainLayout from "./components/MainLayout";
+import SourceList from "./components/SourceList";
 
+const App = () => {
   return (
-    <>
-      <DefaultLayout />
-    </>
+    <Router>
+      <MainLayout style={{ minHeight: "100vh" }}>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/create-project" element={<ZeroDraftGenerator />} />
+          <Route path="/create-source" element={<SourceList />} /> 
+          <Route path="/quick-translation" element={<DefaultLayout />} />
+        </Routes>
+      </MainLayout>
+    </Router>
   );
-}
+};
 
 export default App;
