@@ -12,7 +12,6 @@ from app.utils.seed_bible_books_details import seed_book_details
 from fastapi.middleware.cors import CORSMiddleware
 
 
-
 # --- Logger setup ---
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
