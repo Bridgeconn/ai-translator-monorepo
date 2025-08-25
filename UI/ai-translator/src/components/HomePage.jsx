@@ -1,22 +1,21 @@
 import React from "react";
-import { 
-  Typography, 
-  Button, 
-  Space, 
-  Row, 
-  Col, 
-  Card, 
-  Divider,
+import {
+  Typography,
+  Button,
+  Space,
+  Row,
+  Col,
+  Card,
   Flex
 } from "antd";
 import { useNavigate } from "react-router-dom";
 import {
   TranslationOutlined,
-  RocketOutlined,
   EditOutlined,
   ThunderboltOutlined,
   GlobalOutlined,
   UserAddOutlined,
+  ArrowRightOutlined,
 } from "@ant-design/icons";
 
 const { Title, Paragraph, Text } = Typography;
@@ -32,7 +31,7 @@ export default function HomePage() {
     },
     {
       icon: <EditOutlined />,
-      title: "Draft Editing", 
+      title: "Draft Editing",
       description: "Refine and perfect your translations with built-in editing tools"
     },
     {
@@ -53,13 +52,13 @@ export default function HomePage() {
     >
       {/* Hero Section */}
       <Flex vertical align="center" style={{ paddingTop: "80px", paddingBottom: "60px" }}>
-        
+
         {/* Logo and Brand */}
         <Space direction="vertical" align="center" size="large" style={{ marginBottom: "48px" }}>
           <div
             style={{
               width: "80px",
-              height: "80px", 
+              height: "80px",
               backgroundColor: "#722ed1",
               borderRadius: "16px",
               display: "flex",
@@ -68,22 +67,22 @@ export default function HomePage() {
               boxShadow: "0 8px 32px rgba(114, 46, 209, 0.4)",
             }}
           >
-            <Text 
-              style={{ 
-                color: "white", 
-                fontSize: "32px", 
+            <Text
+              style={{
+                color: "white",
+                fontSize: "32px",
                 fontWeight: "bold",
-                margin: 0 
+                margin: 0
               }}
             >
               文A
             </Text>
           </div>
-          
-          <Title 
-            level={1} 
-            style={{ 
-              color: "white", 
+
+          <Title
+            level={1}
+            style={{
+              color: "white",
               textAlign: "center",
               fontSize: "3.5rem",
               fontWeight: "700",
@@ -104,12 +103,57 @@ export default function HomePage() {
             marginBottom: "60px"
           }}
         >
-          Transform your text into perfect translations instantly. Our AI-powered 
+          Transform your text into perfect translations instantly. Our AI-powered
           platform makes draft generation effortless, accurate, and lightning-fast.
         </Paragraph>
 
+        {/* CTA Section */}
+        <Space size="middle" style={{ marginBottom: "80px" }}>
+          <div style={{
+            backgroundColor: "white",
+            borderRadius: "8px",
+            padding: "12px 24px",
+            display: "flex",
+            alignItems: "center",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+          }}>
+            <Text style={{ 
+              color: "#4285f4", 
+              fontSize: "16px", 
+              fontWeight: "600",
+              margin: 0
+            }}>
+              Get Started
+            </Text>
+            <ArrowRightOutlined style={{ 
+              color: "#4285f4", 
+              marginLeft: "8px",
+              fontSize: "14px"
+            }} />
+          </div>
+          
+          <Button
+            size="large"
+            icon={<GlobalOutlined />}
+            onClick={() => navigate("/login")}
+            style={{
+              height: "50px",
+              fontSize: "16px",
+              fontWeight: "600",
+              borderRadius: "8px",
+              borderColor: "rgba(255, 255, 255, 0.6)",
+              backgroundColor: "transparent",
+              color: "white",
+              paddingLeft: "24px",
+              paddingRight: "24px"
+            }}
+          >
+            Sign In
+          </Button>
+        </Space>
+
         {/* Features */}
-        <Row gutter={[32, 32]} style={{ maxWidth: "1000px", marginBottom: "80px" }}>
+        <Row gutter={[32, 32]} style={{ maxWidth: "1000px" }}>
           {features.map((feature, index) => (
             <Col xs={24} md={8} key={index}>
               <Card
@@ -119,16 +163,19 @@ export default function HomePage() {
                   borderRadius: "16px",
                   border: "none",
                   backgroundColor: "rgba(255, 255, 255, 0.95)",
-                  boxShadow: "0 8px 32px rgba(0,0,0,0.12)"
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+                  transition: "all 0.3s ease"
                 }}
-                bodyStyle={{ 
-                  height: "100%", 
-                  display: "flex", 
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  textAlign: "center",
-                  padding: "32px 24px"
+                styles={{
+                  body: {
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    textAlign: "center",
+                    padding: "32px 24px"
+                  }
                 }}
               >
                 <Space direction="vertical" align="center" size="middle">
@@ -146,85 +193,6 @@ export default function HomePage() {
             </Col>
           ))}
         </Row>
-      </Flex>
-
-      {/* CTA Section */}
-      <Flex justify="center" style={{ paddingBottom: "80px" }}>
-        <Card
-          style={{
-            width: "100%",
-            maxWidth: "500px",
-            borderRadius: "24px",
-            border: "none", 
-            backgroundColor: "rgba(255, 255, 255, 0.95)",
-            boxShadow: "0 20px 64px rgba(0,0,0,0.15)"
-          }}
-          bodyStyle={{ padding: "48px 32px" }}
-        >
-          <Space direction="vertical" align="center" size="large" style={{ width: "100%" }}>
-            
-            {/* Header */}
-            <Space direction="vertical" align="center" size="middle">
-              <RocketOutlined style={{ fontSize: "64px", color: "#722ed1" }} />
-              <Title level={2} style={{ margin: 0, textAlign: "center", color: "#1f2937" }}>
-                Ready to Get Started?
-              </Title>
-              <Paragraph 
-                style={{ 
-                  textAlign: "center", 
-                  color: "#6b7280",
-                  fontSize: "16px",
-                  margin: 0
-                }}
-              >
-                Join thousands of users who trust Zero Draft Generator 
-                for their translation needs. Sign in to unlock the full power 
-                of AI-driven draft generation.
-              </Paragraph>
-            </Space>
-
-            <Divider />
-
-            {/* Actions */}
-            <Space direction="vertical" align="center" size="large">
-              <Button
-                type="primary"
-                size="large"
-                icon={<GlobalOutlined />}
-                onClick={() => navigate("/login")}
-                style={{
-                  height: "56px",
-                  fontSize: "16px",
-                  fontWeight: "600",
-                  borderRadius: "12px",
-                  backgroundColor: "#722ed1",
-                  borderColor: "#722ed1",
-                  boxShadow: "0 4px 16px rgba(114, 46, 209, 0.3)",
-                  paddingLeft: "32px",
-                  paddingRight: "32px"
-                }}
-              >
-                Sign In to Start
-              </Button>
-              
-              <Space align="center">
-                <Text style={{ color: "#6b7280" }}>Don't have an account?</Text>
-                <Button
-                  type="link"
-                  icon={<UserAddOutlined />}
-                  onClick={() => navigate("/register")}
-                  style={{ 
-                    color: "#722ed1", 
-                    fontWeight: "600",
-                    padding: 0
-                  }}
-                >
-                  Create one here
-                </Button>
-              </Space>
-            </Space>
-          </Space>
-        </Card>
       </Flex>
     </div>
   );
