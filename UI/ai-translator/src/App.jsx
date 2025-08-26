@@ -30,7 +30,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import HomePage from "./components/HomePage";
 import LoginForm from "./components/LoginForm";
 import RegisterForm from "./components/RegisterForm";
-import DefaultLayout from "./components/Layout";
+import MainLayout from "./components/MainLayout";
 
 // Wrapper for protected routes
 function PrivateRoute({ children }) {
@@ -49,15 +49,16 @@ export default function App() {
         <Route path="/login" element={<LoginForm />} />
         <Route path="/register" element={<RegisterForm />} />
 
-        {/* Dashboard (protected) */}
+        {/* Dashboard layout with nested routes */}
         <Route
-          path="/dashboard"
+          path="/dashboard/*"
           element={
             <PrivateRoute>
-              <DefaultLayout />
+              <MainLayout />
             </PrivateRoute>
           }
-        />
+        ></Route>
+        
       </Routes>
     </Router>
   );

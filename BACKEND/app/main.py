@@ -54,7 +54,22 @@ def ping_db(db: Session = Depends(get_db)):
     except Exception as e:
         return {"status": "Database connection failed", "error": str(e)}
     
+from fastapi.middleware.cors import CORSMiddleware
 
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",   # add this
+    "http://127.0.0.1:5173",   # optional
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # --- Include API Routers ---
 app.include_router(user_routes.router, prefix="/users", tags=["users"])
 app.include_router(version_routes.router, prefix="/versions", tags=["versions"])
@@ -66,3 +81,6 @@ app.include_router(project_routes.router, prefix="/projects", tags=["Projects"])
 app.include_router(word_tokens.router, prefix="/word_tokens", tags=["Word Tokens"])
 app.include_router(word_token_translation.router, prefix="/api", tags=["Word Token Translation"])
 app.include_router(verse_tokens.router, prefix="/verse_tokens", tags=["Verse Tokens"])
+
+
+
