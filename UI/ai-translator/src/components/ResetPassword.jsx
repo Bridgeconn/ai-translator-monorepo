@@ -1,6 +1,6 @@
 import React from 'react';
-import { Form, Input, Button, Card, Typography, message } from 'antd';
-import { LockOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Card, Typography, notification } from 'antd';
+import { LockOutlined, CheckCircleTwoTone, CloseCircleTwoTone } from '@ant-design/icons';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { authAPI } from './api';
@@ -12,21 +12,43 @@ export default function ResetPassword() {
   const token = searchParams.get("token");
   const navigate = useNavigate();
 
+  const openSuccess = (msg) => {
+    notification.open({
+      message: "Success 🎉",
+      description: msg,
+      icon: <CheckCircleTwoTone twoToneColor="#52c41a" />,
+      placement: "topRight",
+      duration: 6,
+      style: { borderRadius: 12, background: "#f6ffed", boxShadow: "0 4px 10px rgba(0,0,0,0.15)" }
+    });
+  };
+
+  const openError = (msg) => {
+    notification.open({
+      message: "Error ❌",
+      description: msg,
+      icon: <CloseCircleTwoTone twoToneColor="#ff4d4f" />,
+      placement: "topRight",
+      duration: 3,
+      style: { borderRadius: 12, background: "#fff1f0", boxShadow: "0 4px 10px rgba(0,0,0,0.15)" }
+    });
+  };
+
   const resetMutation = useMutation({
     mutationFn: authAPI.resetPassword,
     onSuccess: () => {
-      message.success("Password reset successful! Please login.");
+      openSuccess("Your password has been reset. Please login with your new password.");
       navigate("/login");
     },
     onError: (error) => {
       console.error("Reset error:", error);
-      message.error(error.response?.data?.detail || "Password reset failed");
+      openError(error.response?.data?.detail || "Password reset failed");
     }
   });
 
   const handleReset = (values) => {
     if (!token) {
-      message.error("Invalid or missing token");
+      openError("Invalid or missing reset token.");
       return;
     }
     resetMutation.mutate({
@@ -35,7 +57,6 @@ export default function ResetPassword() {
       confirm_password: values.confirm,
     });
   };
-
 
   return (
     <div style={{ 
