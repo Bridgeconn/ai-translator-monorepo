@@ -5,6 +5,8 @@ import { ConfigProvider } from 'antd';
 import LoginForm from './components/LoginForm';
 import RegisterForm from './components/RegisterForm';
 import MainLayout from './components/MainLayout';
+import ResetPassword from './components/ResetPassword';
+
  
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -102,6 +104,9 @@ function App() {
             {/* Default redirects */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
+            
+            <Route path="/reset-password" element={<ResetPassword />} />
+
           </Routes>
         </Router>
       </QueryClientProvider>

@@ -1,6 +1,6 @@
-import React from 'react';
-import { Form, Input, Button, Card, Typography, Space, message } from 'antd';
-import { UserOutlined, LockOutlined } from '@ant-design/icons';
+import React, { useState } from 'react';
+import { Form, Input, Button, Card, Typography, Space, message, Modal } from 'antd';
+import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { authAPI } from './api';
@@ -9,21 +9,23 @@ const { Title, Text } = Typography;
 
 export default function LoginForm() {
   const navigate = useNavigate();
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotForm] = Form.useForm();
 
+  // ---- Login mutation ----
   const loginMutation = useMutation({
     mutationFn: authAPI.login,
     onSuccess: async (data) => {
       localStorage.setItem('token', data.access_token);
       message.success('Login successful!');
-      
-      // Get user details and navigate
+
       try {
         const user = await authAPI.getCurrentUser();
         localStorage.setItem('user', JSON.stringify(user));
         navigate('/dashboard');
       } catch (error) {
         console.error('Failed to get user details:', error);
-        navigate('/dashboard'); // Navigate anyway
+        navigate('/dashboard');
       }
     },
     onError: (error) => {
@@ -34,6 +36,25 @@ export default function LoginForm() {
 
   const handleLogin = (values) => {
     loginMutation.mutate(values);
+  };
+
+  // ---- Forgot password mutation ----
+  const forgotPasswordMutation = useMutation({
+    mutationFn: authAPI.forgotPassword,
+    onSuccess: () => {
+      message.success('If that email exists, a reset link has been sent.');
+      forgotForm.resetFields();
+      setForgotOpen(false);
+    },
+    onError: () => {
+      // Still show success (prevent enumeration)
+      message.success('If that email exists, a reset link has been sent.');
+      setForgotOpen(false);
+    }
+  });
+
+  const handleForgot = (values) => {
+    forgotPasswordMutation.mutate(values.email);
   };
 
   return (
@@ -88,6 +109,11 @@ export default function LoginForm() {
             />
           </Form.Item>
 
+          {/* Forgot password link */}
+          <div style={{ textAlign: 'right', marginBottom: 16 }}>
+            <a onClick={() => setForgotOpen(true)}>Forgot password?</a>
+          </div>
+
           <Form.Item style={{ marginBottom: 16 }}>
             <Button
               type="primary"
@@ -110,6 +136,40 @@ export default function LoginForm() {
           </div>
         </Form>
       </Card>
+
+      {/* Forgot password modal */}
+      <Modal
+        title="Forgot Password"
+        open={forgotOpen}
+        onCancel={() => setForgotOpen(false)}
+        footer={null}
+      >
+        <Form
+          form={forgotForm}
+          layout="vertical"
+          onFinish={handleForgot}
+        >
+          <Form.Item
+            name="email"
+            label="Email"
+            rules={[
+              { required: true, message: 'Please enter your email' },
+              { type: 'email', message: 'Please enter a valid email' }
+            ]}
+          >
+            <Input prefix={<MailOutlined />} placeholder="you@example.com" />
+          </Form.Item>
+          <Button
+            type="primary"
+            htmlType="submit"
+            block
+            loading={forgotPasswordMutation.isPending}
+            style={{ backgroundColor: '#722ed1', borderColor: '#722ed1' }}
+          >
+            Send reset link
+          </Button>
+        </Form>
+      </Modal>
     </div>
   );
 }

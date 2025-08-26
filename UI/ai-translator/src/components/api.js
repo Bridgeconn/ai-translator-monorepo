@@ -38,41 +38,56 @@ export const authAPI = {
   login: async (credentials) => {
     // FastAPI OAuth2PasswordRequestForm expects form data
     const formData = new FormData();
-    formData.append('username', credentials.username);
-    formData.append('password', credentials.password);
-    
-    const response = await api.post('/auth/login', formData, {
+    formData.append("username", credentials.username);
+    formData.append("password", credentials.password);
+
+    const response = await api.post("/auth/login", formData, {
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        "Content-Type": "application/x-www-form-urlencoded",
       },
     });
     return response.data;
   },
 
   register: async (userData) => {
-    const response = await api.post('/users/', userData);
+    const response = await api.post("/users/", userData);
     return response.data;
   },
 
   getCurrentUser: async () => {
-    const response = await api.get('/users/me');
+    const response = await api.get("/users/me");
     return response.data;
   },
 
   logout: async () => {
     try {
-      await api.post('/auth/logout');
+      await api.post("/auth/logout");
     } catch (error) {
-      console.log('Logout API call failed, but clearing local storage');
+      console.log("Logout API call failed, but clearing local storage");
     } finally {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
     }
   },
 
-  // ✅ New: updateUser for password reset (or other profile updates)
+  // ✅ Forgot password (request reset link)
+  forgotPassword: async (email) => {
+    const response = await api.post("/auth/forgot-password", { email });
+    return response.data;
+  },
+  resetPassword: async ({ token, new_password, confirm_password }) => {
+    const response = await api.post("/auth/reset-password", {
+      token,
+      new_password,
+      confirm_password,
+    });
+    return response.data;
+  },
+
+
+  // ✅ Update user (e.g. profile, password change if logged in)
   updateUser: async (userId, updates) => {
     const response = await api.put(`/users/${userId}`, updates);
     return response.data;
-  }
+  },
 };
