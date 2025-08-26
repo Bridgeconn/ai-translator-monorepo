@@ -52,7 +52,7 @@ export default function MainLayout({ children }) {
   // Navigation items for sidebar
   const navigationItems = [
     {
-      key: '/dashboard',
+      key: '/',
       icon: <HomeOutlined />,
       label: 'Dashboard',
     },
@@ -62,12 +62,12 @@ export default function MainLayout({ children }) {
       label: 'Sources',
     },
     {
-      key: '/projects',
+      key: '/create-project',
       icon: <FolderOutlined />,
       label: 'Projects',
     },
     {
-      key: '/quik-translation',
+      key: '/quick-translation',
       icon: <ThunderboltOutlined />,
       label: 'Quick Translation',
     }
@@ -194,6 +194,7 @@ export default function MainLayout({ children }) {
         {/* Content */}
         <Content style={{ 
           marginTop: 24,
+          marginLeft:24,
           padding: '24px',
           background: '#f5f5f5',
           minHeight: 'calc(100vh - 64px)'

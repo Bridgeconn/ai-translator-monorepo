@@ -15,7 +15,8 @@ import CreateProjectModal from "./CreateProject";
 import EditProjectModal from "./EditProject";
 import ProjectList from "./ProjectList";
 import SuccessModal from "./SuccessModal";
-import MainLayout from "./MainLayout"; // Import your MainLayout
+// Remove this import since MainLayout should be handled by routing
+// import MainLayout from "./MainLayout";
 
 const { Title, Text } = Typography;
 const { Search } = Input;
@@ -36,7 +37,7 @@ const ZeroDraftGenerator = () => {
   const [searchText, setSearchText] = useState("");
 
   // React Query: fetch sources
-  const { data: sources = [], isLoading: sourcesLoading } = useQuery({
+  const { data: sources = [], isLoading: sourcesLoading, refetch: refetchSources } = useQuery({
     queryKey: ["sources"],
     queryFn: async () => {
       const token = localStorage.getItem("token");
@@ -54,7 +55,7 @@ const ZeroDraftGenerator = () => {
   });
 
   // React Query: fetch languages
-  const { data: languages = [], isLoading: languagesLoading } = useQuery({
+  const { data: languages = [], isLoading: languagesLoading, refetch: refetchLanguages } = useQuery({
     queryKey: ["languages"],
     queryFn: async () => {
       const token = localStorage.getItem("token");
@@ -71,7 +72,7 @@ const ZeroDraftGenerator = () => {
   });
 
   // React Query: fetch versions
-  const { data: versions = [] } = useQuery({
+  const { data: versions = [], refetch: refetchVersions } = useQuery({
     queryKey: ["versions"],
     queryFn: async () => {
       const res = await fetch("http://localhost:8000/versions/");
@@ -102,8 +103,8 @@ const ZeroDraftGenerator = () => {
     return { source_language: "Unknown", target_language: "Unknown" };
   };
 
-  // React Query: fetch existing projects
-  useQuery({
+  // React Query: fetch existing projects with refetch capability
+  const { refetch: refetchProjects } = useQuery({
     queryKey: ["projects"],
     queryFn: async () => {
       const token = localStorage.getItem("token");
@@ -121,6 +122,16 @@ const ZeroDraftGenerator = () => {
     },
     staleTime: 1000 * 60 * 5,
   });
+
+  // Add useEffect to refetch data when component mounts/remounts
+  useEffect(() => {
+    console.log("ZeroDraftGenerator component mounted/updated");
+    // Force refetch of all data when component loads
+    refetchProjects();
+    refetchSources();
+    refetchLanguages();
+    refetchVersions();
+  }, [refetchProjects, refetchSources, refetchLanguages, refetchVersions]);
 
   // Filter projects whenever search text changes
   useEffect(() => {
@@ -309,82 +320,84 @@ const handleCreateProject = async (values) => {
     }
   };
 
-  return (
-    <MainLayout>
+ return (
+    <div
+      style={{
+        backgroundColor: "#f8f9fa",
+        padding: "24px 40px",
+        height: "calc(100vh - 64px)", // Subtract header height
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      {/* Page Header */}
       <div
         style={{
-          backgroundColor: "#f8f9fa",
-          padding: "32px 40px",
-          minHeight: "100%",
+          marginBottom: 24,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          flexShrink: 0,
         }}
       >
-        {/* Page Header */}
-        <div
-          style={{
-            marginBottom: 32,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-          }}
-        >
-          <div>
-            <Title
-              level={2}
-              style={{
-                margin: 0,
-                marginBottom: 8,
-                color: "#262626",
-                fontSize: 32,
-                fontWeight: 700,
-              }}
-            >
-              Translation Projects
-            </Title>
-            <Text style={{ color: "#8c8c8c", fontSize: 16 }}>
-              Manage your translation workflows and track progress
-            </Text>
-          </div>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            size="large"
-            onClick={showCreateModal}
+        <div>
+          <Title
+            level={2}
             style={{
-              borderRadius: 8,
-              height: 40,
-              fontSize: 14,
-              fontWeight: 500,
+              margin: 0,
+              marginBottom: 8,
+              color: "#262626",
+              fontSize: 28,
+              fontWeight: 700,
             }}
           >
-            New Project
-          </Button>
+            Translation Projects
+          </Title>
+          <Text style={{ color: "#8c8c8c", fontSize: 14 }}>
+            Manage your translation workflows and track progress
+          </Text>
         </div>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          size="large"
+          onClick={showCreateModal}
+          style={{
+            borderRadius: 8,
+            height: 40,
+            fontSize: 14,
+            fontWeight: 500,
+          }}
+        >
+          New Project
+        </Button>
+      </div>
 
-        {/* Search Bar */}
-        <div style={{ marginBottom: 32 }}>
-          <Search
-            placeholder="Search projects by name or languages..."
-            prefix={<SearchOutlined style={{ color: "#bfbfbf", fontSize: 16 }} />}
-            size="large"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            style={{
-              borderRadius: 8,
-              height: 48,
-              fontSize: 14,
-            }}
-          />
-        </div>
-
-        {/* Project List Component */}
-        <ProjectList
-          projects={filteredProjects}
-          loading={allProjects.length === 0}
-          // onEdit={showEditModal}
-          onDelete={handleDeleteProject}
-          extractLanguagesFromName={extractLanguagesFromName}
+      {/* Search Bar */}
+      <div style={{ marginBottom: 32 }}>
+        <Search
+          placeholder="Search projects by name or languages..."
+          prefix={<SearchOutlined style={{ color: "#bfbfbf", fontSize: 16 }} />}
+          size="large"
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          style={{
+            borderRadius: 8,
+            height: 48,
+            fontSize: 14,
+          }}
         />
       </div>
+
+      {/* Project List Component */}
+      <ProjectList
+        projects={filteredProjects}
+        loading={allProjects.length === 0}
+        // onEdit={showEditModal}
+        onDelete={handleDeleteProject}
+        extractLanguagesFromName={extractLanguagesFromName}
+      />
 
       {/* Modals */}
       <CreateProjectModal
@@ -415,7 +428,7 @@ const handleCreateProject = async (values) => {
         message={successMessage}
         onClose={() => setSuccessModalVisible(false)}
       />
-    </MainLayout>
+    </div>
   );
 };
 
