@@ -3,8 +3,24 @@ from uuid import UUID
 from fastapi import HTTPException
 from app.schemas import project as schemas
 from app.models import sources as source_models, languages as language_models, project as project_models
+def get_existing_project(db: Session, name: str, source_id: UUID, target_language_id: UUID, translation_type: str):
+    return db.query(project_models.Project).filter(
+        project_models.Project.name == name,
+        project_models.Project.source_id == source_id,
+        project_models.Project.target_language_id == target_language_id,
+        project_models.Project.translation_type == translation_type
+    ).first()
 
 def create_project(db: Session, project: schemas.ProjectCreate):
+      # ✅ Check if project already exists with same name, source, target and type
+    existing = get_existing_project(db, project.name, project.source_id, project.target_language_id, project.translation_type)
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Project with name '{project.name}', source '{project.source_id}', "
+                   f"target '{project.target_language_id}' and type '{project.translation_type}' already exists"
+        )
+
     # Validate source_id exists
     source = db.query(source_models.Source).filter(source_models.Source.source_id == project.source_id).first()
     if not source :

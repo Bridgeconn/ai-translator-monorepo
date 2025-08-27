@@ -84,4 +84,27 @@ function App() {
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <Router>
+      <Routes>
+        {/* Landing page */}
+        <Route path="/" element={<HomePage />} />
+
+        {/* Auth pages */}
+        <Route path="/login" element={<LoginForm />} />
+        <Route path="/register" element={<RegisterForm />} />
+
+        {/* Dashboard (protected) */}
+        <Route
+          path="/dashboard"
+          element={
+            <PrivateRoute>
+              <DefaultLayout />
+            </PrivateRoute>
+          }
+        />
+      </Routes>
+    </Router>
+  );
+}

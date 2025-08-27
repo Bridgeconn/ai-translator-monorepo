@@ -74,3 +74,21 @@ app.include_router(project_routes.router, prefix="/projects", tags=["Projects"])
 app.include_router(word_tokens.router, prefix="/word_tokens", tags=["Word Tokens"])
 app.include_router(word_token_translation.router, prefix="/api", tags=["Word Token Translation"])
 app.include_router(verse_tokens.router, prefix="/verse_tokens", tags=["Verse Tokens"])
+
+from fastapi.middleware.cors import CORSMiddleware
+
+
+
+# Allow frontend to call backend
+origins = [
+    "http://localhost:5173",  # Vite dev server
+    "http://127.0.0.1:5173",  # sometimes browser uses this
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,  # or ["*"] to allow all
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
