@@ -20,8 +20,10 @@ function extractLines(node) {
   return "";
 }
 
-export default function DownloadDraftButton({ style, content }) {
+export default function DownloadDraftButton({ style, content, disabled = false }) {
   const handleDownload = async (format) => {
+    if (disabled) return; // ✅ block download when disabled
+
     const rawText = extractLines(content);
 
     const lines = rawText
@@ -38,7 +40,7 @@ export default function DownloadDraftButton({ style, content }) {
 
     if (format === "pdf") {
       const doc = new jsPDF({ unit: "pt", format: "a4" });
-    
+
       // load Hindi font
       doc.addFileToVFS(
         "NotoSansDevanagari-Regular.ttf",
@@ -46,17 +48,16 @@ export default function DownloadDraftButton({ style, content }) {
       );
       doc.addFont("NotoSansDevanagari-Regular.ttf", "NotoSans", "normal");
       doc.setFont("NotoSans");
-    
+
       let y = 50;
       lines.forEach((line) => {
         const wrapped = doc.splitTextToSize(line, 500);
         doc.text(wrapped, 40, y, { baseline: "top" });
         y += wrapped.length * 20 + 10;
       });
-    
+
       doc.save("draft.pdf");
     }
-    
 
     if (format === "docx") {
       const paragraphs = lines.map(
@@ -91,11 +92,12 @@ export default function DownloadDraftButton({ style, content }) {
   };
 
   return (
-    <Dropdown menu={menu} placement="bottomRight" trigger={["click"]}>
+    <Dropdown menu={menu} placement="bottomRight" trigger={["click"]} disabled={disabled}>
       <Button
         type="primary"
         icon={<DownloadOutlined />}
         style={{ backgroundColor: "#722ed1", borderColor: "#722ed1", ...style }}
+        disabled={disabled} // ✅ disable button UI
       >
         Download Draft
       </Button>

@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 
 const { Option } = Select;
 
-export default function LanguageSelect({ label, value, onChange }) {
+export default function LanguageSelect({ label, value, onChange, disabled = false }) {
   // React Query for fetching languages
   const {
     data: languages = [],
@@ -45,6 +45,7 @@ export default function LanguageSelect({ label, value, onChange }) {
           const langObj = languages.find((lang) => lang.language_id === id);
           onChange(langObj);
         }}
+        disabled={disabled || isLoading} // ✅ disable while translating
       >
         {languages.map((lang) => (
           <Option key={lang.language_id} value={lang.language_id}>

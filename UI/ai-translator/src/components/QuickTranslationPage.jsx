@@ -272,113 +272,122 @@ export default function QuickTranslationPage() {
       </Text>
 
       {/* Controls */}
-      <Row
-        justify="space-between"
-        align="middle"
-        style={{ marginTop: 20, marginBottom: 20 }}
-        gutter={16}
-      >
-        <Col>
-          <Space>
-            <Text strong>Source</Text>
-            <LanguageSelect value={sourceLang} onChange={setSourceLang} />
-            <Text strong>Target</Text>
-            <LanguageSelect value={targetLang} onChange={setTargetLang} />
-          </Space>
-        </Col>
+<Row
+  justify="space-between"
+  align="middle"
+  style={{ marginTop: 20, marginBottom: 20 }}
+  gutter={16}
+>
+  <Col>
+    <Space>
+      <Text strong>Source</Text>
+      <LanguageSelect value={sourceLang} onChange={setSourceLang} disabled={loading} />
+      <Text strong>Target</Text>
+      <LanguageSelect value={targetLang} onChange={setTargetLang} disabled={loading} />
+    </Space>
+  </Col>
 
-        <Col>
-        <Space direction="vertical">
-          <Space>
-            <Upload
-              beforeUpload={handleFileUpload}
-              showUploadList={false}
-              accept=".txt,.usfm,.docx,.pdf"
-            >
-              <Button icon={<UploadOutlined />}>Upload File</Button>
-            </Upload>
-            <Button
-              type="primary"
-              icon={<TranslationOutlined />}
-              onClick={handleTranslate}
-            >
-              Translate
-            </Button>
-           
-          </Space>
-          {statusMsg && <Text type="secondary">{statusMsg}</Text>}
-        </Space>
+  <Col>
+    <Space direction="vertical">
+      <Space>
+        <Upload
+          beforeUpload={handleFileUpload}
+          showUploadList={false}
+          accept=".txt,.usfm,.docx,.pdf"
+          disabled={loading} // ✅ disable upload
+        >
+          <Button icon={<UploadOutlined />} disabled={loading}>
+            Upload File
+          </Button>
+        </Upload>
+        <Button
+          type="primary"
+          icon={<TranslationOutlined />}
+          onClick={handleTranslate}
+          loading={loading} // ✅ spinner on button
+          disabled={loading} // ✅ disable during translation
+        >
+          Translate
+        </Button>
+      </Space>
+      {statusMsg && <Text type="secondary">{statusMsg}</Text>}
+    </Space>
+  </Col>
+</Row>
 
+{/* Editor Panels */}
+<Row gutter={24}>
+  {/* Source Panel */}
+  <Col xs={24} md={12}>
+    <Card
+      title="Source"
+      extra={
+        <Button
+          type="text"
+          icon={<CloseOutlined />}
+          style={{ color: "#ff7a00" }}
+          onClick={handleClearAll}
+          disabled={loading} // ✅ disable clear
+        />
+      }
+      actions={[
+        <Button
+          type="text"
+          key="paste"
+          onClick={() => handlePaste(setSourceText)}
+          disabled={loading} // ✅ disable paste
+        >
+          📥 Paste
+        </Button>,
+        <Button
+          type="text"
+          key="copy"
+          onClick={() => handleCopy(sourceText)}
+          disabled={loading} // ✅ disable copy
+        >
+          📋 Copy
+        </Button>,
+      ]}
+    >
+      <TextArea
+        rows={12}
+        value={sourceText}
+        onChange={handleSourceChange}
+        placeholder="Enter or paste text here..."
+        disabled={loading} // ✅ lock input
+      />
+    </Card>
+  </Col>
 
-        </Col>
-      </Row>
+  {/* Target Panel */}
+  <Col xs={24} md={12}>
+    <Card
+      title="Target"
+      actions={[
+        <Button
+          type="text"
+          key="copy"
+          onClick={() => handleCopy(targetText)}
+          disabled={loading} // ✅ disable copy
+        >
+          📋 Copy
+        </Button>,
+        <DownloadDraftButton content={targetText} disabled={loading} />, // ✅ disable download
+      ]}
+    >
+      <Spin spinning={loading} tip="Translating...">
+        <TextArea
+          rows={12}
+          value={targetText}
+          onChange={handleTargetChange}
+          placeholder="Translated text will appear here..."
+          disabled={loading} // ✅ lock target input
+        />
+      </Spin>
+    </Card>
+  </Col>
+</Row>
 
-      {/* Editor Panels */}
-      <Row gutter={24}>
-        {/* Source Panel */}
-        <Col xs={24} md={12}>
-          <Card
-            title="Source"
-            extra={
-              <Button
-                type="text"
-                icon={<CloseOutlined />}
-                style={{ color: "#ff7a00" }}
-                onClick={handleClearAll}
-              />
-            }
-            actions={[
-              <Button
-                type="text"
-                key="paste"
-                onClick={() => handlePaste(setSourceText)}
-              >
-                📥 Paste
-              </Button>,
-              <Button
-                type="text"
-                key="copy"
-                onClick={() => handleCopy(sourceText)}
-              >
-                📋 Copy
-              </Button>,
-            ]}
-          >
-            <TextArea
-              rows={12}
-              value={sourceText}
-              onChange={handleSourceChange}
-              placeholder="Enter or paste text here..."
-            />
-          </Card>
-        </Col>
-
-        {/* Target Panel */}
-        <Col xs={24} md={12}>
-          <Card
-            title="Target"
-            actions={[
-              <Button
-                type="text"
-                key="copy"
-                onClick={() => handleCopy(targetText)}
-              >
-                📋 Copy
-              </Button>,
-              <DownloadDraftButton content={targetText} />, //  pass target text
-            ]}
-          > 
-            <Spin spinning={loading} tip="Translating...">
-            <TextArea
-              rows={12}
-              value={targetText}
-              onChange={handleTargetChange}
-              placeholder="Translated text will appear here..."
-            />
-            </Spin>
-          </Card>
-        </Col>
-      </Row>
     </div>
   );
 }
