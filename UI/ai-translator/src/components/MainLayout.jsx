@@ -31,6 +31,7 @@ export default function MainLayout() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
   const handleLogout = async () => {
@@ -47,15 +48,25 @@ export default function MainLayout() {
   };
 
   const handlePasswordReset = async () => {
+    if (!currentPassword) {
+      message.error("Please enter your current password");
+      return;
+    }
     if (!newPassword) {
       message.error("Please enter a new password");
       return;
     }
+    if (newPassword.length < 6) {
+      message.error("New password must be at least 6 characters");
+      return;
+    }
 
     try {
-      await authAPI.updateUser(user.user_id, { password: newPassword });
-      message.success("Password updated successfully. Please log in again.");
-
+      await authAPI.updateUser(user.user_id, { 
+        current_password: currentPassword, 
+        password: newPassword 
+      });
+      message.success("Password updated successfully");
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       navigate("/login");
@@ -64,6 +75,7 @@ export default function MainLayout() {
       message.error("Failed to update password");
     } finally {
       setPasswordModalVisible(false);
+      setCurrentPassword("");
       setNewPassword("");
     }
   };
@@ -87,11 +99,7 @@ export default function MainLayout() {
     { key: "/dashboard", icon: <HomeOutlined />, label: "Dashboard" },
     { key: "/sources", icon: <FileTextOutlined />, label: "Sources" },
     { key: "/projects", icon: <FolderOutlined />, label: "Projects" },
-    {
-      key: "/quick-translation",
-      icon: <ThunderboltOutlined />,
-      label: "Quick Translation",
-    },
+    { key: "/quick-translation", icon: <ThunderboltOutlined />, label: "Quick Translation" },
   ];
 
   const handleMenuClick = ({ key }) => {
@@ -155,8 +163,7 @@ export default function MainLayout() {
               <div
                 style={{
                   fontSize: "20px",
-                  color:
-                    selectedKey === item.key ? "#8b5cf6" : "#8c8c8c",
+                  color: selectedKey === item.key ? "#8b5cf6" : "#8c8c8c",
                   display: "flex",
                   justifyContent: "center",
                 }}
@@ -178,7 +185,6 @@ export default function MainLayout() {
         />
       </Sider>
 
-      {/* Main layout */}
       <Layout style={{ marginLeft: 80 }}>
         <Header
           style={{
@@ -196,9 +202,11 @@ export default function MainLayout() {
             height: "64px",
           }}
         >
-          <Text strong style={{ fontSize: "18px", color: "#262626" }}>
-            Zero Draft Generator
-          </Text>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <Text strong style={{ fontSize: "18px", color: "#262626" }}>
+              Zero Draft Generator
+            </Text>
+          </div>
 
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={["click"]}>
@@ -218,7 +226,6 @@ export default function MainLayout() {
           </div>
         </Header>
 
-        {/* Content */}
         <Content
           style={{
             marginTop: 64,
@@ -227,7 +234,7 @@ export default function MainLayout() {
             minHeight: "calc(100vh - 64px)",
           }}
         >
-          <Outlet />
+          <Outlet /> {/* ✅ This renders nested pages */}
         </Content>
       </Layout>
 
@@ -240,7 +247,13 @@ export default function MainLayout() {
         okText="Update Password"
       >
         <Input.Password
-          placeholder="Enter new password"
+          placeholder="Enter current password"
+          value={currentPassword}
+          onChange={(e) => setCurrentPassword(e.target.value)}
+          style={{ marginBottom: "12px" }}
+        />
+        <Input.Password
+          placeholder="Enter new password (min 6 characters)"
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
         />

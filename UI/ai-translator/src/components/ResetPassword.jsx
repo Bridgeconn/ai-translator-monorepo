@@ -25,7 +25,7 @@ export default function ResetPassword() {
 
   const openError = (msg) => {
     notification.open({
-      message: "Error",
+      message: "Error ❌",
       description: msg,
       icon: <CloseCircleTwoTone twoToneColor="#ff4d4f" />,
       placement: "topRight",

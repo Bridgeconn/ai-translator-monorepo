@@ -13,6 +13,7 @@ import DashboardPage from "./pages/DashboardPage";
 import SourcesListPage from "./pages/SourcesListPage";
 import ProjectsPage from "./pages/ProjectsPage";
 import QuickTranslationPage from "./components/QuickTranslationPage";
+import ResetPassword from './components/ResetPassword';
 
 // React Query config
 const queryClient = new QueryClient({
@@ -47,6 +48,9 @@ function App() {
             <Route path="/login" element={<LoginForm />} />
             <Route path="/register" element={<RegisterForm />} />
 
+            <Route path="/reset-password" element={<ResetPassword />} />
+
+
             {/* Protected routes with MainLayout */}
             <Route
               element={
@@ -59,6 +63,7 @@ function App() {
               <Route path="/sources" element={<SourcesListPage />} />
               <Route path="/projects" element={<ProjectsPage />} />
               <Route path="/quick-translation" element={<QuickTranslationPage />} />
+
             </Route>
 
             {/* Default route handling */}
@@ -70,7 +75,6 @@ function App() {
                   : <Navigate to="/login" replace />
               }
             />
-
             {/* Catch-all fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
