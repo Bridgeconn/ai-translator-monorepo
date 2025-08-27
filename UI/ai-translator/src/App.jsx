@@ -3,17 +3,15 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ConfigProvider } from "antd";
-
+import HomePage from "./components/HomePage";
 import LoginForm from "./components/LoginForm";
 import RegisterForm from "./components/RegisterForm";
 import MainLayout from "./components/MainLayout";
-
-// Pages
+import ResetPassword from "./components/ResetPassword";
 import DashboardPage from "./pages/DashboardPage";
 import SourcesListPage from "./pages/SourcesListPage";
 import ProjectsPage from "./pages/ProjectsPage";
 import QuickTranslationPage from "./components/QuickTranslationPage";
-import ResetPassword from './components/ResetPassword';
 
 // React Query config
 const queryClient = new QueryClient({
@@ -34,7 +32,7 @@ const ProtectedRoute = ({ children }) => {
 // Ant Design theme
 const theme = {
   token: {
-    colorPrimary: "#722ed1", // matches your purple branding
+    colorPrimary: "#722ed1",
   },
 };
 
@@ -45,13 +43,12 @@ function App() {
         <Router>
           <Routes>
             {/* Public routes */}
+            <Route path="/" element={<HomePage />} />
             <Route path="/login" element={<LoginForm />} />
             <Route path="/register" element={<RegisterForm />} />
-
             <Route path="/reset-password" element={<ResetPassword />} />
 
-
-            {/* Protected routes with MainLayout */}
+            {/* Protected routes */}
             <Route
               element={
                 <ProtectedRoute>
@@ -63,10 +60,9 @@ function App() {
               <Route path="/sources" element={<SourcesListPage />} />
               <Route path="/projects" element={<ProjectsPage />} />
               <Route path="/quick-translation" element={<QuickTranslationPage />} />
-
             </Route>
 
-            {/* Default route handling */}
+            {/* Default and fallback */}
             <Route
               path="/"
               element={
@@ -75,7 +71,6 @@ function App() {
                   : <Navigate to="/login" replace />
               }
             />
-            {/* Catch-all fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>
@@ -84,27 +79,4 @@ function App() {
   );
 }
 
-export default function App() {
-  return (
-    <Router>
-      <Routes>
-        {/* Landing page */}
-        <Route path="/" element={<HomePage />} />
-
-        {/* Auth pages */}
-        <Route path="/login" element={<LoginForm />} />
-        <Route path="/register" element={<RegisterForm />} />
-
-        {/* Dashboard (protected) */}
-        <Route
-          path="/dashboard"
-          element={
-            <PrivateRoute>
-              <DefaultLayout />
-            </PrivateRoute>
-          }
-        />
-      </Routes>
-    </Router>
-  );
-}
+export default App;
