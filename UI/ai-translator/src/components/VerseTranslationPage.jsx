@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import {
   Button,
   Card,
@@ -31,25 +31,27 @@ const { Option } = Select;
 
 const VerseTranslationPage = () => {
   const { projectId } = useParams();
-  const navigate = useNavigate();
 
   const [project, setProject] = useState(null);
   const [books, setBooks] = useState([]);
   const [selectedBook, setSelectedBook] = useState("all");
+  const [chapters, setChapters] = useState([]);
+  const [selectedChapter, setSelectedChapter] = useState(null);
+
   const [tokens, setTokens] = useState([]);
+  const [isTokenized, setIsTokenized] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [showOnlyTranslated, setShowOnlyTranslated] = useState(false);
   const [targetLanguage, setTargetLanguage] = useState("Target Language");
   const [rawBookContent, setRawBookContent] = useState("");
-  const [isTokenized, setIsTokenized] = useState(false);
-  const [chunkSkip, setChunkSkip] = useState(0);  
-  const [skipCount, setSkipCount] = useState(0); 
 
+  // ---------- Project / Books / Chapters ----------
   const fetchProjectDetails = async () => {
     try {
       const res = await api.get(`/projects/${projectId}`);
       setProject(res.data.data);
-    } catch (err) {
+    } catch {
       message.error("Failed to fetch project details");
     }
   };
@@ -57,9 +59,18 @@ const VerseTranslationPage = () => {
   const fetchAvailableBooks = async (sourceId) => {
     try {
       const res = await api.get(`/books/by_source/${sourceId}`);
-      setBooks(res.data.data.map((b) => b.book_name));
-    } catch (err) {
+      setBooks(res.data.data);
+    } catch {
       message.error("Failed to fetch books");
+    }
+  };
+
+  const fetchChaptersByBook = async (bookId) => {
+    try {
+      const res = await api.get(`/api/books/${bookId}/chapters`);
+      setChapters(res.data || []);
+    } catch {
+      message.error("Failed to fetch chapters");
     }
   };
 
@@ -68,93 +79,189 @@ const VerseTranslationPage = () => {
       setLoading(true);
       const res = await api.get(`/books/by_source/${project?.source_id}`);
       const found = res.data.data.find((b) => b.book_name === bookName);
-      if (found) {
-        setRawBookContent(found.usfm_content);
-      }
-    } catch (err) {
+      if (found) setRawBookContent(found.usfm_content);
+      else setRawBookContent("");
+    } catch {
       message.error("Failed to fetch raw book content");
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchTokens = async (book = selectedBook) => {
+  // ---------- Ensure tokens exist for a book (generate if missing) ----------
+  const ensureBookTokens = async (bookName) => {
+    // Try to see if *any* tokens exist for this book first
     try {
-      setLoading(true);
       const res = await api.get(`/verse_tokens/by-project/${projectId}`, {
-        params: { book_name: book === "all" ? "" : book },
+        params: { book_name: bookName, chapter: "" },
       });
-  
-      const fetched = res.data;
-      const merged = fetched.map((f) => ({
-        ...f,
-        verse_translated_text: f.verse_translated_text || "", 
+      const existing = Array.isArray(res.data) ? res.data : [];
+      if (existing.length > 0) return; // already there
+    } catch (err) {
+      // ignore → will attempt generation below
+      if (err.response?.status !== 404) {
+        // non-404 errors should bubble up
+      }
+    }
+
+    const key = "gen-book-tokens";
+    message.loading({
+      key,
+      content: "No tokens found. Generating tokens for this book…",
+      duration: 0,
+    });
+    await api.post(`/verse_tokens/generate-verse-tokens/${projectId}`, null, {
+      params: { book_name: bookName, chapter: "" }, // book-level generation
+    });
+    message.success({ key, content: "Tokens generated for the book." });
+  };
+
+  // ---------- Fetch tokens for current selection (book and optional chapter) ----------
+  const fetchTokensForSelection = async (bookName, chapterNumber = null) => {
+    if (!bookName || bookName === "all") {
+      // Project-level view (no generation)
+      setLoading(true);
+      try {
+        const res = await api.get(`/verse_tokens/by-project/${projectId}`, {
+          params: { book_name: "", chapter: "" },
+        });
+        const data = Array.isArray(res.data) ? res.data : [];
+        const merged = data.map((t) => ({
+          ...t,
+          verse_translated_text: t.verse_translated_text || "",
+        }));
+        setTokens(merged);
+        setIsTokenized(merged.length > 0);
+        if (merged.length > 0 && merged[0].target_language_name) {
+          setTargetLanguage(merged[0].target_language_name);
+        }
+      } catch {
+        setTokens([]);
+        setIsTokenized(false);
+        message.error("Failed to fetch project tokens");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    setLoading(true);
+    try {
+      let data = [];
+
+      // If a chapter is chosen → use the chapter-specific endpoint first
+      if (chapterNumber) {
+        const chapterObj = chapters.find(
+          (ch) => ch.chapter_number === chapterNumber
+        );
+        if (!chapterObj) {
+          setTokens([]);
+          setIsTokenized(false);
+          message.warning("Selected chapter not found.");
+          return;
+        }
+
+        try {
+          const res = await api.get(
+            `/api/chapters/${chapterObj.chapter_id}/tokens`
+          );
+          data = Array.isArray(res.data) ? res.data : [];
+          if (data.length === 0) {
+            // no tokens → generate at book level then refetch chapter
+            await ensureBookTokens(bookName);
+            const res2 = await api.get(
+              `/api/chapters/${chapterObj.chapter_id}/tokens`
+            );
+            data = Array.isArray(res2.data) ? res2.data : [];
+          }
+        } catch (err) {
+          if (err.response?.status === 404) {
+            await ensureBookTokens(bookName);
+            const res2 = await api.get(
+              `/api/chapters/${chapterObj.chapter_id}/tokens`
+            );
+            data = Array.isArray(res2.data) ? res2.data : [];
+          } else {
+            throw err;
+          }
+        }
+      } else {
+        // No chapter → fetch by (project, book)
+        try {
+          const res = await api.get(`/verse_tokens/by-project/${projectId}`, {
+            params: { book_name: bookName, chapter: "" },
+          });
+          data = Array.isArray(res.data) ? res.data : [];
+          if (data.length === 0) {
+            await ensureBookTokens(bookName);
+            const res2 = await api.get(
+              `/verse_tokens/by-project/${projectId}`,
+              {
+                params: { book_name: bookName, chapter: "" },
+              }
+            );
+            data = Array.isArray(res2.data) ? res2.data : [];
+          }
+        } catch (err) {
+          if (err.response?.status === 404) {
+            await ensureBookTokens(bookName);
+            const res2 = await api.get(
+              `/verse_tokens/by-project/${projectId}`,
+              {
+                params: { book_name: bookName, chapter: "" },
+              }
+            );
+            data = Array.isArray(res2.data) ? res2.data : [];
+          } else {
+            throw err;
+          }
+        }
+      }
+
+      const merged = data.map((t) => ({
+        ...t,
+        verse_translated_text: t.verse_translated_text || "",
       }));
-  
+
       setTokens(merged);
       setIsTokenized(merged.length > 0);
-  
       if (merged.length > 0 && merged[0].target_language_name) {
         setTargetLanguage(merged[0].target_language_name);
       }
-      return merged;
-    } catch (err) {
-      message.error(err.response?.data?.detail || "Failed to fetch tokens");
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  };
-  
 
-  const generateTokens = async () => {
-    try {
-      setLoading(true);
-      const res = await api.post(
-        `/verse_tokens/generate-verse-tokens/${projectId}?book_name=${selectedBook === "all" ? "" : selectedBook}`
-      );
-      message.success(res.data.message);
-      fetchTokens();
-    } catch (err) {
-      message.error(err.response?.data?.detail || "Failed to generate tokens");
+      if (merged.length === 0) {
+        message.warning("No tokens available for this selection.");
+      }
+    } catch {
+      message.error("Failed to fetch or generate tokens");
+      setTokens([]);
+      setIsTokenized(false);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleTranslateChunk = async () => {
+  // ---------- Manual Save ----------
+  const handleManualUpdate = async (tokenId, newText) => {
     try {
-      setLoading(true);
-  
-      const res = await api.post(
-        `/verse_tokens/translate-chunk/${projectId}/${selectedBook}`,
-        null,
-        { params: { skip: chunkSkip, limit: 10 } }
-      );
-  
-      console.log("New chunk response:", res.data);
-      const newTokens = res.data;
-  
+      const res = await api.patch(`/verse_tokens/manual-update/${tokenId}`, {
+        translated_text: newText,
+      });
       setTokens((prev) =>
-        prev.map((tok) => {
-          const updated = newTokens.find(
-            (nt) => nt.verse_token_id === tok.verse_token_id
-          );
-          return updated ? { ...tok, ...updated } : tok;
-        })
+        prev.map((t) => (t.verse_token_id === tokenId ? res.data.data : t))
       );
-  
-      message.success("Translated next 10 verses!");
-      setChunkSkip(chunkSkip + 10);
-    } catch (err) {
-      console.error("Chunk translation error:", err);
-      message.error(err.response?.data?.detail || "Chunk translation failed");
-    } finally {
-      setLoading(false);
+      message.success("Saved the Translated Verses!");
+    } catch {
+      message.error("Failed to update manually");
     }
   };
 
+  // ---------- Translate All (kept) ----------
   const handleTranslateAllChunks = async () => {
+    if (selectedBook === "all") {
+      message.info("Please select a specific book to translate.");
+      return;
+    }
     try {
       setLoading(true);
       let skip = 0;
@@ -164,11 +271,9 @@ const VerseTranslationPage = () => {
         const res = await api.post(
           `/verse_tokens/translate-chunk/${projectId}/${selectedBook}`,
           null,
-          { params: { skip, limit: 10 } }
+          { params: { skip, limit: 10, chapter: selectedChapter || "" } }
         );
-
-        const newTokens = res.data;
-        console.log(`Translated ${newTokens.length} verses (skip=${skip})`);
+        const newTokens = Array.isArray(res.data) ? res.data : [];
 
         setTokens((prev) =>
           prev.map((tok) => {
@@ -179,38 +284,19 @@ const VerseTranslationPage = () => {
           })
         );
 
-        if (newTokens.length < 10) {
-          hasMore = false; 
-        } else {
-          skip += 10;
-        }
+        if (newTokens.length < 10) hasMore = false;
+        else skip += 10;
       }
 
       message.success("All verses translated!");
-    } catch (err) {
-      console.error("Full translation error:", err);
-      message.error(err.response?.data?.detail || "Failed to translate all verses");
+    } catch {
+      message.error("Failed to translate all verses");
     } finally {
       setLoading(false);
     }
   };
-    
-  const handleManualUpdate = async (tokenId, newText) => {
-    try {
-      const res = await api.patch(`/verse_tokens/manual-update/${tokenId}`, {
-        translated_text: newText,
-      });
-      setTokens((prev) =>
-        prev.map((t) =>
-          t.verse_token_id === tokenId ? res.data.data : t
-        )
-      );
-      message.success("Saved the Translated Verses!");
-    } catch (err) {
-      message.error("Failed to update manually");
-    }
-  };
 
+  // ---------- Progress / Draft ----------
   const progress = useMemo(() => {
     if (!tokens || tokens.length === 0) return 0;
     const translated = tokens.filter((t) => t.verse_translated_text).length;
@@ -230,16 +316,14 @@ const VerseTranslationPage = () => {
     try {
       await navigator.clipboard.writeText(draftContent);
       message.success("Draft copied to clipboard");
-    } catch (err) {
+    } catch {
       message.error("Failed to copy draft");
     }
   };
 
+  // ---------- Effects ----------
   useEffect(() => {
-    const loadData = async () => {
-      await fetchProjectDetails();
-    };
-    loadData();
+    fetchProjectDetails();
   }, [projectId]);
 
   useEffect(() => {
@@ -250,14 +334,33 @@ const VerseTranslationPage = () => {
 
   useEffect(() => {
     if (selectedBook !== "all") {
+      const bookObj = books.find((b) => b.book_name === selectedBook);
+      if (bookObj) {
+        fetchChaptersByBook(bookObj.book_id).then(() => {
+          setSelectedChapter(1); // default to first chapter
+        });
+      }
+      setTokens([]);
+      setIsTokenized(false);
       fetchRawBook(selectedBook);
-      setIsTokenized(false);  
-      setTokens([]);          
-      setSkipCount(0);
+      fetchTokensForSelection(selectedBook, null);
+    } else {
+      setSelectedChapter(null);
+      setTokens([]);
+      setIsTokenized(false);
+      setRawBookContent("");
     }
   }, [selectedBook]);
-  
 
+  useEffect(() => {
+    // When a chapter is picked, fetch/generate only that chapter's tokens
+    if (selectedBook !== "all" && selectedChapter) {
+      fetchTokensForSelection(selectedBook, selectedChapter);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedChapter]);
+
+  // ---------- UI ----------
   return (
     <div style={{ padding: 20 }}>
       <Breadcrumb style={{ marginBottom: 16 }}>
@@ -268,11 +371,22 @@ const VerseTranslationPage = () => {
         <Breadcrumb.Item>
           {selectedBook === "all" ? "All Books" : selectedBook}
         </Breadcrumb.Item>
+        {selectedChapter && (
+          <Breadcrumb.Item>Chapter {selectedChapter}</Breadcrumb.Item>
+        )}
       </Breadcrumb>
 
-      <Space direction="vertical" style={{ width: "100%" }} size="middle">
-        <Row justify="space-between" align="middle">
-          <Title level={3}>Verse Translation</Title>
+      <Space direction="vertical" style={{ width: "100%" }} size="small">
+        <Title level={3}>Verse Translation</Title>
+        {project && (
+          <Text>
+            Source: {project.source_language_name} | Target:{" "}
+            {project.target_language_name}
+          </Text>
+        )}
+
+        {/* Book + Chapter Selectors */}
+        <Space>
           <Select
             value={selectedBook}
             onChange={(val) => setSelectedBook(val)}
@@ -280,78 +394,121 @@ const VerseTranslationPage = () => {
           >
             <Option value="all">All Books</Option>
             {books.map((b) => (
-              <Option key={b} value={b}>
-                {b}
+              <Option key={b.book_id} value={b.book_name}>
+                {b.book_name}
               </Option>
             ))}
           </Select>
-        </Row>
-        {project && (
-          <Text>
-            Source: {project.source_language_name} | Target: {project.target_language_name}
-          </Text>
-        )}
 
-        <Progress percent={progress} style={{ marginTop: 8, marginBottom: 8 }} />
+          {selectedBook !== "all" && chapters.length > 0 && (
+            <Space>
+              <Button
+                type="text" // simple arrow button, no background
+                disabled={!selectedChapter || selectedChapter === 1}
+                onClick={() =>
+                  setSelectedChapter((prev) => Math.max(1, prev - 1))
+                }
+              >
+                ◀
+              </Button>
+
+              <Text>
+                Chapter {selectedChapter || 1} / {chapters.length}
+              </Text>
+
+              <Button
+                type="text"
+                disabled={
+                  !selectedChapter || selectedChapter === chapters.length
+                }
+                onClick={() =>
+                  setSelectedChapter((prev) =>
+                    Math.min(chapters.length, prev + 1)
+                  )
+                }
+              >
+                ▶
+              </Button>
+            </Space>
+          )}
+        </Space>
+
+        <Progress
+          percent={progress}
+          style={{ marginTop: 8, marginBottom: 8 }}
+        />
       </Space>
 
       <Tabs defaultActiveKey="editor">
-        {/* Editor Tab */}
+        {/* Editor */}
         <TabPane tab="Translation Editor" key="editor">
-          <Space style={{ marginBottom: 16 }}>
-            <Button
-              type="primary"
-              icon={<ThunderboltOutlined />}
-              onClick={generateTokens}
-              loading={loading}
-            >
-              Generate Tokens
-            </Button>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={() => fetchTokens()}
-              loading={loading}
-            >
-              Refresh Tokens
-            </Button>
-            <DownloadDraftButton content={draftContent} />
-            <Button icon={<CopyOutlined />} onClick={copyDraft}>
-              Copy Draft
-            </Button>
-          </Space>
-
           {loading ? (
             <Spin size="large" />
           ) : (
             <Row gutter={16}>
-              {/* Source Panel */}
+              {/* Source */}
               <Col span={12}>
                 <Card
-                  title="Source"
+                  title={
+                    <Row justify="space-between" align="middle">
+                      <span>Source</span>
+                      <Button
+                        size="small"
+                        icon={<ReloadOutlined />}
+                        onClick={() =>
+                          fetchTokensForSelection(selectedBook, selectedChapter)
+                        }
+                        loading={loading}
+                      />
+                    </Row>
+                  }
                   style={{ maxHeight: "70vh", overflowY: "scroll" }}
                 >
                   {isTokenized ? (
-                    tokens.map((t) => (
-                      <div
-                        key={t.verse_token_id}
-                        style={{
-                          borderBottom: "1px solid #f0f0f0",
-                          padding: "8px 0",
-                        }}
-                      >
-                        <Text strong>{t.book_name}</Text>
-                        <p>{t.token_text}</p>
-                      </div>
-                    ))
+                    <>
+                      {tokens.length > 0 && (
+                        <Text
+                          strong
+                          style={{ display: "block", marginBottom: 12 }}
+                        >
+                          {tokens[0].book_name}
+                        </Text>
+                      )}
+
+                      {tokens.map((t, index) => (
+                        <div
+                          key={t.verse_token_id}
+                          style={{
+                            borderBottom: "1px solid #f0f0f0",
+                            padding: "8px 0",
+                            display: "flex",
+                            gap: "8px",
+                          }}
+                        >
+                          <Text
+                            strong
+                            style={{
+                              whiteSpace: "nowrap",
+                              minWidth: 30,
+                              textAlign: "right",
+                            }}
+                          >
+                            {index + 1}.
+                          </Text>
+
+                          <p style={{ margin: 0 }}>{t.token_text}</p>
+                        </div>
+                      ))}
+                    </>
                   ) : (
                     <pre style={{ whiteSpace: "pre-wrap" }}>
-                      {rawBookContent || "No content available"}
+                      {"No content available,please select a book "}
                     </pre>
                   )}
                 </Card>
               </Col>
 
-              {/* Target Panel */}
+              {/* Target */}
               <Col span={12}>
                 <Card
                   title={targetLanguage}
@@ -361,23 +518,12 @@ const VerseTranslationPage = () => {
                     <>
                       <Space style={{ marginBottom: 12 }}>
                         <Button
-                          type="primary"
-                          icon={<ThunderboltOutlined />}
-                          onClick={handleTranslateChunk}
-                          loading={loading}
-                          disabled={selectedBook === "all"}
-                        >
-                          Translate Next 10
-                        </Button>
-
-                        <Button
                           type="dashed"
                           icon={<ThunderboltOutlined />}
                           onClick={handleTranslateAllChunks}
-                          loading={loading}
                           disabled={selectedBook === "all"}
                         >
-                          Translate ALL
+                          Translate
                         </Button>
                       </Space>
 
@@ -389,22 +535,24 @@ const VerseTranslationPage = () => {
                             padding: "8px 0",
                           }}
                         >
-                         <Input.TextArea
+                          <Input.TextArea
                             rows={3}
-                              value={t.verse_translated_text}
-                              placeholder="[No translation yet]"
-                              onChange={(e) =>
+                            value={t.verse_translated_text}
+                            placeholder="[No translation yet]"
+                            onChange={(e) =>
                               setTokens((prev) =>
-                            prev.map((tok) =>
-                            tok.verse_token_id === t.verse_token_id
-                                ? { ...tok, verse_translated_text: e.target.value }
-                                : tok
-                             )
-                             )
-                       }
-                     />
-
-                         <Space style={{ marginTop: 6 }}>
+                                prev.map((tok) =>
+                                  tok.verse_token_id === t.verse_token_id
+                                    ? {
+                                        ...tok,
+                                        verse_translated_text: e.target.value,
+                                      }
+                                    : tok
+                                )
+                              )
+                            }
+                          />
+                          <Space style={{ marginTop: 6 }}>
                             <Button
                               size="small"
                               icon={<SaveOutlined />}
@@ -422,7 +570,7 @@ const VerseTranslationPage = () => {
                       ))}
                     </>
                   ) : (
-                    <p>Select “Generate Tokens” to start translation</p>
+                    <p>Select a book to start translation</p>
                   )}
                 </Card>
               </Col>
@@ -430,19 +578,31 @@ const VerseTranslationPage = () => {
           )}
         </TabPane>
 
-        {/* Draft Tab */}
+        {/* Draft */}
         <TabPane tab="Draft View" key="draft">
           <Card
             title={
-              <Space>
-                <span>Translation Draft</span>
-                <Switch
-                  checked={showOnlyTranslated}
-                  onChange={setShowOnlyTranslated}
-                  checkedChildren="Only Translated"
-                  unCheckedChildren="All"
-                />
-              </Space>
+              <Row justify="space-between" align="middle">
+                <Space>
+                  <span>Translation Draft</span>
+                  <Switch
+                    checked={showOnlyTranslated}
+                    onChange={setShowOnlyTranslated}
+                    checkedChildren="Only Translated"
+                    unCheckedChildren="All"
+                  />
+                </Space>
+                <Space>
+                  <DownloadDraftButton content={draftContent} />
+                  <Button
+                    type="primary"
+                    icon={<CopyOutlined />}
+                    onClick={copyDraft}
+                  >
+                    Copy
+                  </Button>
+                </Space>
+              </Row>
             }
             style={{ marginTop: 16 }}
           >
