@@ -12,12 +12,15 @@ export default function LoginForm() {
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotForm] = Form.useForm();
 
+  // ---- Message API for antd v5 ----
+  const [msgApi, contextHolder] = message.useMessage();
+
   // ---- Login mutation ----
   const loginMutation = useMutation({
     mutationFn: authAPI.login,
     onSuccess: async (data) => {
       localStorage.setItem('token', data.access_token);
-      message.success('Login successful!');
+      msgApi.success('Login successful!');
 
       try {
         const user = await authAPI.getCurrentUser();
@@ -30,7 +33,7 @@ export default function LoginForm() {
     },
     onError: (error) => {
       console.error('Login error:', error);
-      message.error(error.response?.data?.detail || 'Login failed');
+      msgApi.error(error.response?.data?.detail || 'Login failed');
     }
   });
 
@@ -42,13 +45,13 @@ export default function LoginForm() {
   const forgotPasswordMutation = useMutation({
     mutationFn: authAPI.forgotPassword,
     onSuccess: () => {
-      message.success('If that email exists, a reset link has been sent.');
+      msgApi.success('If that email exists, a reset link has been sent.');
       forgotForm.resetFields();
       setForgotOpen(false);
     },
     onError: () => {
-      // Still show success (prevent enumeration)
-      message.success('If that email exists, a reset link has been sent.');
+      // Still show success to prevent email enumeration
+      msgApi.success('If that email exists, a reset link has been sent.');
       setForgotOpen(false);
     }
   });
@@ -66,6 +69,9 @@ export default function LoginForm() {
       backgroundColor: '#f0f2f5',
       padding: '20px'
     }}>
+      {/* Render message contextHolder for notifications */}
+      {contextHolder}
+
       <Card style={{ width: '100%', maxWidth: 400, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{
@@ -93,23 +99,16 @@ export default function LoginForm() {
             name="username"
             rules={[{ required: true, message: 'Please enter your username!' }]}
           >
-            <Input
-              prefix={<UserOutlined />}
-              placeholder="Username"
-            />
+            <Input prefix={<UserOutlined />} placeholder="Username" />
           </Form.Item>
 
           <Form.Item
             name="password"
             rules={[{ required: true, message: 'Please enter your password!' }]}
           >
-            <Input.Password
-              prefix={<LockOutlined />}
-              placeholder="Password"
-            />
+            <Input.Password prefix={<LockOutlined />} placeholder="Password" />
           </Form.Item>
 
-          {/* Forgot password link */}
           <div style={{ textAlign: 'right', marginBottom: 16 }}>
             <a onClick={() => setForgotOpen(true)}>Forgot password?</a>
           </div>
@@ -144,11 +143,7 @@ export default function LoginForm() {
         onCancel={() => setForgotOpen(false)}
         footer={null}
       >
-        <Form
-          form={forgotForm}
-          layout="vertical"
-          onFinish={handleForgot}
-        >
+        <Form form={forgotForm} layout="vertical" onFinish={handleForgot}>
           <Form.Item
             name="email"
             label="Email"
