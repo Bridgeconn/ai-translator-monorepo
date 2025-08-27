@@ -1,16 +1,26 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from app.routes import users as user_routes, languages,sources as source_routes,\
- versions as version_routes, auth,books as book_routes , project as project_routes,\
- word_token_translation, word_tokens,verse_tokens
-from app.database import get_db, init_db_schema, Base, engine
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
+
+from app.routes import (
+    users as user_routes,
+    languages,
+    sources as source_routes,
+    versions as version_routes,
+    auth,
+    books as book_routes,
+    project as project_routes,
+    word_token_translation,
+    word_tokens,
+    verse_tokens
+)
+from app.database import get_db, init_db_schema, Base, engine
 from app.load_language_data import load_languages_from_csv
 from app.utils.seed_bible_books_details import seed_book_details
 from fastapi.middleware.cors import CORSMiddleware
-
 
 # --- Logger setup ---
 logging.basicConfig(level=logging.INFO)
@@ -34,7 +44,7 @@ async def lifespan(app: FastAPI):
     logger.info("Application shutdown completed.")
 
 
-# --- Initialize FastAPI app ---
+# --- Initialize FastAPI app (only once!) ---
 app = FastAPI(
     title="AI Bible Translator Backend",
     version="1.0.0",
@@ -49,6 +59,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- Add CORS middleware ---
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5174"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# --- Root endpoint ---
 @app.get("/", summary="Root Endpoint")
 def read_root():
     return {"message": "Welcome to the AI Bible Translator backend!"}
@@ -61,7 +87,6 @@ def ping_db(db: Session = Depends(get_db)):
         return {"status": "Database connection successful!"}
     except Exception as e:
         return {"status": "Database connection failed", "error": str(e)}
-    
 
 # --- Include API Routers ---
 app.include_router(user_routes.router, prefix="/users", tags=["users"])
@@ -69,7 +94,7 @@ app.include_router(version_routes.router, prefix="/versions", tags=["versions"])
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(languages.router, prefix="/languages", tags=["languages"])
 app.include_router(source_routes.router, prefix="/sources", tags=["sources"])
-app.include_router(book_routes.router, prefix="/books", tags=["Books"]) 
+app.include_router(book_routes.router, prefix="/books", tags=["Books"])
 app.include_router(project_routes.router, prefix="/projects", tags=["Projects"])
 app.include_router(word_tokens.router, prefix="/word_tokens", tags=["Word Tokens"])
 app.include_router(word_token_translation.router, prefix="/api", tags=["Word Token Translation"])

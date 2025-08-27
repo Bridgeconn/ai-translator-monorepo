@@ -77,6 +77,6 @@ function App() {
       </QueryClientProvider>
     </ConfigProvider>
   );
-}
+};
 
 export default App;
