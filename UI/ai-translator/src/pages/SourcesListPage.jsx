@@ -618,52 +618,73 @@ export default function SourcesListPage() {
         </Form>
       </Modal>
       {/* Edit Source Modal */}
-      <Modal
+      {/* Edit Source Modal */}
+<Modal
   title="Edit Source"
   open={isEditModalOpen}
   onCancel={() => setIsEditModalOpen(false)}
   footer={null}
 >
-<Form
-  form={editForm}
-  layout="vertical"
-  onFinish={(values) =>
-    updateSourceMutation.mutate({ source_id: editSource.source_id, values })
-  }
->
-  <Form.Item label="Language" name="language_id">
-    <Select placeholder="Select a language" showSearch optionFilterProp="children" allowClear>
-      {languages.map((lang) => (
-        <Option key={lang.language_id} value={lang.language_id}>
-          {lang.name}
-        </Option>
-      ))}
-    </Select>
-  </Form.Item>
-
-  <Form.Item label="Version Name" name="version_name">
-    <Input placeholder="(leave blank if unchanged)" />
-  </Form.Item>
-
-  <Form.Item label="Abbreviation" name="version_abbreviation">
-    <Input placeholder="(leave blank if unchanged)" />
-  </Form.Item>
-
-  <Form.Item label="Description" name="description">
-    <Input.TextArea rows={3} placeholder="(leave blank if unchanged)" />
-  </Form.Item>
-
-  <Button
-    type="primary"
-    htmlType="submit"
-    loading={updateSourceMutation.isLoading}
-    block
+  <Form
+    form={editForm}
+    layout="vertical"
+    onFinish={(values) =>
+      updateSourceMutation.mutate({ source_id: editSource.source_id, values })
+    }
   >
-    Update Source
-  </Button>
-</Form>
+    <Form.Item label="Language" name="language_id">
+      <Select
+        placeholder="Select a language"
+        showSearch
+        optionFilterProp="children"
+        allowClear
+      >
+        {languages.map((lang) => (
+          <Option key={lang.language_id} value={lang.language_id}>
+            {lang.name}
+          </Option>
+        ))}
+      </Select>
+    </Form.Item>
 
+    <Form.Item label="Version" name="version_id">
+      <Select
+        placeholder="Select a version"
+        showSearch
+        optionFilterProp="children"
+        allowClear
+      >
+        {versions.map((ver) => (
+          <Option key={ver.version_id} value={ver.version_id}>
+            {ver.version_name}
+          </Option>
+        ))}
+      </Select>
+    </Form.Item>
+
+    <Form.Item label="Version Name" name="version_name">
+      <Input placeholder="(leave blank if unchanged)" />
+    </Form.Item>
+
+    <Form.Item label="Abbreviation" name="version_abbreviation">
+      <Input placeholder="(leave blank if unchanged)" />
+    </Form.Item>
+
+    <Form.Item label="Description" name="description">
+      <Input.TextArea rows={3} placeholder="(leave blank if unchanged)" />
+    </Form.Item>
+
+    <Button
+      type="primary"
+      htmlType="submit"
+      loading={updateSourceMutation.isLoading}
+      block
+    >
+      Update Source
+    </Button>
+  </Form>
 </Modal>
+
 
       {/* Book Modal */}
       <Modal
