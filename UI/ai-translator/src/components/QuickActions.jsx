@@ -14,7 +14,7 @@ const QuickActions = () => {
           icon={<FileTextFilled />}
           size="large"
           block
-          onClick={() => navigate("/create-source")}
+          onClick={() => navigate("/Sources")}
         >
           Add New Source
         </Button>
@@ -24,7 +24,7 @@ const QuickActions = () => {
           size="large"
           block
        
-          onClick={() => navigate("/create-project")}
+          onClick={() => navigate("/projects")}
         >
           Create Project
         </Button>

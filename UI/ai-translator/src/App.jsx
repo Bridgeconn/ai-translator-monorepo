@@ -11,7 +11,9 @@ import ResetPassword from "./components/ResetPassword";
 import DashboardPage from "./pages/DashboardPage";
 import SourcesListPage from "./pages/SourcesListPage";
 import ProjectsPage from "./pages/ProjectsPage";
-import QuickTranslationPage from "./components/QuickTranslationPage";
+import QuickTranslationPage from "./components/QuickTranslationPage"; 
+import QuickActions from "./components/QuickActions";
+import Dashboard from "./components/DashBoard";
 
 
 
