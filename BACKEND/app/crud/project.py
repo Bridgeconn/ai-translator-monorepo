@@ -2,18 +2,18 @@ from sqlalchemy.orm import Session
 from uuid import UUID
 from fastapi import HTTPException
 from app.schemas import project as schemas
-from app.models import sources as source_models, languages as language_models, project as project_models,verse as verse_models, chapter as chapter_models, book as book_models, books_details as book_details_models
-def get_existing_project(db: Session, name: str, source_id: UUID, target_language_id: UUID, translation_type: str):
-    return db.query(project_models.Project).filter(
-        project_models.Project.name == name,
-        project_models.Project.source_id == source_id,
-        project_models.Project.target_language_id == target_language_id,
-        project_models.Project.translation_type == translation_type
-    ).first()
-
+from app.models import sources as source_models, languages as language_models, project as project_models
+from app.models import verse as verse_models, chapter as chapter_models, book as book_models, books_details as book_details_models
+ 
+ 
 def create_project(db: Session, project: schemas.ProjectCreate):
-      # ✅ Check if project already exists with same name, source, target and type
-    existing = get_existing_project(db, project.name, project.source_id, project.target_language_id, project.translation_type)
+    # ✅ Check if project already exists with same name, source, target and type
+    existing = db.query(project_models.Project).filter(
+        project_models.Project.name == project.name,
+        project_models.Project.source_id == project.source_id,
+        project_models.Project.target_language_id == project.target_language_id,
+        project_models.Project.translation_type == project.translation_type
+    ).first()
     if existing:
         raise HTTPException(
             status_code=400,
@@ -32,15 +32,13 @@ def create_project(db: Session, project: schemas.ProjectCreate):
         )
 
     # Validate target_language_id exists
-    target_lang = (
-        db.query(language_models.Language)
-        .filter(language_models.Language.language_id == project.target_language_id)
-        .first()
-    )
+    target_lang = db.query(language_models.Language).filter(
+        language_models.Language.language_id == project.target_language_id
+    ).first()
     if not target_lang:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid target_language_id: {project.target_language_id} not found ",
+            detail=f"Invalid target_language_id: {project.target_language_id} not found",
         )
 
     # Validate translation_type
@@ -66,8 +64,7 @@ def create_project(db: Session, project: schemas.ProjectCreate):
     db.commit()
     db.refresh(db_project)
     return db_project
-
-
+ 
 def get_project_by_id(db: Session, project_id: UUID):
     db_project = (
         db.query(project_models.Project)
@@ -78,7 +75,7 @@ def get_project_by_id(db: Session, project_id: UUID):
         raise HTTPException(
             status_code=404, detail=f"Project with id {project_id} not found"
         )
-
+ 
     # --- Enrich with language names ---
     source_lang = (
         db.query(language_models.Language)
@@ -90,7 +87,7 @@ def get_project_by_id(db: Session, project_id: UUID):
         .filter(language_models.Language.language_id == db_project.target_language_id)
         .first()
     )
-
+ 
     # --- Collect verses for selected_books ---
     source_text = None
     if db_project.selected_books:
@@ -118,22 +115,22 @@ def get_project_by_id(db: Session, project_id: UUID):
             .all()
         )
         source_text = "\n".join([v.content for v in verses_query])
-
+ 
     # Attach extras dynamically
     db_project.source_language_name = source_lang.name if source_lang else None
     db_project.target_language_name = target_lang.name if target_lang else None
     db_project.source_text = source_text
-
+ 
     return db_project
-
-
+ 
+ 
 def get_projects(db: Session):
     projects = db.query(project_models.Project).all()
     if not projects:
         raise HTTPException(status_code=404, detail="No projects found")
     return projects
-
-
+ 
+ 
 def get_projects_by_source_id(db: Session, source_id: UUID):
     projects = (
         db.query(project_models.Project)
@@ -145,8 +142,8 @@ def get_projects_by_source_id(db: Session, source_id: UUID):
             status_code=404, detail=f"No projects found for source_id {source_id}"
         )
     return projects
-
-
+ 
+ 
 def update_project(db: Session, project_id: UUID, project: schemas.ProjectUpdate):
     db_project = (
         db.query(project_models.Project)
@@ -157,15 +154,15 @@ def update_project(db: Session, project_id: UUID, project: schemas.ProjectUpdate
         raise HTTPException(
             status_code=404, detail=f"Project with id {project_id} not found"
         )
-
+ 
     for var, value in vars(project).items():
         if value is not None:
             setattr(db_project, var, value)
-
+ 
     db.commit()
     db.refresh(db_project)
     return db_project
-
+ 
 def delete_project(db: Session, project_id: UUID):
     db_project = (
         db.query(project_models.Project)
@@ -176,7 +173,7 @@ def delete_project(db: Session, project_id: UUID):
         raise HTTPException(
             status_code=404, detail=f"Project with id {project_id} not found"
         )
-
+ 
     db.delete(db_project)
     db.commit()
     return db_project

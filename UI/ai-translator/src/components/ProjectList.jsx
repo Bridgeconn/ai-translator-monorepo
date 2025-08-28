@@ -29,6 +29,8 @@ const ProjectList = ({
     );
   }
 
+ 
+
   // calculate paginated projects
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
@@ -108,17 +110,18 @@ const ProjectList = ({
                   gap: 10,
                 }}
               >
-                <FolderOpenOutlined
+                <FolderOutlined
                   style={{
                     fontSize: 16,
                     color: "#52c41a",
                     cursor: "pointer",
                   }}
                   onClick={() => {
-                    // Navigate to project details layout
-                    navigate(`/projects/${project.project_id}`);
+                    navigate(`/projects/${project.project_id}/translate`, { state: { project } });
+
                   }}
                 />
+
                 <EditOutlined
                   style={{
                     fontSize: 16,

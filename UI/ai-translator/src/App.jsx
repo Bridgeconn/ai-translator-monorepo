@@ -14,6 +14,8 @@ import ProjectsPage from "./pages/ProjectsPage";
 import QuickTranslationPage from "./components/QuickTranslationPage"; 
 import QuickActions from "./components/QuickActions";
 import Dashboard from "./components/DashBoard";
+import VerseTranslationPage from './components/VerseTranslationPage';
+
 
 
 
@@ -64,7 +66,26 @@ function App() {
               <Route path="/sources" element={<SourcesListPage />} />
               <Route path="/projects" element={<ProjectsPage />} />
               <Route path="/quick-translation" element={<QuickTranslationPage />} />
+
+              <Route
+              path="/projects/:projectId/translate"
+              element={
+                    <VerseTranslationPage />
+              }
+            />
             </Route>
+{/* 
+              <Route
+              path="/projects/:projectId/translate"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <VerseTranslationPage />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            </Route> */}
 
             {/* Default and fallback */}
             <Route

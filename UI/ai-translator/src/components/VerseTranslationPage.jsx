@@ -24,15 +24,17 @@ import {
 } from "@ant-design/icons";
 import api from "./api";
 import DownloadDraftButton from "../components/DownloadDraftButton";
+import { useLocation } from "react-router-dom";
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 const { Option } = Select;
 
+
 const VerseTranslationPage = () => {
   const { projectId } = useParams();
-
-  const [project, setProject] = useState(null);
+  const location = useLocation();
+  const [project, setProject] = useState(location.state?.project || null);
   const [books, setBooks] = useState([]);
   const [selectedBook, setSelectedBook] = useState("all");
   const [chapters, setChapters] = useState([]);
@@ -45,6 +47,7 @@ const VerseTranslationPage = () => {
   const [showOnlyTranslated, setShowOnlyTranslated] = useState(false);
   const [targetLanguage, setTargetLanguage] = useState("Target Language");
   const [rawBookContent, setRawBookContent] = useState("");
+
 
   // ---------- Project / Books / Chapters ----------
   const fetchProjectDetails = async () => {
