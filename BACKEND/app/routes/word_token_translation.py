@@ -26,7 +26,13 @@ def generate_batch(
     book_name: str = Query(..., description="Book name for which to translate tokens"),
     db: Session = Depends(get_db)
 ):
+    print(">>> Entered generate_batch route")
+    print("Project ID:", project_id)
+    print("Book Name:", book_name)
+ 
     tokens = crud.generate_tokens_batch(db, project_id, book_name)
+    print("Tokens returned from CRUD:", tokens)
+ 
     if not tokens:
-        raise HTTPException(status_code=404, detail="No tokens found for this project/book")
+        raise HTTPException(status_code=404, detail="No translated tokens found for this project/book")
     return tokens

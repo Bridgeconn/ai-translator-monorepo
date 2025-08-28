@@ -15,8 +15,7 @@ import QuickTranslationPage from "./components/QuickTranslationPage";
 import QuickActions from "./components/QuickActions";
 import Dashboard from "./components/DashBoard";
 import VerseTranslationPage from './components/VerseTranslationPage';
-
-
+import WordTranslation from "./components/WordTranslation";
 
 
 // React Query config
@@ -55,25 +54,30 @@ function App() {
 
             {/* Protected routes */}
             <Route
-              element={
-                <ProtectedRoute>
-                  <MainLayout />
-                </ProtectedRoute>
-              }
-            > 
-               
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/sources" element={<SourcesListPage />} />
-              <Route path="/projects" element={<ProjectsPage />} />
-              <Route path="/quick-translation" element={<QuickTranslationPage />} />
+  element={
+    <ProtectedRoute>
+      <MainLayout />
+    </ProtectedRoute>
+  }
+>
+  <Route path="/dashboard" element={<DashboardPage />} />
+  <Route path="/sources" element={<SourcesListPage />} />
+  <Route path="/projects" element={<ProjectsPage />} />
+  <Route path="/quick-translation" element={<QuickTranslationPage />} />
 
-              <Route
-              path="/projects/:projectId/translate"
-              element={
-                    <VerseTranslationPage />
-              }
-            />
-            </Route>
+  {/* verse translation route */}
+  <Route
+    path="/projects/:projectId/translate"
+    element={<VerseTranslationPage />}
+  />
+
+  {/* word translation route */}
+  <Route
+    path="/projects/:projectId/word-translation"
+    element={<WordTranslation />}
+  />
+</Route>
+
 {/* 
               <Route
               path="/projects/:projectId/translate"

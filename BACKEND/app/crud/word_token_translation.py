@@ -18,8 +18,6 @@ def update_translation(db: Session, word_token_id: UUID, update_data: WordTokenU
     db.refresh(db_token)
     return db_token
 
-
-
 def generate_tokens_batch(db: Session, project_id: UUID, book_name: str):
     # Fetch the project first
     project = db.query(Project).filter(Project.project_id == project_id).first()
@@ -41,9 +39,15 @@ def generate_tokens_batch(db: Session, project_id: UUID, book_name: str):
 
     if not source_lang_code or not target_lang_code:
         raise HTTPException(status_code=400, detail="Source or target language not found")
+    print(f"project_id type: {type(project_id)}, value: {project_id}")
+    print(f"book_name type: {type(book_name)}, value: '{book_name}'")
+    # tokens = db.query(WordTokenTranslation).filter()
+    # WordTokenTranslation.project_id == project_id,
+    # WordTokenTranslation.book_name == book_name
 
     # Fetch tokens for this project and book
     tokens = db.query(WordTokenTranslation).filter_by(project_id=project_id, book_name=book_name).all()
+    print("Tokens found:", len(tokens))
     if not tokens:
         raise HTTPException(status_code=404, detail="No tokens found for this project/book")
 
@@ -80,5 +84,4 @@ def generate_tokens_batch(db: Session, project_id: UUID, book_name: str):
 
         except Exception as e:
             print(f"Batch {i//batch_size+1} failed: {e}")
-
     return translated_tokens

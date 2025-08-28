@@ -108,17 +108,26 @@ const ProjectList = ({
                   gap: 10,
                 }}
               >
-                <FolderOutlined
-                  style={{
-                    fontSize: 16,
-                    color: "#52c41a",
-                    cursor: "pointer",
-                  }}
-                  onClick={() => {
-                    navigate(`/projects/${project.project_id}/translate`, { state: { project } });
+     <FolderOutlined
+  style={{
+    fontSize: 16,
+    color: "#52c41a",
+    cursor: "pointer",
+  }}
+  onClick={() => {
+    if (project.translation_type?.toLowerCase() === "word") {
+      navigate(`/projects/${project.project_id}/word-translation`, {
+        state: { project },
+      });
+    } else {
+      navigate(`/projects/${project.project_id}/translate`, {
+        state: { project },
+      });
+    }
+  }}
+/>
 
-                  }}
-                />
+
 
                 <EditOutlined
                   style={{

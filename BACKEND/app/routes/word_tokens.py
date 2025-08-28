@@ -14,6 +14,9 @@ def generate_word_tokens(project_id: UUID, book_name: str, db: Session = Depends
     try:
         extract_and_store_word_tokens(db, project_id, book_name)
         return {"message": "Word tokens generated and stored with frequency."}
+        tokens = get_tokens_all(db, project_id, book_name)
+        return tokens  # Return saved tokens to UI immediately
+
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:

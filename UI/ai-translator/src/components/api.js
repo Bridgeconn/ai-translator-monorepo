@@ -35,6 +35,7 @@ api.interceptors.response.use(
   }
 );
 
+// ------------------ Auth API ------------------
 export const authAPI = {
   login: async (credentials) => {
     const formData = new FormData();
@@ -63,7 +64,7 @@ export const authAPI = {
     try {
       await api.post("/auth/logout");
     } catch (error) {
-      console.log("Logout API call failed, but clearing local storage");
+      console.log("Logout API call failed, but clearing local storage anyway");
     } finally {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
@@ -75,6 +76,8 @@ export const authAPI = {
     const response = await api.post("/auth/forgot-password", { email });
     return response.data;
   },
+
+  // ✅ Reset password with token
   resetPassword: async ({ token, new_password, confirm_password }) => {
     const response = await api.post("/auth/reset-password", {
       token,
@@ -84,72 +87,145 @@ export const authAPI = {
     return response.data;
   },
 
-
-  // ✅ Update user (e.g. profile, password change if logged in)
+  // ✅ Update user profile
   updateUser: async (userId, updates) => {
     const response = await api.put(`/users/${userId}`, updates);
     return response.data;
   },
 };
 
+// ------------------ Projects API ------------------
+export const projectsAPI = {
+  getAllProjects: async () => (await api.get("/projects/")).data.data,
 
-export const getProjectById = async (projectId) => {
-  const res = await api.get(`/projects/${projectId}`);
-  return res.data.data[0]; 
+  getProjectById: async (projectId) =>
+    (await api.get(`/projects/${projectId}`)).data.data[0],
+
+  deleteProject: async (projectId) =>
+    (await api.delete(`/projects/${projectId}`)).data.data,
 };
 
-export const getBooksBySource = async (sourceId) => {
-  const res = await api.get(`/books/by_source/${sourceId}`);
-  return res.data.data; 
+// ------------------ Sources API ------------------
+export const sourcesAPI = {
+  getSourceById: async (sourceId) => {
+    if (!sourceId) return null;
+    return (await api.get(`/sources/${sourceId}`)).data.data;
+  },
 };
 
-export const getVerseTokens = async (projectId, bookName) => {
-  const res = await api.get(`/verse-tokens/by-project/${projectId}?book_name=${bookName}`);
-  return res.data;
+// ------------------ Languages API ------------------
+export const languagesAPI = {
+  getLanguageById: async (languageId) => {
+    if (!languageId) return null;
+    return (await api.get(`/languages/id/${languageId}`)).data.data;
+  },
 };
 
-export const translateVerseToken = async (verseTokenId) => {
-  const res = await api.post(`/verse-tokens/translate-verse-token/${verseTokenId}`);
-  return res.data;
+// ------------------ Word Tokens API ------------------
+export const wordTokenAPI = {
+  getTokensByProjectAndBook: async (projectId, book) => {
+    if (!book) return [];
+    const response = await api.get(`/word_tokens/project/${projectId}`, {
+      params: { book_name: book },
+    });
+    return response.data.data || response.data;
+  },
+
+  generateWordTokens: async (projectId, bookName) => {
+    const encodedBook = encodeURIComponent(bookName);
+    const response = await api.post(
+      `/word_tokens/generate/${projectId}?book_name=${encodedBook}`
+    );
+    return response.data;
+  },
+
+  // ✅ Update translation
+  updateToken: async (wordTokenId, payload) => {
+    const response = await api.put(`/api/${wordTokenId}`, payload);
+    return response.data;
+  },
+
+  generateTokens: async (projectId, bookName) => {
+    const response = await api.post(
+      `/api/generate_batch/${projectId}?book_name=${encodeURIComponent(bookName)}`
+    );
+    return response.data.data || response.data;
+  },
 };
 
-export const manualUpdateVerseToken = async (verseTokenId, translatedText) => {
-  const res = await api.patch(`/verse-tokens/manual-update/${verseTokenId}`, {
-    translated_text: translatedText,
-  });
-  return res.data;
+// ------------------ Draft API ------------------
+export const draftAPI = {
+  generateDraft: async (projectId) => {
+    const response = await api.post("/translation/translation/generate", {
+      project_id: projectId,
+    });
+    return response.data.data;
+  },
 };
 
-export const getVerseTokenBatch = async (projectId, bookName, offset = 0, limit = 10) => {
-  const res = await api.get(
-    `/verse-tokens/by-project/${projectId}?book_name=${bookName}&offset=${offset}&limit=${limit}`
-  );
-  return res.data;
+// ------------------ Books API ------------------
+export const booksAPI = {
+  getAllBooks: async () => {
+    const response = await api.get("/books/books");
+    return response.data.data || [];
+  },
+
+  getBooksBySourceId: async (sourceId) => {
+    if (!sourceId) return [];
+    const response = await api.get(`/books/by_source/${sourceId}`);
+    return response.data.data || [];
+  },
 };
 
-export const translateChunk = async (projectId, bookName, offset = 0, limit = 10) => {
-  const res = await api.post(
-    `/verse-tokens/translate-chunk/${projectId}/${bookName}?offset=${offset}&limit=${limit}`
-  );
-  return res.data;
-};
+// ------------------ Verse Tokens API ------------------
+export const verseTokensAPI = {
+  getVerseTokens: async (projectId, bookName) => {
+    const res = await api.get(`/verse-tokens/by-project/${projectId}?book_name=${bookName}`);
+    return res.data;
+  },
 
-export const saveVerseTranslation = async (verseTokenId, translatedText) => {
-  const res = await api.patch(`/verse-tokens/manual-update/${verseTokenId}`, {
-    translated_text: translatedText,
-  });
-  return res.data;
-};
+  translateVerseToken: async (verseTokenId) => {
+    const res = await api.post(`/verse-tokens/translate-verse-token/${verseTokenId}`);
+    return res.data;
+  },
 
-export const generateDraft = async (projectId, bookName) => {
-  const res = await api.get(`/verse-tokens/generate-draft/${projectId}/${bookName}`);
-  return res.data;
-};
+  manualUpdateVerseToken: async (verseTokenId, translatedText) => {
+    const res = await api.patch(`/verse-tokens/manual-update/${verseTokenId}`, {
+      translated_text: translatedText,
+    });
+    return res.data;
+  },
 
-export const getTranslationProgress = async (projectId, bookName) => {
-  const res = await api.get(`/verse-tokens/progress/${projectId}?book_name=${bookName}`);
-  return res.data;
+  getVerseTokenBatch: async (projectId, bookName, offset = 0, limit = 10) => {
+    const res = await api.get(
+      `/verse-tokens/by-project/${projectId}?book_name=${bookName}&offset=${offset}&limit=${limit}`
+    );
+    return res.data;
+  },
+
+  translateChunk: async (projectId, bookName, offset = 0, limit = 10) => {
+    const res = await api.post(
+      `/verse-tokens/translate-chunk/${projectId}/${bookName}?offset=${offset}&limit=${limit}`
+    );
+    return res.data;
+  },
+
+  saveVerseTranslation: async (verseTokenId, translatedText) => {
+    const res = await api.patch(`/verse-tokens/manual-update/${verseTokenId}`, {
+      translated_text: translatedText,
+    });
+    return res.data;
+  },
+
+  generateDraft: async (projectId, bookName) => {
+    const res = await api.get(`/verse-tokens/generate-draft/${projectId}/${bookName}`);
+    return res.data;
+  },
+
+  getTranslationProgress: async (projectId, bookName) => {
+    const res = await api.get(`/verse-tokens/progress/${projectId}?book_name=${bookName}`);
+    return res.data;
+  },
 };
 
 export default api;
-

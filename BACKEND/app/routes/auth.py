@@ -25,13 +25,19 @@ def login(
     db: Session = Depends(get_db)
 ):
     user = db.query(User).filter(User.username == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
 
+    if not user:
+        raise HTTPException(status_code=401, detail="Username entered is wrong")
+
+    if not verify_password(form_data.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Password is wrong for this username")
+
+    # Both username and password are correct
     access_token, jti = create_access_token(data={"sub": str(user.user_id)})
     user.token = access_token
     user.jti = jti
     db.commit()
+    
     return {"access_token": access_token, "token_type": "bearer"}
 
 
