@@ -490,131 +490,115 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
       <Tabs defaultActiveKey="editor">
         {/* Editor */}
         <TabPane tab="Translation Editor" key="editor">
-  <div
-    style={{
-      display: "flex",
-      maxHeight: "70vh",
-      overflowY: "auto",
-    }}
-    ref={(el) => {
-      if (!el) return;
-      // Sync scroll between both children
-      const [src, tgt] = el.querySelectorAll(".scroll-sync");
-      if (src && tgt) {
-        src.onscroll = () => {
-          tgt.scrollTop = src.scrollTop;
-        };
-        tgt.onscroll = () => {
-          src.scrollTop = tgt.scrollTop;
-        };
+        <Row gutter={16}>
+  {/* Source */}
+  <Col span={12}>
+    <Card
+      title={
+        <Row justify="space-between" align="middle">
+          <span>Source</span>
+        </Row>
       }
-    }}
-  >
-    {/* Source */}
-    <div className="scroll-sync" style={{ flex: 1, paddingRight: 8 }}>
-      <Card
-        title={<span>Source</span>}
-        bodyStyle={{ padding: 12 }}
-        bordered
-      >
-        {loadingSource ? (
-          <Spin size="large" />
-        ) : isTokenized ? (
-          <>
-            {tokens.length > 0 && (
-              <Text strong style={{ display: "block", marginBottom: 12 }}>
-                {tokens[0].book_name}
-              </Text>
-            )}
-            {tokens.map((t, index) => (
-              <div
-                key={t.verse_token_id}
-                style={{
-                  borderBottom: "1px solid #f0f0f0",
-                  padding: "8px 0",
-                  display: "flex",
-                  gap: "8px",
-                }}
-              >
-                <Text strong style={{ minWidth: 30, textAlign: "right" }}>
-                  {index + 1}.
-                </Text>
-                <p style={{ margin: 0 }}>{t.token_text}</p>
-              </div>
-            ))}
-          </>
-        ) : (
-          <pre style={{ whiteSpace: "pre-wrap" }}>
-            {"No content available, please select a book"}
-          </pre>
-        )}
-      </Card>
-    </div>
-
-    {/* Target */}
-    <div className="scroll-sync" style={{ flex: 1, paddingLeft: 8 }}>
-      <Card
-        title={
-          <Row justify="space-between" align="middle">
-            <span>{targetLanguage}</span>
-            <Button
-              type="dashed"
-              icon={<ThunderboltOutlined />}
-              onClick={selectedChapter ? handleTranslateChapter : handleTranslateAllChunks}
-              disabled={selectedBook === "all"}
-            >
-              Translate
-            </Button>
-          </Row>
-        }
-        bodyStyle={{ padding: 12 }}
-        bordered
-      >
-        {loadingTranslate ? (
-          <Spin size="large" />
-        ) : isTokenized ? (
-          tokens.map((t, index) => (
+      style={{ maxHeight: "70vh", overflowY: "scroll" }}
+    >
+      {loadingSource ? (
+        <Spin size="large" />
+      ) : isTokenized ? (
+        <>
+          {tokens.length > 0 && (
+            <Text strong style={{ display: "block", marginBottom: 12 }}>
+              {tokens[0].book_name}
+            </Text>
+          )}
+          {tokens.map((t, index) => (
             <div
               key={t.verse_token_id}
-              style={{ borderBottom: "1px solid #f0f0f0", padding: "8px 0" }}
+              style={{
+                borderBottom: "1px solid #f0f0f0",
+                padding: "8px 0",
+                display: "flex",
+                gap: "8px",
+              }}
             >
-              <Text strong style={{ display: "block", marginBottom: 4 }}>
-                Verse {index + 1}
+              <Text strong style={{ minWidth: 30, textAlign: "right" }}>
+                {index + 1}.
               </Text>
-              <Input.TextArea
-                rows={3}
-                value={t.verse_translated_text}
-                placeholder="[No translation yet]"
-                onChange={(e) =>
-                  setTokens((prev) =>
-                    prev.map((tok) =>
-                      tok.verse_token_id === t.verse_token_id
-                        ? { ...tok, verse_translated_text: e.target.value }
-                        : tok
-                    )
-                  )
-                }
-              />
-              <Space style={{ marginTop: 6 }}>
-                <Button
-                  size="small"
-                  icon={<SaveOutlined />}
-                  onClick={() =>
-                    handleManualUpdate(t.verse_token_id, t.verse_translated_text)
-                  }
-                >
-                  Save
-                </Button>
-              </Space>
+              <p style={{ margin: 0 }}>{t.token_text}</p>
             </div>
-          ))
-        ) : (
-          <p>Select a book to start translation</p>
-        )}
-      </Card>
-    </div>
-  </div>
-</TabPane>
+          ))}
+        </>
+      ) : (
+        <pre style={{ whiteSpace: "pre-wrap" }}>
+          {"No content available, please select a book"}
+        </pre>
+      )}
+    </Card>
+  </Col>
+
+  {/* Target */}
+  <Col span={12}>
+    <Card
+      title={
+        <Row justify="space-between" align="middle">
+          <span>{targetLanguage}</span>
+          <Button
+            type="dashed"
+            icon={<ThunderboltOutlined />}
+            onClick={selectedChapter ? handleTranslateChapter : handleTranslateAllChunks}
+            disabled={selectedBook === "all"}
+          >
+            Translate
+          </Button>
+        </Row>
+      }
+      style={{ maxHeight: "70vh", overflowY: "scroll" }}
+    >
+      {loadingTranslate ? (
+        <Spin size="large" />
+      ) : isTokenized ? (
+        tokens.map((t, index) => (
+          <div
+            key={t.verse_token_id}
+            style={{ borderBottom: "1px solid #f0f0f0", padding: "8px 0" }}
+          >
+            <Text strong style={{ display: "block", marginBottom: 4 }}>
+              Verse {index + 1}
+            </Text>
+            <Input.TextArea
+              rows={3}
+              value={t.verse_translated_text}
+              placeholder="[No translation yet]"
+              onChange={(e) =>
+                setTokens((prev) =>
+                  prev.map((tok) =>
+                    tok.verse_token_id === t.verse_token_id
+                      ? { ...tok, verse_translated_text: e.target.value }
+                      : tok
+                  )
+                )
+              }
+            />
+            <Space style={{ marginTop: 6 }}>
+              <Button
+                size="small"
+                icon={<SaveOutlined />}
+                onClick={() =>
+                  handleManualUpdate(t.verse_token_id, t.verse_translated_text)
+                }
+              >
+                Save
+              </Button>
+            </Space>
+          </div>
+        ))
+      ) : (
+        <p>Select a book to start translation</p>
+      )}
+    </Card>
+  </Col>
+</Row>
+
+        </TabPane>
 
         {/* Draft */}
         <TabPane tab="Draft View" key="draft">
