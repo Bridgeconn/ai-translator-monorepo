@@ -3,7 +3,7 @@ from uuid import UUID
 from datetime import datetime
 from typing import Optional
 
-#REQUEST schema (for POST): only needs project_id
+# REQUEST schema (for POST): only needs project_id
 class VerseTokenTranslationCreate(BaseModel):
     project_id: UUID
 
@@ -33,4 +33,9 @@ class VerseTokenTranslationResponse(BaseModel):
 
 class MessageOnlyResponse(BaseModel):
     message: str
-      
+
+# For updating manual translation text
+class ManualTranslationUpdate(BaseModel):
+    translated_text: str
+
+    

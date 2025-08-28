@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from uuid import UUID
 from typing import List
@@ -20,3 +20,13 @@ def translate_word_token(data: WordTokenTranslationRequest, db: Session = Depend
     Translate a word token using Vachan AI and return the result.
     """
     return crud.translate_and_store_word_token(db, data)
+@router.post("/generate_batch/{project_id}", response_model=List[WordTokenOut])
+def generate_batch(
+    project_id: UUID,
+    book_name: str = Query(..., description="Book name for which to translate tokens"),
+    db: Session = Depends(get_db)
+):
+    tokens = crud.generate_tokens_batch(db, project_id, book_name)
+    if not tokens:
+        raise HTTPException(status_code=404, detail="No tokens found for this project/book")
+    return tokens

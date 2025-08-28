@@ -31,18 +31,18 @@ def get_access_token():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Vachan login failed: {str(e)}")
 
-# Rest of your functions stay the same...
 
-
-def request_translation(token: str, text: str, src_lang: str, tgt_lang: str):
-    """Send translation request and return job_id."""
+def request_translation(token: str, texts: list[str], src_lang: str, tgt_lang: str):
+    """Send batch translation request and return job_id."""
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
         "Accept": "application/json"
     }
     url = f"{VACHAN_TRANSLATE_URL}?device=cpu&model_name=nllb-600M&source_language={src_lang}&target_language={tgt_lang}"
-    resp = httpx.post(url, json=[text], headers=headers)
+
+    # Pass the whole list of tokens
+    resp = httpx.post(url, json=texts, headers=headers)
     resp.raise_for_status()
 
     job_id = resp.json().get("data", {}).get("jobId")
@@ -50,8 +50,9 @@ def request_translation(token: str, text: str, src_lang: str, tgt_lang: str):
         raise HTTPException(status_code=500, detail=f"Vachan translation request failed: {resp.text}")
     return job_id
 
+
 def poll_job_status(token: str, job_id: int):
-    """Poll until translation job completes or fails."""
+    """Poll until translation job completes or fails. Returns list of translations."""
     headers = {"Authorization": f"Bearer {token}"}
     url = f"{VACHAN_JOB_STATUS_URL}?job_id={job_id}"
 
@@ -64,7 +65,8 @@ def poll_job_status(token: str, job_id: int):
         if "finished" in status:
             translations = data.get("output", {}).get("translations", [])
             if translations:
-                return translations[0]["translatedText"]
+                # return full list of translated texts
+                return [t["translatedText"] for t in translations]
             else:
                 raise HTTPException(status_code=500, detail="Vachan AI returned no translations.")
         elif "failed" in status:
@@ -73,9 +75,10 @@ def poll_job_status(token: str, job_id: int):
         time.sleep(POLL_INTERVAL)
 
     raise HTTPException(status_code=504, detail="Timeout waiting for Vachan AI translation.")
-    
-def translate_text_with_polling(src_lang: str, tgt_lang: str, text: str):
-    """Full translation flow: login, request translation, poll until done."""
+
+
+def translate_texts_with_polling(src_lang: str, tgt_lang: str, texts: list[str]):
+    """Full batch translation flow: login, request, poll until done. Returns list of translations."""
     token = get_access_token()
-    job_id = request_translation(token, text, src_lang, tgt_lang)
+    job_id = request_translation(token, texts, src_lang, tgt_lang)
     return poll_job_status(token, job_id)

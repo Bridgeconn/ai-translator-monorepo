@@ -27,7 +27,6 @@ const queryClient = new QueryClient({
   },
 });
 
-// Simple auth check
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem("token");
   return token ? children : <Navigate to="/login" replace />;
