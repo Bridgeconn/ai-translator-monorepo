@@ -29,8 +29,6 @@ const ProjectList = ({
     );
   }
 
- 
-
   // calculate paginated projects
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;

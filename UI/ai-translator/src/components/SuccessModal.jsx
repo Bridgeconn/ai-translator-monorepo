@@ -10,10 +10,10 @@ const SuccessModal = ({ isVisible, message, onClose }) => {
       open={isVisible}
       onOk={onClose}
       cancelButtonProps={{ style: { display: "none" } }}
-      width={400}
+      width={250}
     >
-      <div style={{ textAlign: "center", padding: "20px 0" }}>
-        <div style={{ fontSize: 48, color: "#52c41a", marginBottom: 16 }}>
+      <div style={{ textAlign: "center", padding: "16px 0" }}>
+        <div style={{ fontSize: 30, color: "#52c41a", marginBottom: 6 }}>
           ✓
         </div>
         <Text style={{ fontSize: 16 }}>{message}</Text>

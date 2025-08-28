@@ -229,7 +229,7 @@ export default function SourcesListPage() {
       setCreateSuccessOpen(true);   // ✅ show popup
     },
     onError: () => {
-      message.error("❌ Failed to create source");
+      message.error(" Failed to create source");
     },
   });
   
@@ -338,7 +338,7 @@ export default function SourcesListPage() {
         uploaded.push(code);
         existingCodes.add(code);
       } catch {
-        message.error(`❌ Failed to upload ${code}`);
+        message.error(` Failed to upload ${code}`);
       }
     }
 
@@ -428,7 +428,7 @@ export default function SourcesListPage() {
       <Row gutter={[24, 24]}>
   {filteredSources.map((source) => (
     <Col xs={24} md={12} lg={8} key={source.source_id}>
-      <Card
+      <Card hoverable
         loading={isLoading}
         style={{ borderRadius: 8 }}
         onClick={() => {
