@@ -219,7 +219,7 @@ def manual_update_translation(db: Session, verse_token_id: UUID, new_translation
     return token_obj
 
 
-# Book Translation
+# # # Book Translation
 def translate_chunk(db: Session, project_id: UUID, book_name: str, skip: int = 0, limit: int = 10):
     # Get tokens for this chunk
     tokens = (
@@ -295,3 +295,83 @@ def translate_chunk(db: Session, project_id: UUID, book_name: str, skip: int = 0
 
     raise HTTPException(status_code=504, detail="Timeout waiting for chunk translation.")
 
+
+
+def translate_chapter(db: Session, project_id: UUID, book_name: str, chapter_number: int):
+    # 1. Fetch tokens for the specific chapter
+    tokens = (
+        db.query(VerseTokenTranslation)
+        .join(Verse, Verse.verse_id == VerseTokenTranslation.verse_id)
+        .join(Chapter, Chapter.chapter_id == Verse.chapter_id)
+        .join(Book, Book.book_id == Chapter.book_id)
+        .filter(
+            VerseTokenTranslation.project_id == project_id,
+            Book.book_name == book_name,
+            Chapter.chapter_number == chapter_number
+        )
+        .order_by(Verse.verse_number)
+        .all()
+    )
+
+    if not tokens:
+        raise HTTPException(status_code=404, detail="No tokens found for this chapter.")
+
+    # 2. Project + language info
+    project = db.query(Project).filter(Project.project_id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found.")
+
+    source_obj = db.query(Source).filter(Source.source_id == project.source_id).first()
+    source_lang = db.query(Language).filter(Language.language_id == source_obj.language_id).first()
+    target_lang = db.query(Language).filter(Language.language_id == project.target_language_id).first()
+
+    if not source_lang or not target_lang:
+        raise HTTPException(status_code=404, detail="Languages not found.")
+
+    # 3. Prepare request
+    texts = [t.token_text for t in tokens]
+    token = get_vachan_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+    }
+
+    url = (f"{VACHAN_TRANSLATE_URL}?device=cpu&model_name={VACHAN_MODEL_NAME}"
+           f"&source_language={source_lang.BCP_code}&target_language={target_lang.BCP_code}")
+
+    # 4. Send translation request
+    resp = httpx.post(url, json=texts, headers=headers)
+    resp.raise_for_status()
+    job_id = resp.json().get("data", {}).get("jobId")
+    if not job_id:
+        raise HTTPException(status_code=500, detail=f"Failed to create Vachan job: {resp.text}")
+
+    # 5. Poll for results
+    status_url = f"{VACHAN_JOB_STATUS_URL}?job_id={job_id}"
+    for attempt in range(MAX_RETRIES):
+        status_resp = httpx.get(status_url, headers={"Authorization": f"Bearer {token}"})
+        status_resp.raise_for_status()
+        data = status_resp.json().get("data", {})
+        status = data.get("status", "").lower()
+
+        if status == "job finished":
+            translations = data.get("output", {}).get("translations", [])
+            if not translations or len(translations) != len(tokens):
+                raise HTTPException(status_code=500, detail="Mismatch in translations.")
+
+            # 6. Save translations into DB
+            for token_obj, translated in zip(tokens, translations):
+                token_obj.verse_translated_text = translated.get("translatedText")
+                token_obj.is_reviewed = False
+                db.add(token_obj)
+
+            db.commit()
+            return tokens
+
+        elif "failed" in status:
+            raise HTTPException(status_code=500, detail="Vachan AI job failed.")
+
+        time.sleep(POLL_INTERVAL)
+
+    raise HTTPException(status_code=504, detail="Timeout waiting for chapter translation.")

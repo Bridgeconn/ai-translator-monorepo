@@ -152,19 +152,8 @@ export default function WordTranslation() {
         )
       );
   
-      // update state only once
-      setTokens((prevTokens) =>
-        prevTokens.map((t) => {
-          const match = translatedTokens.find((tr) => tr.word_token_id === t.word_token_id);
-          return match
-            ? {
-                ...t,
-                translation: match.translation || match.translated_text,
-                originalTranslation: match.translation || match.translated_text,
-              }
-            : t;
-        })
-      );
+      // 🔑 refetch from DB so state matches DB values
+      await fetchTokens(selectedBook.book_name);
   
       notification.success({
         message: "Translation Regeneration Complete",
@@ -180,6 +169,7 @@ export default function WordTranslation() {
       setTranslating({});
     }
   };
+  
   
   // ------------------ Draft Handling ------------------
   useEffect(() => {

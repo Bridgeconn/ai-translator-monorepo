@@ -105,7 +105,7 @@ def manual_update_translation_route(
     )
     return {"message": "Translation updated successfully", "data": updated_token}
 
-# Book
+# # Book
 
 @router.post(
     "/translate-chunk/{project_id}/{book_name}",
@@ -123,4 +123,19 @@ def translate_chunk_route(
     - skip → how many verses to skip
     - limit → how many verses to translate this call
     """
-    return verse_token_crud.translate_chunk(db, project_id, book_name, skip, limit)
+    return verse_token_crud.translate_chunk(db, project_id, book_name, skip=skip, limit=limit)
+
+# chapter
+@router.post(
+    "/translate-chapter/{project_id}/{book_name}/{chapter_number}",
+    response_model=List[VerseTokenTranslationResponse]
+)
+def translate_chapter_route(
+    project_id: UUID,
+    book_name: str,
+    chapter_number: int,
+    db: Session = Depends(get_db)
+):
+    return verse_token_crud.translate_chapter(db, project_id, book_name, chapter_number)
+
+

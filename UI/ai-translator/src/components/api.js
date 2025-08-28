@@ -227,5 +227,10 @@ export const verseTokensAPI = {
     return res.data;
   },
 };
-
+export const translateChapter = async (projectId, bookName, chapterNumber) => {
+  const res = await api.post(
+    `/verse_tokens/translate-chapter/${projectId}/${bookName}/${chapterNumber}`
+  );
+  return res.data;
+};
 export default api;

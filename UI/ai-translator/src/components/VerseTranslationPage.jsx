@@ -17,24 +17,24 @@ import {
   Progress,
 } from "antd";
 import {
-  ReloadOutlined,
   ThunderboltOutlined,
   SaveOutlined,
   CopyOutlined,
 } from "@ant-design/icons";
-import api from "./api";
+import api, { translateChapter } from "./api";
+
 import DownloadDraftButton from "../components/DownloadDraftButton";
-import { useLocation } from "react-router-dom";
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 const { Option } = Select;
 
-
 const VerseTranslationPage = () => {
   const { projectId } = useParams();
-  const location = useLocation();
-  const [project, setProject] = useState(location.state?.project || null);
+
+  
+
+  const [project, setProject] = useState(null);
   const [books, setBooks] = useState([]);
   const [selectedBook, setSelectedBook] = useState("all");
   const [chapters, setChapters] = useState([]);
@@ -43,10 +43,12 @@ const VerseTranslationPage = () => {
   const [tokens, setTokens] = useState([]);
   const [isTokenized, setIsTokenized] = useState(false);
 
-  const [loading, setLoading] = useState(false);
   const [showOnlyTranslated, setShowOnlyTranslated] = useState(false);
   const [targetLanguage, setTargetLanguage] = useState("Target Language");
   const [rawBookContent, setRawBookContent] = useState("");
+
+const [loadingSource, setLoadingSource] = useState(false);   // fetching tokens/raw
+const [loadingTranslate, setLoadingTranslate] = useState(false); // translation only
 
 
   // ---------- Project / Books / Chapters ----------
@@ -79,7 +81,7 @@ const VerseTranslationPage = () => {
 
   const fetchRawBook = async (bookName) => {
     try {
-      setLoading(true);
+      setLoadingSource(true);
       const res = await api.get(`/books/by_source/${project?.source_id}`);
       const found = res.data.data.find((b) => b.book_name === bookName);
       if (found) setRawBookContent(found.usfm_content);
@@ -87,7 +89,7 @@ const VerseTranslationPage = () => {
     } catch {
       message.error("Failed to fetch raw book content");
     } finally {
-      setLoading(false);
+      setLoadingSource(false);
     }
   };
 
@@ -123,7 +125,7 @@ const VerseTranslationPage = () => {
   const fetchTokensForSelection = async (bookName, chapterNumber = null) => {
     if (!bookName || bookName === "all") {
       // Project-level view (no generation)
-      setLoading(true);
+      setLoadingSource(true);
       try {
         const res = await api.get(`/verse_tokens/by-project/${projectId}`, {
           params: { book_name: "", chapter: "" },
@@ -131,9 +133,10 @@ const VerseTranslationPage = () => {
         const data = Array.isArray(res.data) ? res.data : [];
         const merged = data.map((t) => ({
           ...t,
-          verse_translated_text: t.verse_translated_text || "",
+          verse_translated_text: t.verse_translated_text || t.translated_text || "",
         }));
         setTokens(merged);
+        
         setIsTokenized(merged.length > 0);
         if (merged.length > 0 && merged[0].target_language_name) {
           setTargetLanguage(merged[0].target_language_name);
@@ -143,12 +146,12 @@ const VerseTranslationPage = () => {
         setIsTokenized(false);
         message.error("Failed to fetch project tokens");
       } finally {
-        setLoading(false);
+        setLoadingSource(false);
       }
       return;
     }
 
-    setLoading(true);
+    setLoadingSource(true);
     try {
       let data = [];
 
@@ -223,7 +226,7 @@ const VerseTranslationPage = () => {
 
       const merged = data.map((t) => ({
         ...t,
-        verse_translated_text: t.verse_translated_text || "",
+        verse_translated_text: t.verse_translated_text || t.translated_text || "",
       }));
 
       setTokens(merged);
@@ -240,7 +243,7 @@ const VerseTranslationPage = () => {
       setTokens([]);
       setIsTokenized(false);
     } finally {
-      setLoading(false);
+      setLoadingSource(false);
     }
   };
 
@@ -266,7 +269,7 @@ const VerseTranslationPage = () => {
       return;
     }
     try {
-      setLoading(true);
+      setLoadingTranslate(true);
       let skip = 0;
       let hasMore = true;
 
@@ -295,9 +298,41 @@ const VerseTranslationPage = () => {
     } catch {
       message.error("Failed to translate all verses");
     } finally {
-      setLoading(false);
+      setLoadingTranslate(false);
     }
   };
+
+  // chapter Translate---------------------------------
+  const handleTranslateChapter = async () => {
+    if (selectedBook === "all" || !selectedChapter) {
+      message.info("Please select a specific book and chapter to translate.");
+      return;
+    }
+  
+    try {
+      setLoadingTranslate(true);
+      const newTokens = await translateChapter(projectId, selectedBook, selectedChapter);
+  
+      // normalize translated_text → verse_translated_text
+      const merged = newTokens.map((t) => ({
+        ...t,
+        verse_translated_text: t.verse_translated_text || t.translated_text || "",
+      }));
+  
+      setTokens(merged);
+
+       //  replace, not merge
+  
+      message.success("Chapter translated successfully!");
+    } catch (err) {
+      console.error(err);
+      message.error("Failed to translate this chapter");
+    } finally {
+      setLoadingTranslate(false);
+    }
+  };
+  
+  
 
   // ---------- Progress / Draft ----------
   const progress = useMemo(() => {
@@ -404,36 +439,46 @@ const VerseTranslationPage = () => {
           </Select>
 
           {selectedBook !== "all" && chapters.length > 0 && (
-            <Space>
-              <Button
-                type="text" // simple arrow button, no background
-                disabled={!selectedChapter || selectedChapter === 1}
-                onClick={() =>
-                  setSelectedChapter((prev) => Math.max(1, prev - 1))
-                }
-              >
-                ◀
-              </Button>
+  <Space>
+    {/* Prev Button */}
+    <Button
+      type="text"
+      disabled={!selectedChapter || selectedChapter === 1}
+      onClick={() =>
+        setSelectedChapter((prev) => Math.max(1, prev - 1))
+      }
+    >
+      ◀
+    </Button>
 
-              <Text>
-                Chapter {selectedChapter || 1} / {chapters.length}
-              </Text>
+    {/* Chapter Dropdown */}
+    <Select
+      value={selectedChapter}
+      style={{ minWidth: 120 }}
+      onChange={(val) => setSelectedChapter(val)}
+    >
+      {chapters.map((ch) => (
+        <Option key={ch.chapter_id} value={ch.chapter_number}>
+          Chapter {ch.chapter_number}
+        </Option>
+      ))}
+    </Select>
 
-              <Button
-                type="text"
-                disabled={
-                  !selectedChapter || selectedChapter === chapters.length
-                }
-                onClick={() =>
-                  setSelectedChapter((prev) =>
-                    Math.min(chapters.length, prev + 1)
-                  )
-                }
-              >
-                ▶
-              </Button>
-            </Space>
-          )}
+    {/* Next Button */}
+    <Button
+      type="text"
+      disabled={!selectedChapter || selectedChapter === chapters.length}
+      onClick={() =>
+        setSelectedChapter((prev) =>
+          Math.min(chapters.length, prev + 1)
+        )
+      }
+    >
+      ▶
+    </Button>
+  </Space>
+)}
+
         </Space>
 
         <Progress
@@ -445,141 +490,131 @@ const VerseTranslationPage = () => {
       <Tabs defaultActiveKey="editor">
         {/* Editor */}
         <TabPane tab="Translation Editor" key="editor">
-          {loading ? (
-            <Spin size="large" />
-          ) : (
-            <Row gutter={16}>
-              {/* Source */}
-              <Col span={12}>
-                <Card
-                  title={
-                    <Row justify="space-between" align="middle">
-                      <span>Source</span>
-                      <Button
-                        size="small"
-                        icon={<ReloadOutlined />}
-                        onClick={() =>
-                          fetchTokensForSelection(selectedBook, selectedChapter)
-                        }
-                        loading={loading}
-                      />
-                    </Row>
+  <div
+    style={{
+      display: "flex",
+      maxHeight: "70vh",
+      overflowY: "auto",
+    }}
+    ref={(el) => {
+      if (!el) return;
+      // Sync scroll between both children
+      const [src, tgt] = el.querySelectorAll(".scroll-sync");
+      if (src && tgt) {
+        src.onscroll = () => {
+          tgt.scrollTop = src.scrollTop;
+        };
+        tgt.onscroll = () => {
+          src.scrollTop = tgt.scrollTop;
+        };
+      }
+    }}
+  >
+    {/* Source */}
+    <div className="scroll-sync" style={{ flex: 1, paddingRight: 8 }}>
+      <Card
+        title={<span>Source</span>}
+        bodyStyle={{ padding: 12 }}
+        bordered
+      >
+        {loadingSource ? (
+          <Spin size="large" />
+        ) : isTokenized ? (
+          <>
+            {tokens.length > 0 && (
+              <Text strong style={{ display: "block", marginBottom: 12 }}>
+                {tokens[0].book_name}
+              </Text>
+            )}
+            {tokens.map((t, index) => (
+              <div
+                key={t.verse_token_id}
+                style={{
+                  borderBottom: "1px solid #f0f0f0",
+                  padding: "8px 0",
+                  display: "flex",
+                  gap: "8px",
+                }}
+              >
+                <Text strong style={{ minWidth: 30, textAlign: "right" }}>
+                  {index + 1}.
+                </Text>
+                <p style={{ margin: 0 }}>{t.token_text}</p>
+              </div>
+            ))}
+          </>
+        ) : (
+          <pre style={{ whiteSpace: "pre-wrap" }}>
+            {"No content available, please select a book"}
+          </pre>
+        )}
+      </Card>
+    </div>
+
+    {/* Target */}
+    <div className="scroll-sync" style={{ flex: 1, paddingLeft: 8 }}>
+      <Card
+        title={
+          <Row justify="space-between" align="middle">
+            <span>{targetLanguage}</span>
+            <Button
+              type="dashed"
+              icon={<ThunderboltOutlined />}
+              onClick={selectedChapter ? handleTranslateChapter : handleTranslateAllChunks}
+              disabled={selectedBook === "all"}
+            >
+              Translate
+            </Button>
+          </Row>
+        }
+        bodyStyle={{ padding: 12 }}
+        bordered
+      >
+        {loadingTranslate ? (
+          <Spin size="large" />
+        ) : isTokenized ? (
+          tokens.map((t, index) => (
+            <div
+              key={t.verse_token_id}
+              style={{ borderBottom: "1px solid #f0f0f0", padding: "8px 0" }}
+            >
+              <Text strong style={{ display: "block", marginBottom: 4 }}>
+                Verse {index + 1}
+              </Text>
+              <Input.TextArea
+                rows={3}
+                value={t.verse_translated_text}
+                placeholder="[No translation yet]"
+                onChange={(e) =>
+                  setTokens((prev) =>
+                    prev.map((tok) =>
+                      tok.verse_token_id === t.verse_token_id
+                        ? { ...tok, verse_translated_text: e.target.value }
+                        : tok
+                    )
+                  )
+                }
+              />
+              <Space style={{ marginTop: 6 }}>
+                <Button
+                  size="small"
+                  icon={<SaveOutlined />}
+                  onClick={() =>
+                    handleManualUpdate(t.verse_token_id, t.verse_translated_text)
                   }
-                  style={{ maxHeight: "70vh", overflowY: "scroll" }}
                 >
-                  {isTokenized ? (
-                    <>
-                      {tokens.length > 0 && (
-                        <Text
-                          strong
-                          style={{ display: "block", marginBottom: 12 }}
-                        >
-                          {tokens[0].book_name}
-                        </Text>
-                      )}
-
-                      {tokens.map((t, index) => (
-                        <div
-                          key={t.verse_token_id}
-                          style={{
-                            borderBottom: "1px solid #f0f0f0",
-                            padding: "8px 0",
-                            display: "flex",
-                            gap: "8px",
-                          }}
-                        >
-                          <Text
-                            strong
-                            style={{
-                              whiteSpace: "nowrap",
-                              minWidth: 30,
-                              textAlign: "right",
-                            }}
-                          >
-                            {index + 1}.
-                          </Text>
-
-                          <p style={{ margin: 0 }}>{t.token_text}</p>
-                        </div>
-                      ))}
-                    </>
-                  ) : (
-                    <pre style={{ whiteSpace: "pre-wrap" }}>
-                      {"No content available,please select a book "}
-                    </pre>
-                  )}
-                </Card>
-              </Col>
-
-              {/* Target */}
-              <Col span={12}>
-                <Card
-                  title={targetLanguage}
-                  style={{ maxHeight: "70vh", overflowY: "scroll" }}
-                >
-                  {isTokenized ? (
-                    <>
-                      <Space style={{ marginBottom: 12 }}>
-                        <Button
-                          type="dashed"
-                          icon={<ThunderboltOutlined />}
-                          onClick={handleTranslateAllChunks}
-                          disabled={selectedBook === "all"}
-                        >
-                          Translate
-                        </Button>
-                      </Space>
-
-                      {tokens.map((t) => (
-                        <div
-                          key={t.verse_token_id}
-                          style={{
-                            borderBottom: "1px solid #f0f0f0",
-                            padding: "8px 0",
-                          }}
-                        >
-                          <Input.TextArea
-                            rows={3}
-                            value={t.verse_translated_text}
-                            placeholder="[No translation yet]"
-                            onChange={(e) =>
-                              setTokens((prev) =>
-                                prev.map((tok) =>
-                                  tok.verse_token_id === t.verse_token_id
-                                    ? {
-                                        ...tok,
-                                        verse_translated_text: e.target.value,
-                                      }
-                                    : tok
-                                )
-                              )
-                            }
-                          />
-                          <Space style={{ marginTop: 6 }}>
-                            <Button
-                              size="small"
-                              icon={<SaveOutlined />}
-                              onClick={() =>
-                                handleManualUpdate(
-                                  t.verse_token_id,
-                                  t.verse_translated_text
-                                )
-                              }
-                            >
-                              Save
-                            </Button>
-                          </Space>
-                        </div>
-                      ))}
-                    </>
-                  ) : (
-                    <p>Select a book to start translation</p>
-                  )}
-                </Card>
-              </Col>
-            </Row>
-          )}
-        </TabPane>
+                  Save
+                </Button>
+              </Space>
+            </div>
+          ))
+        ) : (
+          <p>Select a book to start translation</p>
+        )}
+      </Card>
+    </div>
+  </div>
+</TabPane>
 
         {/* Draft */}
         <TabPane tab="Draft View" key="draft">
@@ -627,7 +662,7 @@ const VerseTranslationPage = () => {
                 >
                   {filteredTokens.map((t) => (
                     <p key={t.verse_token_id}>
-                      {t.verse_translated_text || "[Untranslated]"}
+                      {t.verse_translated_text || ""}
                     </p>
                   ))}
                 </Card>
