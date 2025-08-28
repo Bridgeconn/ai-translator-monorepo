@@ -13,6 +13,8 @@ import SourcesListPage from "./pages/SourcesListPage";
 import ProjectsPage from "./pages/ProjectsPage";
 import QuickTranslationPage from "./components/QuickTranslationPage";
 
+
+
 // React Query config
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -55,7 +57,8 @@ function App() {
                   <MainLayout />
                 </ProtectedRoute>
               }
-            >
+            > 
+               
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/sources" element={<SourcesListPage />} />
               <Route path="/projects" element={<ProjectsPage />} />
