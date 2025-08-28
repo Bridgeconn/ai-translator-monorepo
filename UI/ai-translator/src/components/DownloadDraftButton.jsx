@@ -4,7 +4,7 @@ import { jsPDF } from "jspdf";
 import { Document, Packer, Paragraph, TextRun } from "docx";
 import { saveAs } from "file-saver";
 import React from "react";
-import { notoSans } from "../fonts/NotoSansDevanagari"; // ✅ your converted font
+import { notoSans } from "../fonts/NotoSansDevanagari";
 
 // Utility: extract text while preserving line breaks
 function extractLines(node) {
@@ -22,7 +22,7 @@ function extractLines(node) {
 
 export default function DownloadDraftButton({ style, content, disabled = false }) {
   const handleDownload = async (format) => {
-    if (disabled) return; // ✅ block download when disabled
+    if (disabled) return; //block download when disabled
 
     const rawText = extractLines(content);
 
