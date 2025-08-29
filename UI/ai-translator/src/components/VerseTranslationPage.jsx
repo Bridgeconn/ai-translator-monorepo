@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+ import React, { useEffect, useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   Button,
@@ -22,35 +22,35 @@ import {
   CopyOutlined,
 } from "@ant-design/icons";
 import api, { translateChapter } from "./api";
-
+ 
 import DownloadDraftButton from "../components/DownloadDraftButton";
-
+ 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 const { Option } = Select;
-
+ 
 const VerseTranslationPage = () => {
   const { projectId } = useParams();
-
+ 
   
-
+ 
   const [project, setProject] = useState(null);
   const [books, setBooks] = useState([]);
   const [selectedBook, setSelectedBook] = useState("all");
   const [chapters, setChapters] = useState([]);
   const [selectedChapter, setSelectedChapter] = useState(null);
-
+ 
   const [tokens, setTokens] = useState([]);
   const [isTokenized, setIsTokenized] = useState(false);
-
+ 
   const [showOnlyTranslated, setShowOnlyTranslated] = useState(false);
   const [targetLanguage, setTargetLanguage] = useState("Target Language");
   const [rawBookContent, setRawBookContent] = useState("");
-
+ 
 const [loadingSource, setLoadingSource] = useState(false);   // fetching tokens/raw
 const [loadingTranslate, setLoadingTranslate] = useState(false); // translation only
-
-
+ 
+ 
   // ---------- Project / Books / Chapters ----------
   const fetchProjectDetails = async () => {
     try {
@@ -60,7 +60,7 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
       message.error("Failed to fetch project details");
     }
   };
-
+ 
   const fetchAvailableBooks = async (sourceId) => {
     try {
       const res = await api.get(`/books/by_source/${sourceId}`);
@@ -69,7 +69,7 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
       message.error("Failed to fetch books");
     }
   };
-
+ 
   const fetchChaptersByBook = async (bookId) => {
     try {
       const res = await api.get(`/api/books/${bookId}/chapters`);
@@ -78,7 +78,7 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
       message.error("Failed to fetch chapters");
     }
   };
-
+ 
   const fetchRawBook = async (bookName) => {
     try {
       setLoadingSource(true);
@@ -92,7 +92,7 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
       setLoadingSource(false);
     }
   };
-
+ 
   // ---------- Ensure tokens exist for a book (generate if missing) ----------
   const ensureBookTokens = async (bookName) => {
     // Try to see if *any* tokens exist for this book first
@@ -108,7 +108,7 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
         // non-404 errors should bubble up
       }
     }
-
+ 
     const key = "gen-book-tokens";
     message.loading({
       key,
@@ -120,7 +120,7 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
     });
     message.success({ key, content: "Tokens generated for the book." });
   };
-
+ 
   // ---------- Fetch tokens for current selection (book and optional chapter) ----------
   const fetchTokensForSelection = async (bookName, chapterNumber = null) => {
     if (!bookName || bookName === "all") {
@@ -150,11 +150,11 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
       }
       return;
     }
-
+ 
     setLoadingSource(true);
     try {
       let data = [];
-
+ 
       // If a chapter is chosen → use the chapter-specific endpoint first
       if (chapterNumber) {
         const chapterObj = chapters.find(
@@ -166,7 +166,7 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
           message.warning("Selected chapter not found.");
           return;
         }
-
+ 
         try {
           const res = await api.get(
             `/api/chapters/${chapterObj.chapter_id}/tokens`
@@ -223,18 +223,18 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
           }
         }
       }
-
+ 
       const merged = data.map((t) => ({
         ...t,
         verse_translated_text: t.verse_translated_text || t.translated_text || "",
       }));
-
+ 
       setTokens(merged);
       setIsTokenized(merged.length > 0);
       if (merged.length > 0 && merged[0].target_language_name) {
         setTargetLanguage(merged[0].target_language_name);
       }
-
+ 
       if (merged.length === 0) {
         message.warning("No tokens available for this selection.");
       }
@@ -246,7 +246,7 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
       setLoadingSource(false);
     }
   };
-
+ 
   // ---------- Manual Save ----------
   const handleManualUpdate = async (tokenId, newText) => {
     try {
@@ -261,7 +261,7 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
       message.error("Failed to update manually");
     }
   };
-
+ 
   // ---------- Translate All (kept) ----------
   const handleTranslateAllChunks = async () => {
     if (selectedBook === "all") {
@@ -272,7 +272,7 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
       setLoadingTranslate(true);
       let skip = 0;
       let hasMore = true;
-
+ 
       while (hasMore) {
         const res = await api.post(
           `/verse_tokens/translate-chunk/${projectId}/${selectedBook}`,
@@ -280,7 +280,7 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
           { params: { skip, limit: 10, chapter: selectedChapter || "" } }
         );
         const newTokens = Array.isArray(res.data) ? res.data : [];
-
+ 
         setTokens((prev) =>
           prev.map((tok) => {
             const updated = newTokens.find(
@@ -289,11 +289,11 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
             return updated ? { ...tok, ...updated } : tok;
           })
         );
-
+ 
         if (newTokens.length < 10) hasMore = false;
         else skip += 10;
       }
-
+ 
       message.success("All verses translated!");
     } catch {
       message.error("Failed to translate all verses");
@@ -301,7 +301,7 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
       setLoadingTranslate(false);
     }
   };
-
+ 
   // chapter Translate---------------------------------
   const handleTranslateChapter = async () => {
     if (selectedBook === "all" || !selectedChapter) {
@@ -320,7 +320,7 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
       }));
   
       setTokens(merged);
-
+ 
        //  replace, not merge
   
       message.success("Chapter translated successfully!");
@@ -333,23 +333,23 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
   };
   
   
-
+ 
   // ---------- Progress / Draft ----------
   const progress = useMemo(() => {
     if (!tokens || tokens.length === 0) return 0;
     const translated = tokens.filter((t) => t.verse_translated_text).length;
     return Math.round((translated / tokens.length) * 100);
   }, [tokens]);
-
+ 
   const draftContent = tokens
     .filter((t) => t.verse_translated_text)
     .map((t) => t.verse_translated_text)
     .join("\n\n");
-
+ 
   const filteredTokens = showOnlyTranslated
     ? tokens.filter((t) => t.verse_translated_text)
     : tokens;
-
+ 
   const copyDraft = async () => {
     try {
       await navigator.clipboard.writeText(draftContent);
@@ -358,18 +358,18 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
       message.error("Failed to copy draft");
     }
   };
-
+ 
   // ---------- Effects ----------
   useEffect(() => {
     fetchProjectDetails();
   }, [projectId]);
-
+ 
   useEffect(() => {
     if (project?.source_id) {
       fetchAvailableBooks(project.source_id);
     }
   }, [project]);
-
+ 
   useEffect(() => {
     if (selectedBook !== "all") {
       const bookObj = books.find((b) => b.book_name === selectedBook);
@@ -389,7 +389,7 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
       setRawBookContent("");
     }
   }, [selectedBook]);
-
+ 
   useEffect(() => {
     // When a chapter is picked, fetch/generate only that chapter's tokens
     if (selectedBook !== "all" && selectedChapter) {
@@ -397,7 +397,7 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedChapter]);
-
+ 
   // ---------- UI ----------
   return (
     <div style={{ padding: 20 }}>
@@ -413,7 +413,7 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
           <Breadcrumb.Item>Chapter {selectedChapter}</Breadcrumb.Item>
         )}
       </Breadcrumb>
-
+ 
       <Space direction="vertical" style={{ width: "100%" }} size="small">
         <Title level={3}>Verse Translation</Title>
         {project && (
@@ -422,7 +422,7 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
             {project.target_language_name}
           </Text>
         )}
-
+ 
         {/* Book + Chapter Selectors */}
         <Space>
           <Select
@@ -437,7 +437,7 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
               </Option>
             ))}
           </Select>
-
+ 
           {selectedBook !== "all" && chapters.length > 0 && (
   <Space>
     {/* Prev Button */}
@@ -450,7 +450,7 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
     >
       ◀
     </Button>
-
+ 
     {/* Chapter Dropdown */}
     <Select
       value={selectedChapter}
@@ -463,7 +463,7 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
         </Option>
       ))}
     </Select>
-
+ 
     {/* Next Button */}
     <Button
       type="text"
@@ -478,15 +478,15 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
     </Button>
   </Space>
 )}
-
+ 
         </Space>
-
+ 
         <Progress
           percent={progress}
           style={{ marginTop: 8, marginBottom: 8 }}
         />
       </Space>
-
+ 
       <Tabs defaultActiveKey="editor">
         {/* Editor */}
         <TabPane tab="Translation Editor" key="editor">
@@ -534,7 +534,7 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
       )}
     </Card>
   </Col>
-
+ 
   {/* Target */}
   <Col span={12}>
     <Card
@@ -597,9 +597,9 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
     </Card>
   </Col>
 </Row>
-
+ 
         </TabPane>
-
+ 
         {/* Draft */}
         <TabPane tab="Draft View" key="draft">
           <Card
@@ -607,12 +607,6 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
               <Row justify="space-between" align="middle">
                 <Space>
                   <span>Translation Draft</span>
-                  <Switch
-                    checked={showOnlyTranslated}
-                    onChange={setShowOnlyTranslated}
-                    checkedChildren="Only Translated"
-                    unCheckedChildren="All"
-                  />
                 </Space>
                 <Space>
                   <DownloadDraftButton content={draftContent} />
@@ -658,5 +652,6 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
     </div>
   );
 };
-
+ 
 export default VerseTranslationPage;
+ 
