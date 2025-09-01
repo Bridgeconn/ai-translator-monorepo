@@ -1,4 +1,4 @@
- import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   Button,
@@ -22,6 +22,8 @@ import {
   CopyOutlined,
 } from "@ant-design/icons";
 import api, { translateChapter } from "./api";
+import { fetchDraft } from "./api"; 
+
  
 import DownloadDraftButton from "../components/DownloadDraftButton";
  
@@ -31,9 +33,6 @@ const { Option } = Select;
  
 const VerseTranslationPage = () => {
   const { projectId } = useParams();
- 
-  
- 
   const [project, setProject] = useState(null);
   const [books, setBooks] = useState([]);
   const [selectedBook, setSelectedBook] = useState("all");
@@ -49,8 +48,11 @@ const VerseTranslationPage = () => {
  
 const [loadingSource, setLoadingSource] = useState(false);   // fetching tokens/raw
 const [loadingTranslate, setLoadingTranslate] = useState(false); // translation only
- 
- 
+
+const [serverDraft, setServerDraft] = useState("");
+const [loadingDraft, setLoadingDraft] = useState(false);
+
+
   // ---------- Project / Books / Chapters ----------
   const fetchProjectDetails = async () => {
     try {
@@ -324,6 +326,7 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
        //  replace, not merge
   
       message.success("Chapter translated successfully!");
+      await updateServerDraft();
     } catch (err) {
       console.error(err);
       message.error("Failed to translate this chapter");
@@ -332,6 +335,32 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
     }
   };
   
+  const updateServerDraft = async () => {
+    if (!projectId || selectedBook === "all") {
+      setServerDraft("");
+      return;
+    }
+  
+    try {
+      setLoadingDraft(true);
+      const draft = await fetchDraft(projectId, selectedBook);
+      setServerDraft(draft);
+    } catch (err) {
+      console.error(err);
+      message.error("Failed to fetch draft from server");
+      setServerDraft("");
+    } finally {
+      setLoadingDraft(false);
+    }
+  };
+  useEffect(() => {
+    if (selectedBook !== "all") {
+      updateServerDraft();
+    } else {
+      setServerDraft("");
+    }
+  }, [selectedBook, selectedChapter]);
+    
   
  
   // ---------- Progress / Draft ----------
@@ -602,52 +631,72 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
  
         {/* Draft */}
         <TabPane tab="Draft View" key="draft">
-          <Card
-            title={
-              <Row justify="space-between" align="middle">
-                <Space>
-                  <span>Translation Draft</span>
-                </Space>
-                <Space>
-                  <DownloadDraftButton content={draftContent} />
-                  <Button
-                    type="primary"
-                    icon={<CopyOutlined />}
-                    onClick={copyDraft}
-                  >
-                    Copy
-                  </Button>
-                </Space>
-              </Row>
-            }
-            style={{ marginTop: 16 }}
+  <Card
+    title={
+      <Row justify="space-between" align="middle">
+        <Space>
+          <span>Translation Draft</span>
+        </Space>
+        <Space>
+          <DownloadDraftButton content={serverDraft || draftContent} />
+          <Button
+            type="primary"
+            icon={<CopyOutlined />}
+            onClick={copyDraft}
           >
-            <Row gutter={16}>
-              <Col span={12}>
-                <Card
-                  title="Source"
-                  style={{ maxHeight: "70vh", overflowY: "scroll" }}
-                >
-                  {filteredTokens.map((t) => (
-                    <p key={t.verse_token_id}>{t.token_text}</p>
-                  ))}
-                </Card>
-              </Col>
-              <Col span={12}>
-                <Card
-                  title={targetLanguage}
-                  style={{ maxHeight: "70vh", overflowY: "scroll" }}
-                >
-                  {filteredTokens.map((t) => (
-                    <p key={t.verse_token_id}>
-                      {t.verse_translated_text || ""}
-                    </p>
-                  ))}
-                </Card>
-              </Col>
-            </Row>
+            Copy
+          </Button>
+        </Space>
+      </Row>
+    }
+    style={{ marginTop: 16 }}
+  >
+    <Row gutter={16}>
+      {loadingDraft ? (
+        <Col span={24} style={{ textAlign: "center", padding: 20 }}>
+          <Spin size="large" />
+        </Col>
+      ) : serverDraft ? (
+        <Col span={24}>
+          <Card
+            title="Server Draft (USFM)"
+            style={{ maxHeight: "70vh", overflowY: "scroll" }}
+          >
+            <pre style={{ whiteSpace: "pre-wrap" }}>{serverDraft}</pre>
           </Card>
-        </TabPane>
+        </Col>
+      ) : (
+        <>
+          {/* fallback if server draft empty */}
+          <Col span={12}>
+            <Card
+              title="Source"
+              style={{ maxHeight: "70vh", overflowY: "scroll" }}
+            >
+              {filteredTokens.map((t) => (
+                <p key={t.verse_token_id}>{t.token_text}</p>
+              ))}
+            </Card>
+          </Col>
+          <Col span={12}>
+            <Card
+              title={targetLanguage}
+              style={{ maxHeight: "70vh", overflowY: "scroll" }}
+            >
+              {filteredTokens.map((t) => (
+                <p key={t.verse_token_id}>
+                  {t.verse_translated_text || ""}
+                </p>
+              ))}
+            </Card>
+          </Col>
+        </>
+      )}
+    </Row>
+  </Card>
+</TabPane>
+
+
       </Tabs>
     </div>
   );

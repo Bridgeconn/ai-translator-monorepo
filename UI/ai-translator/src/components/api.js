@@ -233,4 +233,15 @@ export const translateChapter = async (projectId, bookName, chapterNumber) => {
   );
   return res.data;
 };
+// api.js
+export const fetchDraft = async (projectId, bookName) => {
+  const res = await api.post(
+    "/drafts/generate-draft/",   // ✅ must include /drafts prefix
+    { project_id: projectId, book_name: bookName },
+    { responseType: "text" }
+  );
+  return res.data;
+};
+
+
 export default api;

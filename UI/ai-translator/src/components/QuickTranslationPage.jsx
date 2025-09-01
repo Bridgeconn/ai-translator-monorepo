@@ -4,17 +4,21 @@ import {
   Col,
   Button,
   Input,
-  message,
   Upload,
   Space,
   Typography,
   Card,
-  Spin,
+  App,
+  Spin
 } from "antd";
 import {
   UploadOutlined,
   TranslationOutlined,
   CloseOutlined,
+  SwapOutlined,
+  CopyOutlined, 
+  DownloadOutlined,
+  SaveOutlined
 } from "@ant-design/icons";
 import DownloadDraftButton from "./DownloadDraftButton";
 import LanguageSelect from "./LanguageSelect";
@@ -24,6 +28,8 @@ import Papa from "papaparse"; // CSV parser
 const { TextArea } = Input;
 const { Title, Text } = Typography;
 
+// A token that marks line boundaries. The MT model won’t translate this.
+const LINE_SENTINEL = " ⟦LB⟧ ";
 // ------------------ API Helpers ------------------
 async function getAccessToken() {
   console.log("🔑 Requesting token:", "https://api.vachanengine.org/v2/ai/token");
@@ -110,6 +116,7 @@ export default function QuickTranslationPage() {
   const [uploadedFile, setUploadedFile] = useState(null);
   const [statusMsg, setStatusMsg] = useState("");
   const [loading, setLoading] = useState(false);
+  const { message } = App.useApp();
 
   // ------------------ Copy & Paste Logic ------------------
   const handleCopy = (content) => {
@@ -137,7 +144,7 @@ export default function QuickTranslationPage() {
     setSourceText("");
     setTargetText("");
     setIsTargetEdited(false);
-    message.info("🗑️ All text cleared!");
+    message.info(" All text cleared!");
   };
 
   // ------------------ Syncing Source -> Target ------------------
@@ -145,7 +152,7 @@ export default function QuickTranslationPage() {
     const newText = e.target.value;
     setSourceText(newText);
   
-    // ✅ Whenever source is cleared or replaced, reset target
+    // Whenever source is cleared or replaced, reset target
     if (!isTargetEdited) {
       setTargetText("");
     }
@@ -165,226 +172,378 @@ export default function QuickTranslationPage() {
       setSourceText(e.target.result);
       setTargetText("");
       setIsTargetEdited(false);
-      message.success(`✅ Loaded file: ${file.name}`);
+      message.success(` Loaded file: ${file.name}`);
     };
     reader.readAsText(file);
     return false;
   };
 
   // ------------------ Translation Call ------------------
+  // ------------------ USFM-Aware Translation Handler ------------------
   const handleTranslate = async () => {
     if (!sourceLang || !targetLang) {
-      message.error("Please select both source and target languages");
+      message.error("Please select both source and target languages before translating.");
+      return;
+    }
+  
+    if (!sourceText.trim()) {
+      message.warning("Please enter or upload some source text first.");
       return;
     }
   
     try {
-      setLoading(true)
+      setLoading(true);
       const token = await getAccessToken(
         import.meta.env.VITE_VACHAN_USERNAME,
         import.meta.env.VITE_VACHAN_PASSWORD
       );
   
-      let fileToSend;
+      let textToTranslate;
+      let isUSFMContent = false;
+      let usfmStructure = null;
   
+      // Normalize functions
+      function normalizeText(text) {
+        return text
+          .replace(/\r\n/g, "\n")
+          .split("\n")
+          .map(line =>
+            line
+              .replace(/\s+([.,!?;:])/g, "$1")
+              .replace(/([.,!?;:])(?=\S)/g, "$1 ")
+              .replace(/\s+/g, " ")
+              .trim()
+          )
+          .join("\n");
+      }
+  
+      function normalizeTranslation(text) {
+        return text
+          .replace(/\r\n/g, "\n")
+          .split("\n")
+          .map(line =>
+            line
+              .replace(/\s+([.,!?;:])/g, "$1")
+              .replace(/([.,!?;:])(?=\S)/g, "$1 ")
+              .replace(/\s+/g, " ")
+              .trim()
+          )
+          .join("\n");
+      }
+  
+      //  Handle uploaded file or pasted text
       if (uploadedFile) {
-        // ✅ Handle uploaded files by extension
-        if (uploadedFile.name.endsWith(".usfm")) {
-          const text = await uploadedFile.text();
-          const plain = text
-            .replace(/\\c\s+\d+/g, "\n\n") // chapters → paragraph
-            .replace(/\\v\s+\d+/g, "\n")   // verses → line
-            .replace(/\\[^\s]+/g, "");     // strip USFM markers
-          const blob = new Blob([plain], { type: "text/plain" });
-          fileToSend = new File([blob], "normalized.txt", { type: "text/plain" });
-          console.log("📝 Normalized USFM → TXT, size:", fileToSend.size);
+        const fileContent = await uploadedFile.text();
+  
+        if (uploadedFile.name.endsWith(".usfm") || containsUSFMMarkers(fileContent)) {
+          console.log("📝 Detected USFM content");
+          isUSFMContent = true;
+          const extracted = extractUSFMContent(fileContent);
+          usfmStructure = extracted.structure;
+          textToTranslate = normalizeText(extracted.plainText);
         } else if (uploadedFile.name.endsWith(".docx")) {
-          // parse docx → txt (client-side with mammoth)
           const arrayBuffer = await uploadedFile.arrayBuffer();
           const mammoth = await import("mammoth");
           const { value: text } = await mammoth.extractRawText({ arrayBuffer });
-          const blob = new Blob([text], { type: "text/plain" });
-          fileToSend = new File([blob], "normalized.txt", { type: "text/plain" });
-          console.log("📝 Extracted DOCX → TXT, size:", fileToSend.size);
-        } else if (uploadedFile.name.endsWith(".txt")) {
-          fileToSend = uploadedFile; // send directly
+          textToTranslate = normalizeText(text);
         } else {
-          message.error(" Unsupported file format. Please use .txt, .usfm, or .docx");
-          return;
+          textToTranslate = normalizeText(fileContent);
         }
       } else {
-        // ✅ Handle copy-paste case → always wrap into .txt
-        const blob = new Blob([sourceText], { type: "text/plain" });
-        fileToSend = new File([blob], "input.txt", { type: "text/plain" });
-        console.log("📝 Wrapped pasted text into TXT, size:", fileToSend.size);
+        if (containsUSFMMarkers(sourceText)) {
+          console.log("📝 Detected USFM content in pasted text");
+          isUSFMContent = true;
+          const extracted = extractUSFMContent(sourceText);
+          usfmStructure = extracted.structure;
+          textToTranslate = normalizeText(extracted.plainText);
+        } else {
+          textToTranslate = normalizeText(sourceText);
+        }
       }
-
+  
+      // Send cleaned text for translation
+      const blob = new Blob([textToTranslate], { type: "text/plain" });
+      const fileToSend = new File([blob], "content_only.txt", { type: "text/plain" });
+  
+      console.log("📤 Sending clean text to API:", textToTranslate.substring(0, 200) + "...");
+  
       const jobId = await requestDocTranslation(
         token,
         fileToSend,
         sourceLang?.BCP_code,
         targetLang?.BCP_code
       );
+  
       setStatusMsg("⏳ Translating... please wait");
-
-      console.log("sourceLang state:", sourceLang);
-      console.log("targetLang state:", targetLang);
-
+  
       const finishedJobId = await pollJobStatus(token, jobId, (status) => {
         setStatusMsg(`⏳ Job ${jobId} status: ${status}`);
       });
-
+  
       const csvText = await fetchAssets(token, finishedJobId);
-
-      // ✅ Use PapaParse to handle commas & quotes correctly
+  
+      // Parse CSV
       const parsed = Papa.parse(csvText, {
         header: true,
         skipEmptyLines: true,
+        dynamicTyping: false,
+        trimHeaders: true,
       });
-
+  
       console.log("📥 Parsed CSV data:", parsed.data);
-
-      const translations = parsed.data
-        .map((row) => row.Translation?.trim())
-        .filter((t) => t && t.length > 0);
-
-      if (translations.length === 0) {
-        message.error("No translations found in CSV");
-        return;
+  
+      // ✅ Build translated output
+      let translatedText;
+  
+      if (isUSFMContent && usfmStructure) {
+        translatedText = reconstructUSFM(usfmStructure, parsed.data);
+      } else {
+        translatedText = simpleTranslation(sourceText, parsed.data);
       }
-
-      setTargetText(translations.join("\n"));
+  
+      setTargetText(normalizeTranslation(translatedText));
       setIsTargetEdited(false);
       message.success("Translation complete!");
       setLoading(false);
+      setStatusMsg("");
+  
     } catch (err) {
-      console.error(err);
+      console.error("❌ Translation error:", err);
       setLoading(false);
-      message.error(" Translation failed");
+      setStatusMsg("");
+      message.error(`Translation failed: ${err.message}`);
     }
   };
+  
+  // ✅ Helper: detect USFM
+  function containsUSFMMarkers(text) {
+    return /\\(id|c|v|s\d?|p|q\d?|m|nb|b|d|sp|pb|li\d?|pi\d?|pc|pr|cls|table|tr|th\d?|tc\d?|tcc\d?)\b/.test(text);
+  }
+  
+  // ✅ Helper: extract USFM
+  function extractUSFMContent(usfmText) {
+    const lines = usfmText.split('\n');
+    const structure = [];
+    const translatableSegments = [];
+  
+    lines.forEach((line, index) => {
+      const trimmed = line.trim();
+  
+      if (!trimmed) {
+        structure.push({ type: 'empty', originalLine: line, lineNumber: index });
+      } else if (trimmed.match(/^\\(id|c|h|toc\d?|mt\d?|ms\d?|mr|s\d?|sr|r|d|sp|pb)/)) {
+        structure.push({ type: 'marker', originalLine: line, lineNumber: index });
+      } else if (trimmed.match(/^\\p$/)) {
+        structure.push({ type: 'marker', originalLine: line, lineNumber: index });
+      } else {
+        let translatableText = trimmed;
+        let prefix = '';
+  
+        const verseMatch = trimmed.match(/^(\\v\s+\d+\s*)(.*)/);
+        if (verseMatch) {
+          prefix = verseMatch[1];
+          translatableText = verseMatch[2];
+        }
+  
+        const sectionMatch = trimmed.match(/^(\\s\d?\s*)(.*)/);
+        if (sectionMatch) {
+          prefix = sectionMatch[1];
+          translatableText = sectionMatch[2];
+        }
+  
+        if (translatableText.trim()) {
+          structure.push({
+            type: 'translatable',
+            originalLine: line,
+            lineNumber: index,
+            prefix,
+            translationIndex: translatableSegments.length
+          });
+          translatableSegments.push(translatableText.trim());
+        } else {
+          structure.push({ type: 'marker', originalLine: line, lineNumber: index });
+        }
+      }
+    });
+  
+    return {
+      structure,
+      plainText: translatableSegments.join('\n'),
+      originalSegments: translatableSegments
+    };
+  }
+  
+  // ✅ Helper: rebuild USFM
+  function reconstructUSFM(structure, csvData) {
+    const translations = csvData.map(row => row.Translation?.trim()).filter(Boolean);
+  
+    return structure.map((element) => {
+      if (element.type === 'translatable') {
+        const translation = translations[element.translationIndex];
+        if (translation) {
+          const originalIndent = element.originalLine.match(/^\s*/)[0];
+          return originalIndent + element.prefix + translation;
+        } else {
+          return element.originalLine;
+        }
+      } else {
+        return element.originalLine;
+      }
+    }).join('\n');
+  }
+  
+  //  Helper: non-USFM translation
+  function simpleTranslation(originalText, csvData) {
+    const translations = csvData.map(row => row.Translation?.trim()).filter(Boolean);
+    if (translations.length === 0) return originalText;
+  
+    const originalLines = originalText.split('\n');
+    if (translations.length === 1) {
+      return translations[0];
+    } else if (translations.length === originalLines.length) {
+      return translations.join('\n');
+    } else {
+      return translations.join('\n\n');
+    }
+  }
+  
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={2}>Quick Translation</Title>
-      <Text type="secondary">
-        Translate instantly by pasting text or uploading a file.
-      </Text>
+    <div style={{ padding: 24, marginBottom: 0 }}>
+  <Title level={2} style={{ marginBottom: 0 }}>
+    Quick Translation
+  </Title>
+  <Text type="secondary" style={{ display: "block", marginTop: 0 , marginBottom: 20}}>
+    Translate instantly by pasting text or uploading a file.
+  </Text>
 
       {/* Controls */}
-<Row
-  justify="space-between"
-  align="middle"
-  style={{ marginTop: 20, marginBottom: 20 }}
-  gutter={16}
->
-  <Col>
-    <Space>
-      <Text strong>Source</Text>
-      <LanguageSelect value={sourceLang} onChange={setSourceLang} disabled={loading} />
-      <Text strong>Target</Text>
-      <LanguageSelect value={targetLang} onChange={setTargetLang} disabled={loading} />
-    </Space>
-  </Col>
 
-  <Col>
-    <Space direction="vertical">
-      <Space>
-        <Upload
-          beforeUpload={handleFileUpload}
-          showUploadList={false}
-          accept=".txt,.usfm,.docx,.pdf"
-          disabled={loading} // ✅ disable upload
-        >
-          <Button icon={<UploadOutlined />} disabled={loading}>
-            Upload File
-          </Button>
-        </Upload>
-        <Button
-          type="primary"
-          icon={<TranslationOutlined />}
-          onClick={handleTranslate}
-          loading={loading} // ✅ spinner on button
-          disabled={loading} // ✅ disable during translation
-        >
-          Translate
-        </Button>
-      </Space>
-      {statusMsg && <Text type="secondary">{statusMsg}</Text>}
-    </Space>
-  </Col>
-</Row>
-
-{/* Editor Panels */}
 <Row gutter={24}>
+  {/* Language Settings Section */}
+  <Col span={24}>
+    <Card>
+      <Title level={4}>🌐 Language Settings</Title>
+      <Row gutter={16} align="middle" justify="center">
+        <Col xs={24} md={10}>
+          <LanguageSelect
+            value={sourceLang}
+            onChange={setSourceLang}
+            disabled={loading}
+            placeholder="Select source language"
+          />
+        </Col>
+        <Col xs={24} md={4} style={{ textAlign: "center" }}>
+          <Button
+            shape="circle"
+            icon={<SwapOutlined />}
+            onClick={() => {
+              const temp = sourceLang;
+              setSourceLang(targetLang);
+              setTargetLang(temp);
+            }}
+            disabled={loading}
+          />
+        </Col>
+        <Col xs={24} md={10}>
+          <LanguageSelect
+            value={targetLang}
+            onChange={setTargetLang}
+            disabled={loading}
+            placeholder="Select target language"
+          />
+        </Col>
+      </Row>
+    </Card>
+  </Col>
+
   {/* Source Panel */}
-  <Col xs={24} md={12}>
+  <Col xs={24} md={12} style={{ marginTop: 16}}>
     <Card
-      title="Source"
-      extra={
-        <Button
-          type="text"
-          icon={<CloseOutlined />}
-          style={{ color: "#ff7a00" }}
-          onClick={handleClearAll}
-          disabled={loading} // ✅ disable clear
-        />
-      }
-      actions={[
-        <Button
-          type="text"
-          key="paste"
-          onClick={() => handlePaste(setSourceText)}
-          disabled={loading} // ✅ disable paste
-        >
-          📥 Paste
-        </Button>,
-        <Button
-          type="text"
-          key="copy"
-          onClick={() => handleCopy(sourceText)}
-          disabled={loading} // ✅ disable copy
-        >
-          📋 Copy
-        </Button>,
-      ]}
+      title={<span>Source Text</span>}
+      extra={<span style={{ fontWeight: 500 }}>{sourceLang?.label}</span>}
     >
       <TextArea
-        rows={12}
+        rows={10}
         value={sourceText}
         onChange={handleSourceChange}
-        placeholder="Enter or paste text here..."
-        disabled={loading} // ✅ lock input
+        placeholder="Enter or upload text to translate..."
+        disabled={loading}
       />
+      <div style={{ marginTop: 12, textAlign: "left" }}>
+        <Space>
+          <Upload
+            beforeUpload={handleFileUpload}
+            showUploadList={false}
+            accept=".txt,.usfm,.docx,.pdf"
+            disabled={loading}
+          >
+            <Button icon={<UploadOutlined />} disabled={loading}>
+              Upload File
+            </Button>
+          </Upload>
+          <Button onClick={handleClearAll} icon={<CloseOutlined />} disabled={loading}>
+            Clear
+          </Button>
+        </Space>
+      </div>
     </Card>
   </Col>
 
   {/* Target Panel */}
-  <Col xs={24} md={12}>
+  <Col xs={24} md={12} style={{ marginTop: 16}}>
     <Card
-      title="Target"
-      actions={[
-        <Button
-          type="text"
-          key="copy"
-          onClick={() => handleCopy(targetText)}
-          disabled={loading} // ✅ disable copy
-        >
-          📋 Copy
-        </Button>,
-        <DownloadDraftButton content={targetText} disabled={loading} />, // ✅ disable download
-      ]}
+      title={<span>Translation</span>}
+      extra={<span style={{ fontWeight: 500 }}>{targetLang?.label}</span>}
     >
       <Spin spinning={loading} tip="Translating...">
         <TextArea
-          rows={12}
+          rows={10}
           value={targetText}
           onChange={handleTargetChange}
-          placeholder="Translated text will appear here..."
-          disabled={loading} // ✅ lock target input
+          placeholder="Translation will appear here..."
+          disabled={loading}
         />
       </Spin>
+      <div style={{ marginTop: 12, textAlign: "left" }}>
+        <Space>
+          <Button icon={<CopyOutlined />} onClick={() => handleCopy(targetText)} disabled={loading}>
+            Copy
+          </Button>
+          <Button  type="primary" icon={<DownloadOutlined />} onClick={() => DownloadDraftButton(targetText)} disabled={loading}>
+            Download
+          </Button>
+          <Button
+    icon={<SaveOutlined />}
+    onClick={() => {
+      message.success("✅ Translation saved successfully!");
+    }}
+  >
+    Save
+  </Button>
+        </Space>
+      </div>
     </Card>
+  </Col>
+
+  {/* Translate button centered */}
+  <Col span={24} style={{ textAlign: "center", marginTop: 24 }}>
+    <Button
+      type="primary"
+      size="large"
+      icon={<TranslationOutlined />}
+      onClick={handleTranslate}
+      loading={loading}
+      disabled={loading}
+      style={{ padding: "0 32px", borderRadius: "8px" }}
+    >
+      Translate
+    </Button>
+    {statusMsg && (
+      <div style={{ marginTop: 12 }}>
+        <Text type="secondary">{statusMsg}</Text>
+      </div>
+    )}
   </Col>
 </Row>
 

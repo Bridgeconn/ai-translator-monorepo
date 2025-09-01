@@ -7,13 +7,13 @@ import {
   Space,
   Button,
   Input,
-  message,
   Popconfirm,
   Modal,
   Form,
   Select,
   Tag,
   Divider,
+  App
 } from "antd";
 import {
   FileTextOutlined,
@@ -63,7 +63,7 @@ function UploadSummaryToast({ visible, uploaded = [], skipped = [], onClose }) {
       style={{
         position: "fixed",
         right: 20,
-        bottom: 20,
+        top: 20,
         zIndex: 9999,
         maxWidth: 420,
       }}
@@ -72,7 +72,7 @@ function UploadSummaryToast({ visible, uploaded = [], skipped = [], onClose }) {
         size="small"
         title={
           <Space>
-            <span role="img" aria-label="sparkles">✨</span>
+            <span role="img" aria-label="sparkles"></span>
             <span>Upload Summary</span>
           </Space>
         }
@@ -141,7 +141,7 @@ function SuccessToast({ visible, onClose, messageText }) {
       style={{
         position: "fixed",
         right: 20,
-        bottom: 100,
+        top: 100,
         zIndex: 9999,
         maxWidth: 300,
       }}
@@ -196,6 +196,8 @@ export default function SourcesListPage() {
   // Hidden input for QUICK upload (card icon)
   const hiddenQuickInputRef = useRef(null);
   const quickSourceIdRef = useRef(null);
+  const { message } = App.useApp();
+
 
   /* --------- Queries --------- */
   const { data: sources = [], isLoading } = useQuery({
@@ -263,7 +265,7 @@ export default function SourcesListPage() {
   const deleteMutation = useMutation({
     mutationFn: deleteSource,
     onSuccess: () => {
-      message.success("✅ Source deleted successfully!");
+      message.success("Source deleted successfully!");
       queryClient.invalidateQueries(["sources"]);
     },
     onError: () => message.error("Failed to delete source"),

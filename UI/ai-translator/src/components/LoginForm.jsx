@@ -25,7 +25,7 @@ export default function LoginForm() {
       try {
         const user = await authAPI.getCurrentUser();
         localStorage.setItem('user', JSON.stringify(user));
-        navigate('/dashboard');
+        navigate('/quick-translation');
       } catch (error) {
         console.error('Failed to get user details:', error);
         navigate('/dashboard');
