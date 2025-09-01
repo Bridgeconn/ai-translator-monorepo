@@ -23,8 +23,6 @@ import {
 } from "@ant-design/icons";
 import api, { translateChapter } from "./api";
 import { fetchDraft } from "./api"; 
-
- 
 import DownloadDraftButton from "../components/DownloadDraftButton";
  
 const { Title, Text } = Typography;
