@@ -13,7 +13,7 @@ import {
   Select,
   Tag,
   Divider,
-  App
+  App,
 } from "antd";
 import {
   FileTextOutlined,
@@ -53,7 +53,6 @@ const deleteSource = async (id) => {
 const updateSource = async ({ source_id, values }) =>
   api.put(`/sources/${source_id}`, values);
 
-
 /* ---------------- Floating Upload Summary ---------------- */
 function UploadSummaryToast({ visible, uploaded = [], skipped = [], onClose }) {
   if (!visible) return null;
@@ -86,8 +85,7 @@ function UploadSummaryToast({ visible, uploaded = [], skipped = [], onClose }) {
         }
         style={{
           borderRadius: 12,
-          boxShadow:
-            "0 8px 20px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.08)",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.08)",
         }}
       >
         {uploaded.length > 0 && (
@@ -173,8 +171,6 @@ function SuccessToast({ visible, onClose, messageText }) {
   );
 }
 
-
-
 /* ---------------- Main Page ---------------- */
 export default function SourcesListPage() {
   const queryClient = useQueryClient();
@@ -198,7 +194,6 @@ export default function SourcesListPage() {
   const quickSourceIdRef = useRef(null);
   const { message } = App.useApp();
 
-
   /* --------- Queries --------- */
   const { data: sources = [], isLoading } = useQuery({
     queryKey: ["sources"],
@@ -219,8 +214,6 @@ export default function SourcesListPage() {
   const [editSuccessOpen, setEditSuccessOpen] = useState(false);
   const [createSuccessOpen, setCreateSuccessOpen] = useState(false);
 
-
-
   /* --------- Mutations --------- */
   const createSourceMutation = useMutation({
     mutationFn: createSource,
@@ -228,13 +221,12 @@ export default function SourcesListPage() {
       queryClient.invalidateQueries(["sources"]);
       setIsModalOpen(false);
       form.resetFields();
-      setCreateSuccessOpen(true);   // ✅ show popup
+      setCreateSuccessOpen(true); // ✅ show popup
     },
     onError: () => {
       message.error(" Failed to create source");
     },
   });
-  
 
   const createVersionMutation = useMutation({
     mutationFn: createVersion,
@@ -256,7 +248,10 @@ export default function SourcesListPage() {
         }
       } else {
         versionForm.setFields([
-          { name: "version_name", errors: ["Unexpected error creating version"] },
+          {
+            name: "version_name",
+            errors: ["Unexpected error creating version"],
+          },
         ]);
       }
     },
@@ -276,9 +271,9 @@ export default function SourcesListPage() {
       queryClient.invalidateQueries(["sources"]);
       setIsEditModalOpen(false);
       editForm.resetFields();
-      setEditSuccessOpen(true);   // show popup
+      setEditSuccessOpen(true); // show popup
     },
-  
+
     onError: () => message.error(" Failed to update source"),
   });
 
@@ -388,16 +383,16 @@ export default function SourcesListPage() {
         onClose={() => setSummaryOpen(false)}
       />
       <SuccessToast
-  visible={editSuccessOpen}
-  onClose={() => setEditSuccessOpen(false)}
-  messageText="Source updated successfully."
-/>
+        visible={editSuccessOpen}
+        onClose={() => setEditSuccessOpen(false)}
+        messageText="Source updated successfully."
+      />
 
-<SuccessToast
-  visible={createSuccessOpen}
-  onClose={() => setCreateSuccessOpen(false)}
-  messageText="Source created successfully."
-/>
+      <SuccessToast
+        visible={createSuccessOpen}
+        onClose={() => setCreateSuccessOpen(false)}
+        messageText="Source created successfully."
+      />
 
       <Title level={2}>Translation Sources</Title>
       <Text type="secondary">Manage your source content and versions</Text>
@@ -413,7 +408,13 @@ export default function SourcesListPage() {
       />
 
       {/* Top Bar */}
-      <div style={{ margin: "20px 0", display: "flex", justifyContent: "space-between" }}>
+      <div
+        style={{
+          margin: "20px 0",
+          display: "flex",
+          justifyContent: "space-between",
+        }}
+      >
         <Search
           placeholder="Search sources..."
           style={{ width: 400 }}
@@ -428,101 +429,112 @@ export default function SourcesListPage() {
 
       {/* Cards */}
       <Row gutter={[24, 24]}>
-  {filteredSources.map((source) => (
-    <Col xs={24} md={12} lg={8} key={source.source_id}>
-      <Card hoverable
-        loading={isLoading}
-        style={{ borderRadius: 8 }}
-        onClick={() => {
-          setActiveSource(source);
-          setIsBookModalOpen(true);
-        }}
-      >
-        <Space align="start" size="middle" style={{ width: "100%" }}>
-          <div
-            style={{
-              backgroundColor: "#f0f5ff",
-              borderRadius: 8,
-              width: 40,
-              height: 40,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <FileTextOutlined style={{ fontSize: 20, color: "#1890ff" }} />
-          </div>
+        {filteredSources.map((source) => (
+          <Col xs={24} md={12} lg={8} key={source.source_id}>
+            <Card
+              hoverable
+              loading={isLoading}
+              style={{ borderRadius: 8 }}
+              onClick={() => {
+                setActiveSource(source);
+                setIsBookModalOpen(true);
+              }}
+            >
+              <Space align="start" size="middle" style={{ width: "100%" }}>
+                <div
+                  style={{
+                    backgroundColor: "#f0f5ff",
+                    borderRadius: 8,
+                    width: 40,
+                    height: 40,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <FileTextOutlined
+                    style={{ fontSize: 20, color: "#1890ff" }}
+                  />
+                </div>
 
-          <div style={{ flex: 1 }}>
-            <Text strong style={{ fontSize: 16 }}>
-              {source.language_name}
-            </Text>
-            <div style={{ marginTop: 4 }}>
-              <Text type="secondary" style={{ fontSize: 13 }}>
-                {source.version_name}
-              </Text>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", marginTop: 6 }}>
-              <CalendarOutlined style={{ marginRight: 6, color: "#999" }} />
-              <Text type="secondary">
-                Created on {new Date(source.created_at).toLocaleDateString()}
-              </Text>
-            </div>
-          </div>
-        </Space>
+                <div style={{ flex: 1 }}>
+                  <Text strong style={{ fontSize: 16 }}>
+                    {source.language_name}
+                  </Text>
+                  <div style={{ marginTop: 4 }}>
+                    <Text type="secondary" style={{ fontSize: 13 }}>
+                      {source.version_name}
+                    </Text>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      marginTop: 6,
+                    }}
+                  >
+                    <CalendarOutlined
+                      style={{ marginRight: 6, color: "#999" }}
+                    />
+                    <Text type="secondary">
+                      Created on{" "}
+                      {new Date(source.created_at).toLocaleDateString()}
+                    </Text>
+                  </div>
+                </div>
+              </Space>
 
-        {/* Action icons aligned at bottom-right */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            marginTop: 12,
-            gap: 16,
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <UploadOutlined
-            style={{ fontSize: 18, color: "#1890ff", cursor: "pointer" }}
-            title="Quick Upload"
-            onClick={() => openQuickPickerForSource(source)}
-          />
-         <EditOutlined
-  style={{ fontSize: 18, color: "#555", cursor: "pointer" }}
-  title="Edit Source"
-  onClick={() => {
-    setEditSource(source);
-    editForm.setFieldsValue({
-      version_name: source.version_name,
-      version_abbreviation: source.version_abbreviation,
-      language_id: source.language_id,
-      description: source.description,
-    });
-    setIsEditModalOpen(true);
-  }}
-/>
+              {/* Action icons aligned at bottom-right */}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  marginTop: 12,
+                  gap: 16,
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <UploadOutlined
+                  style={{ fontSize: 18, color: "#1890ff", cursor: "pointer" }}
+                  title="Quick Upload"
+                  onClick={() => openQuickPickerForSource(source)}
+                />
+                <EditOutlined
+                  style={{ fontSize: 18, color: "#555", cursor: "pointer" }}
+                  title="Edit Source"
+                  onClick={() => {
+                    setEditSource(source);
+                    editForm.setFieldsValue({
+                      version_name: source.version_name,
+                      version_abbreviation: source.version_abbreviation,
+                      language_id: source.language_id,
+                      description: source.description,
+                    });
+                    setIsEditModalOpen(true);
+                  }}
+                />
 
-          <Popconfirm
-            title="Delete this source?"
-            okText="Yes"
-            cancelText="No"
-            onConfirm={() => deleteMutation.mutate(source.source_id)}
-          >
-            <DeleteOutlined
-              style={{ fontSize: 18, color: "red", cursor: "pointer" }}
-              title="Delete Source"
-            />
-          </Popconfirm>
-        </div>
-      </Card>
-    </Col>
-  ))}
-  {!isLoading && filteredSources.length === 0 && (
-    <Col span={24} style={{ textAlign: "center", marginTop: 40 }}>
-      <Text type="secondary">No sources found matching your search.</Text>
-    </Col>
-  )}
-</Row>
-
+                <Popconfirm
+                  title="Delete this source?"
+                  okText="Yes"
+                  cancelText="No"
+                  onConfirm={() => deleteMutation.mutate(source.source_id)}
+                >
+                  <DeleteOutlined
+                    style={{ fontSize: 18, color: "red", cursor: "pointer" }}
+                    title="Delete Source"
+                  />
+                </Popconfirm>
+              </div>
+            </Card>
+          </Col>
+        ))}
+        {!isLoading && filteredSources.length === 0 && (
+          <Col span={24} style={{ textAlign: "center", marginTop: 40 }}>
+            <Text type="secondary">No sources found matching your search.</Text>
+          </Col>
+        )}
+      </Row>
 
       {/* Create Source Modal */}
       <Modal
@@ -541,7 +553,11 @@ export default function SourcesListPage() {
             name="language_id"
             rules={[{ required: true, message: "Please select a language" }]}
           >
-            <Select placeholder="Select a language" showSearch optionFilterProp="children">
+            <Select
+              placeholder="Select a language"
+              showSearch
+              optionFilterProp="children"
+            >
               {languages.map((lang) => (
                 <Option key={lang.language_id} value={lang.language_id}>
                   {lang.name}
@@ -563,7 +579,11 @@ export default function SourcesListPage() {
             name="version_id"
             rules={[{ required: true, message: "Please select a version" }]}
           >
-            <Select placeholder="Select a version" showSearch optionFilterProp="children">
+            <Select
+              placeholder="Select a version"
+              showSearch
+              optionFilterProp="children"
+            >
               {versions.map((ver) => (
                 <Option key={ver.version_id} value={ver.version_id}>
                   {ver.version_name}
@@ -594,7 +614,11 @@ export default function SourcesListPage() {
         onCancel={() => setIsVersionModalOpen(false)}
         footer={null}
       >
-        <Form form={versionForm} layout="vertical" onFinish={createVersionMutation.mutate}>
+        <Form
+          form={versionForm}
+          layout="vertical"
+          onFinish={createVersionMutation.mutate}
+        >
           <Form.Item
             label="Version Name"
             name="version_name"
@@ -620,60 +644,61 @@ export default function SourcesListPage() {
         </Form>
       </Modal>
       {/* Edit Source Modal */}
-      {/* Edit Source Modal */}
-{/* Edit Source Modal */}
-<Modal
-  title="Edit Source"
-  open={isEditModalOpen}
-  onCancel={() => setIsEditModalOpen(false)}
-  footer={null}
->
-  <Form
-    form={editForm}
-    layout="vertical"
-    onFinish={(values) =>
-      updateSourceMutation.mutate({ source_id: editSource.source_id, values })
-    }
-  >
-    <Form.Item label="Language" name="language_id">
-      <Select
-        placeholder="Select a language"
-        showSearch
-        optionFilterProp="children"
-        allowClear
+      <Modal
+        title="Edit Source"
+        open={isEditModalOpen}
+        onCancel={() => setIsEditModalOpen(false)}
+        footer={null}
       >
-        {languages.map((lang) => (
-          <Option key={lang.language_id} value={lang.language_id}>
-            {lang.name}
-          </Option>
-        ))}
-      </Select>
-    </Form.Item>
+        <Form
+          form={editForm}
+          layout="vertical"
+          onFinish={(values) =>
+            updateSourceMutation.mutate({
+              source_id: editSource.source_id,
+              values,
+            })
+          }
+        >
+          <Form.Item label="Language" name="language_id">
+            <Select
+              placeholder="Select a language"
+              showSearch
+              optionFilterProp="children"
+              allowClear
+            >
+              {languages.map((lang) => (
+                <Option key={lang.language_id} value={lang.language_id}>
+                  {lang.name}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
 
-    {/* Removed Version Select field */}
+          {/* Removed Version Select field */}
 
-    <Form.Item label="Version Name" name="version_name">
-      <Input placeholder="(leave blank if unchanged)" />
-    </Form.Item>
+          <Form.Item label="Version Name" name="version_name">
+            <Input placeholder="(leave blank if unchanged)" />
+          </Form.Item>
 
-    <Form.Item label="Abbreviation" name="version_abbreviation">
-      <Input placeholder="(leave blank if unchanged)" />
-    </Form.Item>
+          <Form.Item label="Abbreviation" name="version_abbreviation">
+            <Input placeholder="(leave blank if unchanged)" />
+          </Form.Item>
 
-    <Form.Item label="Description" name="description">
-      <Input.TextArea rows={3} placeholder="(leave blank if unchanged)" />
-    </Form.Item>
+          <Form.Item label="Description" name="description">
+            <Input.TextArea rows={3} placeholder="(leave blank if unchanged)" />
+          </Form.Item>
 
-    <Button
-      type="primary"
-      htmlType="submit"
-      loading={updateSourceMutation.isLoading}
-      block
-    >
-      Update Source
-    </Button>
-  </Form>
-</Modal>
+          <Button
+            type="primary"
+            htmlType="submit"
+            loading={updateSourceMutation.isLoading}
+            block
+          >
+            Update Source
+          </Button>
+        </Form>
+      </Modal>
 
       {/* Book Modal */}
       <Modal
@@ -699,6 +724,7 @@ export default function SourcesListPage() {
 function BookGrid({ sourceId, uploadBooksForSource, showUploadSummary }) {
   const queryClient = useQueryClient();
   const hiddenInputRef = useRef(null);
+  const { message } = App.useApp();
 
   const { data: books = [] } = useQuery({
     queryKey: ["books", sourceId],
@@ -719,7 +745,7 @@ function BookGrid({ sourceId, uploadBooksForSource, showUploadSummary }) {
   const handleDeleteBook = async (book) => {
     try {
       await api.delete(`/books/${book.book_id}`);
-      message.success(`🗑️ Deleted ${book.book_code}`);
+      message.success(`book with book code ${book.book_code} deleted successfully`);
       queryClient.invalidateQueries(["books", sourceId]);
     } catch {
       message.error("❌ Failed to delete book");
@@ -738,21 +764,86 @@ function BookGrid({ sourceId, uploadBooksForSource, showUploadSummary }) {
   };
 
   const OT = [
-    "GEN","EXO","LEV","NUM","DEU","JOS","JDG","RUT","1SA","2SA","1KI","2KI",
-    "1CH","2CH","EZR","NEH","EST","JOB","PSA","PRO","ECC","SNG","ISA","JER",
-    "LAM","EZK","DAN","HOS","JOL","AMO","OBA","JON","MIC","NAM","HAB","ZEP",
-    "HAG","ZEC","MAL"
+    "GEN",
+    "EXO",
+    "LEV",
+    "NUM",
+    "DEU",
+    "JOS",
+    "JDG",
+    "RUT",
+    "1SA",
+    "2SA",
+    "1KI",
+    "2KI",
+    "1CH",
+    "2CH",
+    "EZR",
+    "NEH",
+    "EST",
+    "JOB",
+    "PSA",
+    "PRO",
+    "ECC",
+    "SNG",
+    "ISA",
+    "JER",
+    "LAM",
+    "EZK",
+    "DAN",
+    "HOS",
+    "JOL",
+    "AMO",
+    "OBA",
+    "JON",
+    "MIC",
+    "NAM",
+    "HAB",
+    "ZEP",
+    "HAG",
+    "ZEC",
+    "MAL",
   ];
   const NT = [
-    "MAT","MRK","LUK","JHN","ACT","ROM","1CO","2CO","GAL","EPH","PHP","COL",
-    "1TH","2TH","1TI","2TI","TIT","PHM","HEB","JAS","1PE","2PE","1JN","2JN",
-    "3JN","JUD","REV"
+    "MAT",
+    "MRK",
+    "LUK",
+    "JHN",
+    "ACT",
+    "ROM",
+    "1CO",
+    "2CO",
+    "GAL",
+    "EPH",
+    "PHP",
+    "COL",
+    "1TH",
+    "2TH",
+    "1TI",
+    "2TI",
+    "TIT",
+    "PHM",
+    "HEB",
+    "JAS",
+    "1PE",
+    "2PE",
+    "1JN",
+    "2JN",
+    "3JN",
+    "JUD",
+    "REV",
   ];
 
   const renderGroup = (label, list) => (
     <>
       <Title level={4}>{label}</Title>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(11,1fr)", gap: 6 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(11,1fr)",
+          gap: 6,
+        }}
+      >
         {list.map((code) => {
           const uploaded = uploadedMap.has(code);
           const book = uploadedMap.get(code);

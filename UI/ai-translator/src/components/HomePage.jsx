@@ -113,35 +113,49 @@ export default function HomePage() {
         <Space size="middle" style={{ marginBottom: "80px" }}>
           {/*Get Started box goes to /login */}
           <div
-            onClick={() => navigate("/login")}
-            style={{
-              backgroundColor: "white",
-              borderRadius: "8px",
-              padding: "12px 24px",
-              display: "flex",
-              alignItems: "center",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-              cursor: "pointer",
-            }}
-          >
-            <Text
-              style={{
-                color: "#4285f4",
-                fontSize: "16px",
-                fontWeight: "600",
-                margin: 0,
-              }}
-            >
-              Get Started
-            </Text>
-            <ArrowRightOutlined
-              style={{
-                color: "#4285f4",
-                marginLeft: "8px",
-                fontSize: "14px",
-              }}
-            />
-          </div>
+  onClick={() => navigate("/login")}
+  style={{
+    backgroundColor: "white",
+    borderRadius: "12px",
+    padding: "12px 28px",
+    display: "flex",
+    alignItems: "center",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+    cursor: "pointer",
+    transition: "all 0.3s ease",
+  }}
+  onMouseEnter={(e) => {
+    e.currentTarget.style.transform = "translateY(-3px)";
+    e.currentTarget.style.boxShadow = "0 6px 18px rgba(0,0,0,0.2)";
+  }}
+  onMouseLeave={(e) => {
+    e.currentTarget.style.transform = "translateY(0)";
+    e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
+  }}
+>
+  <Text
+    style={{
+      color: "#4285f4",
+      fontSize: "16px",
+      fontWeight: 600,
+      margin: 0,
+      transition: "color 0.3s ease",
+    }}
+  >
+    Get Started
+  </Text>
+  <ArrowRightOutlined
+    style={{
+      color: "#4285f4",
+      marginLeft: "10px",
+      fontSize: "16px",
+      transition: "transform 0.3s ease",
+    }}
+    onMouseEnter={(e) => (e.currentTarget.style.transform = "translateX(4px)")}
+    onMouseLeave={(e) => (e.currentTarget.style.transform = "translateX(0)")}
+  />
+</div>
+
 
           {/*Renamed Sign In → Try Quick Translation, goes to /quick-translation */}
           <Button
@@ -172,45 +186,62 @@ export default function HomePage() {
 
         {/* Features */}
         <Row gutter={[32, 32]} style={{ maxWidth: "1000px" }}>
-          {features.map((feature, index) => (
-            <Col xs={24} md={8} key={index}>
-              <Card
-                hoverable
-                style={{
-                  height: "240px",
-                  borderRadius: "16px",
-                  border: "none",
-                  backgroundColor: "rgba(255, 255, 255, 0.95)",
-                  boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
-                  transition: "all 0.3s ease",
-                }}
-                styles={{
-                  body: {
-                    height: "100%",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    textAlign: "center",
-                    padding: "32px 24px",
-                  },
-                }}
-              >
-                <Space direction="vertical" align="center" size="middle">
-                  <div style={{ fontSize: "48px", color: "#722ed1" }}>
-                    {feature.icon}
-                  </div>
-                  <Title level={4} style={{ margin: 0, color: "#1f2937" }}>
-                    {feature.title}
-                  </Title>
-                  <Paragraph style={{ margin: 0, color: "#6b7280" }}>
-                    {feature.description}
-                  </Paragraph>
-                </Space>
-              </Card>
-            </Col>
-          ))}
-        </Row>
+  {features.map((feature, index) => (
+    <Col xs={24} md={8} key={index}>
+      <Card
+        hoverable
+        style={{
+          height: "260px",
+          borderRadius: "20px",
+          border: "none",
+          background: "rgba(255, 255, 255, 0.15)",
+          backdropFilter: "blur(12px)",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+          transition: "all 0.4s ease",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+          padding: "32px 24px",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = "translateY(-8px)";
+          e.currentTarget.style.boxShadow = "0 16px 40px rgba(0,0,0,0.25)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = "translateY(0)";
+          e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.15)";
+        }}
+      >
+        <div
+          style={{
+            width: "80px",
+            height: "80px",
+            borderRadius: "50%",
+            background: "linear-gradient(135deg, #722ed1, #9b5de5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto 16px auto",
+            color: "white",
+            fontSize: "36px",
+            transition: "all 0.3s ease",
+          }}
+        >
+          {feature.icon}
+        </div>
+        <Title level={4} style={{ margin: 0, color: "white" }}>
+          {feature.title}
+        </Title>
+        <Paragraph style={{ margin: 0, color: "rgba(255,255,255,0.85)" }}>
+          {feature.description}
+        </Paragraph>
+      </Card>
+    </Col>
+  ))}
+</Row>
+
       </Flex>
     </div>
   );
