@@ -5,7 +5,7 @@ import {
   Card,
   Input,
   Typography,
-  message,
+  App,
   Space,
   Spin,
   Tabs,
@@ -49,7 +49,9 @@ const [loadingTranslate, setLoadingTranslate] = useState(false); // translation 
 
 const [serverDraft, setServerDraft] = useState("");
 const [loadingDraft, setLoadingDraft] = useState(false);
+const [translationAttempted, setTranslationAttempted] = useState(false); // Updated for clarity
 
+const { message } = App.useApp();   //get message instance
 
   // ---------- Project / Books / Chapters ----------
   const fetchProjectDetails = async () => {
@@ -267,7 +269,7 @@ const [loadingDraft, setLoadingDraft] = useState(false);
     if (selectedBook === "all") {
       message.info("Please select a specific book to translate.");
       return;
-    }
+    } setTranslationAttempted(true); // Mark that a translation was attempted
     try {
       setLoadingTranslate(true);
       let skip = 0;
@@ -295,9 +297,38 @@ const [loadingDraft, setLoadingDraft] = useState(false);
       }
  
       message.success("All verses translated!");
-    } catch {
-      message.error("Failed to translate all verses");
-    } finally {
+    } catch (err) {
+      console.error("Translation error:", err);
+    
+      let backendMsg = "";
+    
+      if (err.response) {
+        if (typeof err.response.data === "string") {
+          // HTML or plain text error body
+          backendMsg = err.response.data;
+        } else if (typeof err.response.data === "object") {
+          // JSON error body
+          backendMsg =
+            err.response.data.detail ||
+            err.response.data.message ||
+            JSON.stringify(err.response.data);
+        }
+    
+        // Add status info
+        backendMsg =
+          backendMsg ||
+          err.response.statusText ||
+          `HTTP ${err.response.status}`;
+      } else {
+        // No response from server
+        backendMsg = err.message || "Network error";
+      }
+    
+      message.error(`Error: ${backendMsg}`);
+    }
+    
+    
+     finally {
       setLoadingTranslate(false);
     }
   };
@@ -307,7 +338,7 @@ const [loadingDraft, setLoadingDraft] = useState(false);
     if (selectedBook === "all" || !selectedChapter) {
       message.info("Please select a specific book and chapter to translate.");
       return;
-    }
+    } setTranslationAttempted(true); // Mark that a translation was attempted
   
     try {
       setLoadingTranslate(true);
@@ -326,9 +357,37 @@ const [loadingDraft, setLoadingDraft] = useState(false);
       message.success("Chapter translated successfully!");
       await updateServerDraft();
     } catch (err) {
-      console.error(err);
-      message.error("Failed to translate this chapter");
-    } finally {
+      console.error("Translation error:", err);
+    
+      let backendMsg = "";
+    
+      if (err.response) {
+        if (typeof err.response.data === "string") {
+          // HTML or plain text error body
+          backendMsg = err.response.data;
+        } else if (typeof err.response.data === "object") {
+          // JSON error body
+          backendMsg =
+            err.response.data.detail ||
+            err.response.data.message ||
+            JSON.stringify(err.response.data);
+        }
+    
+        // Add status info
+        backendMsg =
+          backendMsg ||
+          err.response.statusText ||
+          `HTTP ${err.response.status}`;
+      } else {
+        // No response from server
+        backendMsg = err.message || "Network error";
+      }
+    
+      message.error(`Error: ${backendMsg}`);
+    }
+    
+    
+     finally {
       setLoadingTranslate(false);
     }
   };
@@ -356,7 +415,8 @@ const [loadingDraft, setLoadingDraft] = useState(false);
       updateServerDraft();
     } else {
       setServerDraft("");
-    }
+    } setTranslationAttempted(false);
+
   }, [selectedBook, selectedChapter]);
     
   
@@ -377,14 +437,25 @@ const [loadingDraft, setLoadingDraft] = useState(false);
     ? tokens.filter((t) => t.verse_translated_text)
     : tokens;
  
-  const copyDraft = async () => {
-    try {
-      await navigator.clipboard.writeText(draftContent);
-      message.success("Draft copied to clipboard");
-    } catch {
-      message.error("Failed to copy draft");
-    }
-  };
+    const copyDraft = async () => {
+      try {
+        const contentToCopy = serverDraft?.trim() || draftContent?.trim();
+    
+        if (!contentToCopy) {
+          message.warning("No draft content to copy");
+          console.log(" No draft content to copy");
+          return;
+        }
+    
+        await navigator.clipboard.writeText(contentToCopy);
+        message.success("Draft copied to clipboard ");
+        console.log(" Draft copied:", contentToCopy.slice(0, 100)); // log first 100 chars
+      } catch (err) {
+        console.error(" Clipboard copy failed:", err);
+        message.error("Failed to copy draft: " + (err.message || err));
+      }
+    };    
+
  
   // ---------- Effects ----------
   useEffect(() => {
@@ -427,7 +498,7 @@ const [loadingDraft, setLoadingDraft] = useState(false);
  
   // ---------- UI ----------
   return (
-    <div style={{ padding: 20 }}>
+    <div style={{ paddingTop: 20, paddingRight: 20, paddingBottom: 20, paddingLeft: 20 }}>
       <Breadcrumb style={{ marginBottom: 16 }}>
         <Breadcrumb.Item>
           <Link to="/projects">Projects</Link>
@@ -542,9 +613,10 @@ const [loadingDraft, setLoadingDraft] = useState(false);
               key={t.verse_token_id}
               style={{
                 borderBottom: "1px solid #f0f0f0",
-                padding: "8px 0",
+                paddingTop: 8,
+                paddingBottom: 8,
                 display: "flex",
-                gap: "8px",
+                gap: 8,
               }}
             >
               <Text strong style={{ minWidth: 30, textAlign: "right" }}>
@@ -586,25 +658,35 @@ const [loadingDraft, setLoadingDraft] = useState(false);
         tokens.map((t, index) => (
           <div
             key={t.verse_token_id}
-            style={{ borderBottom: "1px solid #f0f0f0", padding: "8px 0" }}
+            style={{ borderBottom: "1px solid #f0f0f0", paddingTop: 8, paddingBottom: 8 }}
           >
             <Text strong style={{ display: "block", marginBottom: 4 }}>
               Verse {index + 1}
             </Text>
-            <Input.TextArea
-              rows={3}
-              value={t.verse_translated_text}
-              placeholder="[No translation yet]"
-              onChange={(e) =>
-                setTokens((prev) =>
-                  prev.map((tok) =>
-                    tok.verse_token_id === t.verse_token_id
-                      ? { ...tok, verse_translated_text: e.target.value }
-                      : tok
-                  )
-                )
-              }
-            />
+            <>
+  <Input.TextArea
+    rows={3}
+    value={t.verse_translated_text}
+    placeholder="[No translation yet]"
+    onChange={(e) =>
+      setTokens((prev) =>
+        prev.map((tok) =>
+          tok.verse_token_id === t.verse_token_id
+            ? { ...tok, verse_translated_text: e.target.value }
+            : tok
+        )
+      )
+    }
+  />
+
+  {/* Error message in red */}
+  {translationAttempted && !t.verse_translated_text && (
+    <Typography.Text type="danger" style={{ fontSize: "14px" }}>
+      Translation failed
+    </Typography.Text>
+  )}
+</>
+
             <Space style={{ marginTop: 6 }}>
               <Button
                 size="small"
@@ -627,72 +709,109 @@ const [loadingDraft, setLoadingDraft] = useState(false);
  
         </TabPane>
  
-        {/* Draft */}
         <TabPane tab="Draft View" key="draft">
-  <Card
-    title={
-      <Row justify="space-between" align="middle">
-        <Space>
-          <span>Translation Draft</span>
-        </Space>
-        <Space>
-          <DownloadDraftButton content={serverDraft || draftContent} />
-          <Button
-            type="primary"
-            icon={<CopyOutlined />}
-            onClick={copyDraft}
+  <Row gutter={16}>
+    {/* --- New Source Draft Card --- */}
+    {selectedBook !== "all" && (
+      <Col span={12}>
+        <Card
+          title="Source Draft"
+          style={{ maxHeight: "70vh", overflowY: "scroll" }}
+        >
+          {rawBookContent ? (
+            <pre style={{ whiteSpace: "pre-wrap" }}>{rawBookContent}</pre>
+          ) : (
+            <p>No USFM content available for this book.</p>
+          )}
+        </Card>
+      </Col>
+    )}
+
+    {/* --- Existing Translation Draft Card --- */}
+    <Col span={12}>
+    <Card
+  title="Translation Draft"
+  extra={
+    <Space>
+      {/* Download → icon only */}
+      <DownloadDraftButton content={serverDraft || draftContent} />
+
+      {/* Copy → icon only */}
+      <CopyOutlined
+        style={{
+          fontSize: 20,
+          color: "#1677ff", // AntD primary blue, you can change
+          cursor:
+            !(serverDraft?.trim() ||
+              tokens.some((t) => t.verse_translated_text?.trim()))
+              ? "not-allowed"
+              : "pointer",
+        }}
+        onClick={() => {
+          if (
+            serverDraft?.trim() ||
+            tokens.some((t) => t.verse_translated_text?.trim())
+          ) {
+            copyDraft();
+          }
+        }}
+      />
+    </Space>
+  }
+  style={{ maxHeight: "70vh", overflowY: "scroll" }}
+>
+        <Row gutter={16}>
+          {loadingDraft ? (
+            <Col
+            span={24}
+            style={{
+              textAlign: "center",
+              paddingTop: 20,
+              paddingRight: 20,
+              paddingBottom: 20,
+              paddingLeft: 20,
+            }}
           >
-            Copy
-          </Button>
-        </Space>
-      </Row>
-    }
-    style={{ marginTop: 16 }}
-  >
-    <Row gutter={16}>
-      {loadingDraft ? (
-        <Col span={24} style={{ textAlign: "center", padding: 20 }}>
-          <Spin size="large" />
-        </Col>
-      ) : serverDraft ? (
-        <Col span={24}>
-          <Card
-            title="Server Draft (USFM)"
-            style={{ maxHeight: "70vh", overflowY: "scroll" }}
-          >
-            <pre style={{ whiteSpace: "pre-wrap" }}>{serverDraft}</pre>
-          </Card>
-        </Col>
-      ) : (
-        <>
-          {/* fallback if server draft empty */}
-          <Col span={12}>
-            <Card
-              title="Source"
-              style={{ maxHeight: "70vh", overflowY: "scroll" }}
-            >
-              {filteredTokens.map((t) => (
-                <p key={t.verse_token_id}>{t.token_text}</p>
-              ))}
-            </Card>
-          </Col>
-          <Col span={12}>
-            <Card
-              title={targetLanguage}
-              style={{ maxHeight: "70vh", overflowY: "scroll" }}
-            >
-              {filteredTokens.map((t) => (
-                <p key={t.verse_token_id}>
-                  {t.verse_translated_text || ""}
-                </p>
-              ))}
-            </Card>
-          </Col>
-        </>
-      )}
-    </Row>
-  </Card>
+              <Spin size="large" />
+            </Col>
+          ) : serverDraft ? (
+            <Col span={24}>
+                <pre style={{ whiteSpace: "pre-wrap" }}>{serverDraft}</pre>
+              {/* </Card> */}
+            </Col>
+          ) : (
+            <>
+              {/* fallback if server draft empty */}
+              <Col span={12}>
+                <Card
+                  title="Source"
+                  style={{ maxHeight: "70vh", overflowY: "scroll" }}
+                >
+                  {filteredTokens.map((t) => (
+                    <p key={t.verse_token_id}>{t.token_text}</p>
+                  ))}
+                </Card>
+              </Col>
+              <Col span={12}>
+                <Card
+                  title={targetLanguage}
+                  style={{ maxHeight: "70vh", overflowY: "scroll" }}
+                >
+                  {filteredTokens.map((t) => (
+                    <p key={t.verse_token_id}>
+                      {t.verse_translated_text || ""}
+                    </p>
+                  ))}
+                </Card>
+              </Col>
+            </>
+          )}
+        </Row>
+      </Card>
+    </Col>
+  </Row>
 </TabPane>
+
 
 
       </Tabs>
