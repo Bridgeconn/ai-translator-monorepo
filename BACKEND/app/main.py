@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.routes import users as user_routes, languages,sources as source_routes,\
  versions as version_routes, auth,books as book_routes , project as project_routes,\
- word_token_translation, word_tokens,verse_tokens,chapter_tokens,translation_draft
+ word_token_translation, word_tokens,verse_tokens,chapter_tokens,translation_draft,project_text_document
 from app.database import get_db, init_db_schema, Base, engine
 from contextlib import asynccontextmanager
 import logging
@@ -87,3 +87,4 @@ app.include_router(word_token_translation.router, prefix="/api", tags=["Word Tok
 app.include_router(verse_tokens.router, prefix="/verse_tokens", tags=["Verse Tokens"])
 app.include_router(chapter_tokens.router)
 app.include_router(translation_draft.router, prefix="/drafts", tags=["Drafts"])
+app.include_router(project_text_document.router, prefix="/api/project-text-documents",tags=["Text Document Projects"])

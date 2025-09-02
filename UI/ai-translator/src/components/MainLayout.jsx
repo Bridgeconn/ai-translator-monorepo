@@ -11,6 +11,7 @@ import {
   Menu,
   Modal,
   Input,
+  App,
 } from "antd";
 import {
   UserOutlined,
@@ -33,7 +34,29 @@ export default function MainLayout() {
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const { message } = App.useApp();
+// inside MainLayout.jsx
+const token = localStorage.getItem("token");
+const protectedPaths = ["/dashboard", "/projects", "/sources"];
 
+const onMenuClick = ({ key }) => {
+  if (!token && protectedPaths.includes(key)) {
+    navigate("/login");
+    return;
+  }
+  navigate(key);
+};
+<Menu
+  theme="dark"
+  mode="inline"
+  onClick={onMenuClick}   // 👈 attach the handler
+  items={[
+    { key: "/dashboard", label: "Dashboard" },
+    { key: "/projects", label: "Projects" },
+    { key: "/sources", label: "Sources" },
+    { key: "/quick-translation", label: "Quick Translation" }
+  ]}
+/>
   const handleLogout = async () => {
     try {
       await authAPI.logout();
@@ -69,7 +92,7 @@ export default function MainLayout() {
       message.success("Password updated successfully");
       localStorage.removeItem("token");
       localStorage.removeItem("user");
-      navigate("/login");
+      //navigate("/login");
     } catch (error) {
       console.error(error);
       message.error("Failed to update password");
@@ -79,8 +102,8 @@ export default function MainLayout() {
       setNewPassword("");
     }
   };
-
-  const userMenuItems = [
+const userMenuItems = token
+? [
     {
       key: "resetPassword",
       label: "Reset Password",
@@ -93,18 +116,36 @@ export default function MainLayout() {
       icon: <LogoutOutlined />,
       onClick: handleLogout,
     },
+  ]
+: [
+    {
+      key: "login",
+      label: "Login",
+      icon: <UserOutlined />,
+      onClick: () => navigate("/login"),
+    },
+    {
+      key: "home",
+      label: "Back to Home",
+      icon: <HomeOutlined />,
+      onClick: () => navigate("/"),
+    },
   ];
-
-  const navigationItems = [
-    { key: "/dashboard", icon: <HomeOutlined />, label: "Dashboard" },
-    { key: "/sources", icon: <FileTextOutlined />, label: "Sources" },
-    { key: "/projects", icon: <FolderOutlined />, label: "Projects" },
-    { key: "/quick-translation", icon: <ThunderboltOutlined />, label: "Quick Translation" },
-  ];
-
-  const handleMenuClick = ({ key }) => {
-    navigate(key);
-  };
+    const navigationItems = [
+      { key: "/dashboard", icon: <HomeOutlined />, label: "Dashboard" },
+      { key: "/sources", icon: <FileTextOutlined />, label: "Sources" },
+      { key: "/projects", icon: <FolderOutlined />, label: "Projects" },
+      { key: "/quick-translation", icon: <ThunderboltOutlined />, label: "Quick Translation" },
+    ];
+    
+  
+    const handleMenuClick = ({ key }) => {
+      if (!token && protectedPaths.includes(key)) {
+        navigate("/login"); // 🚀 force login before opening
+        return;
+      }
+      navigate(key);
+    };
 
   const selectedKey = location.pathname;
 

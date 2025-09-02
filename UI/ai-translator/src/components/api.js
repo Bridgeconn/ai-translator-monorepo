@@ -104,6 +104,21 @@ export const projectsAPI = {
   deleteProject: async (projectId) =>
     (await api.delete(`/projects/${projectId}`)).data.data,
 };
+// inside api.js
+export const textDocumentAPI = {
+  getAllProjects: async () => (await api.get("/api/project-text-documents/")).data.data,
+
+  getProjectById: async (projectId) => {
+    const res = await api.get(`/api/project-text-documents/${projectId}`);
+    return res.data;
+  },
+  
+  deleteProject: async (projectId) => {
+    const res = await api.delete(`/api/project-text-documents/${projectId}`); 
+    return res.data;
+  },
+};
+
 
 // ------------------ Sources API ------------------
 export const sourcesAPI = {

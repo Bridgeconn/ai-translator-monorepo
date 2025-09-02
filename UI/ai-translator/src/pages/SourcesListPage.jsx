@@ -239,7 +239,7 @@ export default function SourcesListPage() {
   const createVersionMutation = useMutation({
     mutationFn: createVersion,
     onSuccess: (res) => {
-      message.success("✅ Version created successfully!");
+      message.success(" Version created successfully!");
       queryClient.invalidateQueries(["versions"]);
       const newId = res.data?.data?.version_id;
       if (newId) form.setFieldsValue({ version_id: newId });
@@ -276,10 +276,10 @@ export default function SourcesListPage() {
       queryClient.invalidateQueries(["sources"]);
       setIsEditModalOpen(false);
       editForm.resetFields();
-      setEditSuccessOpen(true);   // ✅ show popup
+      setEditSuccessOpen(true);   // show popup
     },
   
-    onError: () => message.error("❌ Failed to update source"),
+    onError: () => message.error(" Failed to update source"),
   });
 
   /* --------- Upload utils --------- */

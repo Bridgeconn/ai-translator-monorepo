@@ -1,10 +1,8 @@
 import { Button, Dropdown } from "antd";
 import { DownloadOutlined } from "@ant-design/icons";
-import { jsPDF } from "jspdf";
 import { Document, Packer, Paragraph, TextRun } from "docx";
 import { saveAs } from "file-saver";
 import React from "react";
-import { notoSans } from "../fonts/NotoSansDevanagari";
 
 // Utility: extract text while preserving line breaks
 function extractLines(node) {
@@ -21,8 +19,12 @@ function extractLines(node) {
 }
 
 export default function DownloadDraftButton({ style, content, disabled = false }) {
+  const rawText = extractLines(content);
+  const hasContent = rawText && rawText.trim().length > 0; // added
+
   const handleDownload = async (format) => {
-    if (disabled) return; //block download when disabled
+    if (disabled || !hasContent) return; // block download if disabled OR no content
+
 
     const rawText = extractLines(content);
 
@@ -38,26 +40,6 @@ export default function DownloadDraftButton({ style, content, disabled = false }
       saveAs(blob, `draft.${format}`);
     }
 
-    if (format === "pdf") {
-      const doc = new jsPDF({ unit: "pt", format: "a4" });
-
-      // load Hindi font
-      doc.addFileToVFS(
-        "NotoSansDevanagari-Regular.ttf",
-        notoSans["NotoSansDevanagari-Regular.ttf"]
-      );
-      doc.addFont("NotoSansDevanagari-Regular.ttf", "NotoSans", "normal");
-      doc.setFont("NotoSans");
-
-      let y = 50;
-      lines.forEach((line) => {
-        const wrapped = doc.splitTextToSize(line, 500);
-        doc.text(wrapped, 40, y, { baseline: "top" });
-        y += wrapped.length * 20 + 10;
-      });
-
-      doc.save("draft.pdf");
-    }
 
     if (format === "docx") {
       const paragraphs = lines.map(
@@ -86,7 +68,6 @@ export default function DownloadDraftButton({ style, content, disabled = false }
     items: [
       { key: "txt", label: "Text (.txt)", onClick: () => handleDownload("txt") },
       { key: "docx", label: "Docx (.docx)", onClick: () => handleDownload("docx") },
-      { key: "pdf", label: "PDF (.pdf)", onClick: () => handleDownload("pdf") },
       { key: "usfm", label: "USFM (.usfm)", onClick: () => handleDownload("usfm") },
     ],
   };
@@ -96,10 +77,10 @@ export default function DownloadDraftButton({ style, content, disabled = false }
       <Button
         type="primary"
         icon={<DownloadOutlined />}
-        style={{ backgroundColor: "#722ed1", borderColor: "#722ed1", ...style }}
-        disabled={disabled} // ✅ disable button UI
+        // style={{  borderColor: "#722ed1", ...style }}
+        disabled={disabled || !hasContent} //  disable button UI
       >
-        Download Draft
+
       </Button>
     </Dropdown>
   );
