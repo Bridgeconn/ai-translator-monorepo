@@ -14,6 +14,7 @@ import {
   Select,
   notification,
   Alert,
+  Tooltip,
 } from "antd";
 import {
   UploadOutlined,
@@ -31,6 +32,11 @@ import LanguageSelect from "./LanguageSelect";
 import vachanApi from "../api/vachan";
 import Papa from "papaparse"; // CSV parser
 import { useNavigate } from "react-router-dom";
+import * as pdfjsLib from "pdfjs-dist";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+
+
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -259,45 +265,56 @@ export default function QuickTranslationPage() {
   };
 
   // ------------------ File Upload Handler ------------------
-  const handleFileUpload = (file) => {
+  const handleFileUpload = async (file) => {
     setUploadedFile(file);
-
     setFilename(file.name);
     setNewProjectFilename(file.name);
-
-
+  
     if (file.name.endsWith(".doc")) {
-      message.error(
-        "Old Word (.doc) files are not supported. Use .docx or .txt."
-      );
+      message.error("Old Word (.doc) files are not supported. Use .docx, .txt, or .pdf.");
       return false;
     }
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      let textContent = "";
-
-      if (file.name.endsWith(".docx")) {
+  
+    let textContent = "";
+  
+    try {
+      if (file.name.endsWith(".pdf")) {
+        // Extract text from PDF
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+  
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          const strings = content.items.map(item => item.str);
+          textContent += strings.join(" ") + "\n";
+        }
+  
+      } else if (file.name.endsWith(".docx")) {
         const arrayBuffer = await file.arrayBuffer();
         const mammoth = await import("mammoth");
         const { value: text } = await mammoth.extractRawText({ arrayBuffer });
         textContent = text;
       } else {
-        textContent = e.target.result; // .txt or .usfm
+        const reader = new FileReader();
+        textContent = await new Promise((resolve, reject) => {
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = reject;
+          reader.readAsText(file);
+        });
       }
-
+  
       setSourceText(textContent);
       setTargetText("");
       setIsTargetEdited(false);
       message.success(`Loaded file: ${file.name}`);
-    };
-
-    if (file.name.endsWith(".docx")) {
-      reader.readAsArrayBuffer(file);
-    } else {
-      reader.readAsText(file);
+  
+    } catch (err) {
+      console.error("Failed to read file:", err);
+      message.error("Failed to load file.");
+      return false;
     }
-
+  
     return false; // prevent auto upload
   };
 
@@ -310,26 +327,26 @@ export default function QuickTranslationPage() {
       );
       return;
     }
-
+  
     if (!sourceText.trim() && !uploadedFile) {
       message.warning("Please enter or upload some source text first.");
       return;
     }
-
+  
     try {
       setLoading(true);
       setIsTranslated(false);
-
+  
       // 1️⃣ Get API token
       const token = await getAccessToken(
         import.meta.env.VITE_VACHAN_USERNAME,
         import.meta.env.VITE_VACHAN_PASSWORD
       );
-
+  
       let textToTranslate = "";
       let isUSFMContent = false;
       let usfmStructure = null;
-
+  
       // Normalization helpers
       const normalizeText = (text) =>
         text
@@ -343,31 +360,43 @@ export default function QuickTranslationPage() {
               .trim()
           )
           .join("\n");
-
+  
       const normalizeTranslation = (text) =>
         text
           .replace(/\r\n/g, "\n")
           .split("\n")
           .map((line) => line.trim())
           .join("\n");
-
-      // 2️⃣ Handle uploaded file or pasted text
+  
+      // 2️⃣ Extract text from uploaded file or pasted text
       if (uploadedFile) {
-        if (uploadedFile.name.endsWith(".docx")) {
-          // Extract text via Mammoth for .docx
+        if (uploadedFile.name.endsWith(".pdf")) {
+          const arrayBuffer = await uploadedFile.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+  
+          let pdfText = "";
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            const strings = content.items.map((item) => item.str);
+            pdfText += strings.join(" ") + "\n";
+          }
+  
+          textToTranslate = normalizeText(pdfText);
+  
+        } else if (uploadedFile.name.endsWith(".docx")) {
           const arrayBuffer = await uploadedFile.arrayBuffer();
           const mammoth = await import("mammoth");
           const { value: text } = await mammoth.extractRawText({ arrayBuffer });
           textToTranslate = normalizeText(text);
+  
         } else {
-          // For .txt, .usfm, or other text files
           const fileContent = await uploadedFile.text();
-
+  
           if (
             uploadedFile.name.endsWith(".usfm") ||
             containsUSFMMarkers(fileContent)
           ) {
-            console.log("📝 Detected USFM content");
             isUSFMContent = true;
             const extracted = extractUSFMContent(fileContent);
             usfmStructure = extracted.structure;
@@ -377,9 +406,8 @@ export default function QuickTranslationPage() {
           }
         }
       } else {
-        // Text pasted into source textarea
+        // Pasted text
         if (containsUSFMMarkers(sourceText)) {
-          console.log("📝 Detected USFM content in pasted text");
           isUSFMContent = true;
           const extracted = extractUSFMContent(sourceText);
           usfmStructure = extracted.structure;
@@ -388,18 +416,18 @@ export default function QuickTranslationPage() {
           textToTranslate = normalizeText(sourceText);
         }
       }
-
+  
       // 3️⃣ Prepare text file for translation API
       const blob = new Blob([textToTranslate], { type: "text/plain" });
       const fileToSend = new File([blob], "content_only.txt", {
         type: "text/plain",
       });
-
+  
       console.log(
         "📤 Sending clean text to API:",
         textToTranslate.substring(0, 200) + "..."
       );
-
+  
       // 4️⃣ Request translation job
       const jobId = await requestDocTranslation(
         token,
@@ -407,17 +435,17 @@ export default function QuickTranslationPage() {
         sourceLang?.BCP_code,
         targetLang?.BCP_code
       );
-
+  
       setStatusMsg("⏳ Translating... please wait");
-
+  
       // 5️⃣ Poll until job is finished
       const finishedJobId = await pollJobStatus(token, jobId, (status) => {
         setStatusMsg(`⏳ Job ${jobId} status: ${status}`);
       });
-
+  
       // 6️⃣ Fetch translated CSV
       const csvText = await fetchAssets(token, finishedJobId);
-
+  
       // 7️⃣ Parse CSV
       const parsed = Papa.parse(csvText, {
         header: true,
@@ -425,18 +453,18 @@ export default function QuickTranslationPage() {
         dynamicTyping: false,
         trimHeaders: true,
       });
-
+  
       console.log("📥 Parsed CSV data:", parsed.data);
-
+  
       // 8️⃣ Rebuild translation
       let translatedText = "";
-
+  
       if (isUSFMContent && usfmStructure) {
         translatedText = reconstructUSFM(usfmStructure, parsed.data);
       } else {
         translatedText = simpleTranslation(textToTranslate, parsed.data);
       }
-
+  
       setTargetText(normalizeTranslation(translatedText));
       setIsTargetEdited(false);
       setIsTranslated(true);
@@ -450,15 +478,15 @@ export default function QuickTranslationPage() {
       message.error(`Translation failed: ${err.message}`);
     }
   };
-
-  // ✅ Helper: detect USFM
+  
+  //  Helper: detect USFM
   function containsUSFMMarkers(text) {
     return /\\(id|c|v|s\d?|p|q\d?|m|nb|b|d|sp|pb|li\d?|pi\d?|pc|pr|cls|table|tr|th\d?|tc\d?|tcc\d?)\b/.test(
       text
     );
   }
 
-  // ✅ Helper: extract USFM
+  // Helper: extract USFM
   function extractUSFMContent(usfmText) {
     const lines = usfmText.split("\n");
     const structure = [];
@@ -964,10 +992,13 @@ export default function QuickTranslationPage() {
                   accept=".txt,.usfm,.docx,.pdf"
                   disabled={loading}
                 >
+                  <Tooltip title="Upload File" color="#fff" overlayInnerStyle={{ color: "#000" }}>
                   <Button icon={<UploadOutlined />} disabled={loading}>
                     {/* Upload File */}
                   </Button>
+                  </Tooltip>
                 </Upload>
+                <Tooltip title="Clear" color="#fff" overlayInnerStyle={{ color: "#000" }}>
                 <Button style={{color: "red" }}
                   onClick={handleClearAll}
                   icon={<CloseOutlined />} 
@@ -975,6 +1006,7 @@ export default function QuickTranslationPage() {
                 >
                   {/* Clear */}
                 </Button>
+                </Tooltip>
               </Space>
             </div>
           </Card>
@@ -997,20 +1029,24 @@ export default function QuickTranslationPage() {
             </Spin>
             <div style={{ marginTop: 12, textAlign: "left" }}>
               <Space>
-              <Button
+              <Tooltip title="save" color="#fff" overlayInnerStyle={{ color: "#000" }}>
+              <Button 
                 type="default"
-                icon={<SaveFilled />}
+                icon={<SaveOutlined />}
                 onClick={handleSave}
                 disabled={!isTranslated || loading}
               >
               </Button>
+              </Tooltip>
+                <Tooltip title="copy" color="#fff" overlayInnerStyle={{ color: "#000" }}>
                 <Button
                   icon={<CopyOutlined />}
                   onClick={() => handleCopy(targetText)}
                   disabled={loading || !targetText}
                 >
                   {/* Copy */}
-                </Button>
+                </Button >
+              </Tooltip>
 
                 <DownloadDraftButton
                   content={targetText}

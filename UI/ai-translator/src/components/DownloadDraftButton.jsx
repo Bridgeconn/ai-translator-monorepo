@@ -1,4 +1,4 @@
-import { Button, Dropdown } from "antd";
+import { Button, Dropdown,Tooltip } from "antd";
 import { DownloadOutlined } from "@ant-design/icons";
 import { Document, Packer, Paragraph, TextRun } from "docx";
 import { saveAs } from "file-saver";
@@ -74,14 +74,17 @@ export default function DownloadDraftButton({ style, content, disabled = false }
 
   return (
     <Dropdown menu={menu} placement="bottomRight" trigger={["click"]} disabled={disabled}>
+      <Tooltip title="Download" color="#fff" overlayInnerStyle={{ color: "#000" }}>
+
       <Button
-        type="primary"
+        //type="primary"
         icon={<DownloadOutlined />}
         // style={{  borderColor: "#722ed1", ...style }}
         disabled={disabled || !hasContent} //  disable button UI
       >
 
       </Button>
+      </Tooltip>
     </Dropdown>
   );
 }
