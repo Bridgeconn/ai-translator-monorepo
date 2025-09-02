@@ -55,3 +55,9 @@ class SourceDraftResponse(BaseModel):
 class DraftContentResponse(BaseModel):
     content: str
     message: str
+class GenerateBookDraftRequest(BaseModel):
+    project_id: UUID
+    book_name: str
+class UpdateDraftRequest(BaseModel):
+    content: str
+    file_size: Optional[int] = None

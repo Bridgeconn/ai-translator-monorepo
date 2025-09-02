@@ -4,7 +4,7 @@ import { CopyOutlined, DownloadOutlined, ExclamationCircleOutlined } from '@ant-
 import { useQuery } from '@tanstack/react-query';
 import { projectsAPI, wordTokenAPI, booksAPI, languagesAPI, sourcesAPI } from './api.js';
 import { useParams, Link } from 'react-router-dom';
-
+import { draftAPI } from './api.js';
 const { Option } = Select;
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -26,7 +26,10 @@ export default function WordTranslation() {
   const [draftContent, setDraftContent] = useState("");
   const [originalDraft, setOriginalDraft] = useState("");
   const [isDraftEdited, setIsDraftEdited] = useState(false);
+  const [loadingDraft, setLoadingDraft] = useState(false);
 
+  const [currentDraft, setCurrentDraft] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   const translatingRef = useRef(true);
 
@@ -133,34 +136,49 @@ export default function WordTranslation() {
     }
   };
   const handleGenerateTranslations = async () => {
-    if (!selectedBook) return;
+    if (!selectedBook || tokens.length === 0) return;
     setLoadingTokens(true);
-  
+
     try {
-      const result = await wordTokenAPI.generateTokens(projectId, selectedBook.book_name);
-      const translatedTokens = result?.data || [];
-  
-      // update DB first
-      await Promise.all(
-        translatedTokens.map((tr) =>
-          wordTokenAPI.updateToken(tr.word_token_id, {
-            translated_text: tr.translation || tr.translated_text,
-            is_reviewed: true,
-            is_active: true,
-            book_name: selectedBook.book_name,
-          })
-        )
+      const result = await wordTokenAPI.generateTokens(
+        projectId,
+        selectedBook.book_name
       );
-  
-      // 🔑 refetch from DB so state matches DB values
-      await fetchTokens(selectedBook.book_name);
-  
+
+      const translatedTokens = result?.data || [];
+
+      // Update all tokens in parallel
+      await Promise.all(
+        translatedTokens.map(async (tr) => {
+          setTokens((prevTokens) =>
+            prevTokens.map((t) =>
+              t.word_token_id === tr.word_token_id
+                ? { ...t, translation: tr.translation || tr.translated_text }
+                : t
+            )
+          );
+
+          try {
+            await wordTokenAPI.updateToken(tr.word_token_id, {
+              translated_text: tr.translation || tr.translated_text,
+              is_reviewed: true,
+              is_active: true,
+              book_name: selectedBook.book_name,
+            });
+          } catch (e) {
+            console.error("Failed to update token", tr.word_token_id, e);
+          }
+        })
+      );
+
+      // Trigger notification after all updates
       notification.success({
         message: "Translation Regeneration Complete",
         description: "All tokens have been regenerated and saved successfully!",
         placement: "topRight",
         duration: 4,
       });
+
     } catch (e) {
       console.error(e);
       message.error("Translation failed");
@@ -169,357 +187,532 @@ export default function WordTranslation() {
       setTranslating({});
     }
   };
+  // ------------------ Draft Handling (via API) ------------------
+  // useEffect(() => {
+  //   const fetchDraft = async () => {
+  //     if (!selectedBook || !projectId) return;
+
+  //     try {
+  //       setLoadingDraft(true);
+  //       const response = await draftAPI.generateDraftForBook(projectId, selectedBook.book_name);
+  //       const bookDraft = response?.data?.content || "";
+  //       setDraftContent(bookDraft);
+  //     } catch (error) {
+  //       console.error("Failed to fetch draft", error);
+  //       message.error("Could not load draft");
+  //     } finally {
+  //       setLoadingDraft(false);
+  //     }
+  //   };
+
+  //   if (activeTab === "draft") {
+  //     fetchDraft();
+  //   }
+  // }, [activeTab, projectId, selectedBook]);
+  // useEffect(() => {
+  //   if (!projectId || !selectedBook?.book_name) return;
   
+  //   const fetchOrGenerateDraft = async () => {
+  //     setLoadingDraft(true);
+  //     try {
+  //       // 1. Try fetching latest draft
+  //       const res = await draftAPI.getLatestDraftForBook(projectId, selectedBook.book_name);
+  //       const content = res?.data?.content || "";
+  //       setDraftContent(content);
+  //       setOriginalDraft(content);
+  //     } catch (err) {
+  //       if (err.response?.status === 404) {
+  //         // 2. If no draft found → generate
+  //         const genRes = await draftAPI.generateDraftForBook(projectId, selectedBook.book_name);
+  //         const content = genRes?.data?.content || "";
+  //         setDraftContent(content);
+  //         setOriginalDraft(content);
+  //         message.success(`Draft generated for ${selectedBook.book_name}`);
+  //       } else {
+  //         message.error("Failed to load draft");
+  //       }
+  //     } finally {
+  //       setLoadingDraft(false);
+  //     }
+  //   };
   
-  // ------------------ Draft Handling ------------------
+  //   if (activeTab === "draft") {
+  //     fetchOrGenerateDraft();
+  //   }
+  // }, [activeTab, projectId, selectedBook]);
   useEffect(() => {
-    if (tokens.length) {
-      const newDraft = tokens.map(t => t.translation || t.token_text).join(" ");
-      setDraftContent(newDraft);
-      setOriginalDraft(newDraft);
+    if (!projectId || !selectedBook?.book_name) return;
+  
+    const fetchOrGenerateDraft = async () => {
+      setLoadingDraft(true);
+      try {
+        const res = await draftAPI.getLatestDraftForBook(projectId, selectedBook.book_name);
+        const draft = res?.data;
+        setCurrentDraft(draft);
+        setDraftContent(draft?.content || "");
+        setOriginalDraft(draft?.content || "");
+      } catch (err) {
+        if (err.response?.status === 404) {
+          const genRes = await draftAPI.generateDraftForBook(projectId, selectedBook.book_name);
+          const draft = genRes?.data;
+          setCurrentDraft(draft);
+          setDraftContent(draft?.content || "");
+          setOriginalDraft(draft?.content || "");
+          message.success(`Draft generated for ${selectedBook.book_name}`);
+        } else {
+          message.error("Failed to load draft");
+        }
+      } finally {
+        setLoadingDraft(false);
+      }
+    };
+  
+    if (activeTab === "draft") {
+      fetchOrGenerateDraft();  // ✅ <-- you need this
     }
-  }, [tokens]);
+  }, [activeTab, projectId, selectedBook]);
+  
 
   const handleDraftChange = (e) => {
     setDraftContent(e.target.value);
     setIsDraftEdited(e.target.value !== originalDraft);
   };
+  // const handleSaveDraft = () => {
+  //   if (!selectedBook) return;
 
-  const handleSaveDraft = () => {
-    setOriginalDraft(draftContent);
-    setIsDraftEdited(false);
-    message.success("Draft saved!");
+  //   const key = `draft_${projectId}_${selectedBook.book_id}`;
+
+  //   // Save the current draft content in localStorage
+  //   localStorage.setItem(key, draftContent);
+
+  //   // Update originalDraft and reset edited state
+  //   setOriginalDraft(draftContent);
+  //   setIsDraftEdited(false);
+
+  //   message.success("Draft saved locally!");
+  // };
+  const handleSaveDraft = async () => {
+    if (!selectedBook) return;
+  
+    if (!currentDraft?.draft_id) {
+      message.error("No draft ID available to save");
+      return;
+    }
+  
+    try {
+      setSaving(true);
+  
+      const updated = await draftAPI.updateDraft(currentDraft.draft_id, draftContent);
+  
+      // Normalize API response (sometimes it's wrapped in `data.data`, sometimes in `data`)
+      const savedDraft = updated.data?.data || updated.data;
+  
+      setOriginalDraft(savedDraft.content);
+      setCurrentDraft(savedDraft);
+      setIsDraftEdited(false);
+  
+      message.success("Draft saved to database!");
+    } catch (error) {
+      console.error("Failed to save draft", error);
+      message.error("Failed to save draft");
+    } finally {
+      setSaving(false);
+    }
   };
-
+  
+  // const handleDiscardDraft = () => {
+  //   setDraftContent(originalDraft);
+  //   setIsDraftEdited(false);
+  //   message.info("Reverted to previous draft");
+  // };
   const handleDiscardDraft = () => {
     setDraftContent(originalDraft);
     setIsDraftEdited(false);
     message.info("Reverted to previous draft");
   };
 
-  const handleDownloadDraft = () => {
-    try {
-      const blob = new Blob([draftContent], { type: "text/plain" });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${project?.name || "translation"}_draft.usfm`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      message.success("Draft downloaded!");
-    } catch (err) {
-      console.error(err);
-      message.error("Failed to download draft");
-    }
-  };
-
   const handleCopyDraft = () => {
-    try {
-      navigator.clipboard.writeText(draftContent);
-      message.success("Draft copied to clipboard!");
-    } catch (err) {
-      console.error(err);
-      message.error("Failed to copy draft");
+    navigator.clipboard.writeText(draftContent);
+    message.success("Draft copied to clipboard!");
+  };
+  const updateDraftFromEditor = (tokenId, newTranslation, oldTranslation, tokenText) => {
+    if (!draftContent) return;
+  
+    let updatedDraft = draftContent;
+  
+    if (oldTranslation && oldTranslation !== tokenText) {
+      const escapedOld = oldTranslation.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(escapedOld, 'g');
+      updatedDraft = updatedDraft.replace(regex, newTranslation);
+    } else {
+      const escapedToken = tokenText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`\\b${escapedToken}\\b`, 'g');
+      updatedDraft = updatedDraft.replace(regex, newTranslation);
     }
+  
+    setDraftContent(updatedDraft);
+  
+    // Do NOT touch isDraftEdited here
+  };
+  
+  
+  const handleDownloadDraft = () => {
+    const blob = new Blob([draftContent], { type: "text/plain" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${project?.name || "translation"}_draft.usfm`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    message.success("Draft downloaded!");
   };
 
   if (projectLoading) return <Spin />;
   if (projectError) return <div>Error loading project</div>;
+return (
+  <div style={{ padding: '24px', position: 'relative', height: "100vh", display: "flex", flexDirection: "column" }}>
+    <div style={{
+      padding: '24px 32px 16px 32px',
+      backgroundColor: '#f9f9fb',
+      borderRadius: 12,
+      marginBottom: 24,
+      boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+    }}>
+      {/* Breadcrumb */}
+      <Breadcrumb
+        items={[
+          { title: <Link to="/dashboard/projects" style={{ color: '#8b5cf6', fontWeight: 500 }}>Projects</Link> },
+          { title: <span style={{ fontWeight: 500 }}>{project?.name}</span> },
+        ]}
+        style={{ marginBottom: 8, fontSize: 14 }}
+      />
 
-  return (
-    <div style={{ padding: '24px', position: 'relative', height: "100vh", display: "flex", flexDirection: "column" }}>
-      <div style={{
-        padding: '24px 32px 16px 32px',
-        backgroundColor: '#f9f9fb',
-        borderRadius: 12,
-        marginBottom: 24,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-      }}>
-        {/* Breadcrumb */}
-        <Breadcrumb
-          items={[
-            { title: <Link to="/projects" style={{ color: '#8b5cf6', fontWeight: 500 }}>Projects</Link> },
-            { title: <span style={{ fontWeight: 500 }}>{project?.name}</span> },
-          ]}
-          style={{ marginBottom: 8, fontSize: 14 }}
-        />
+      {/* Project Name */}
+      <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: '#1f2937' }}>
+        {project?.name} - Word Translation
+      </h2>
 
-        {/* Project Name */}
-        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: '#1f2937' }}>
-          {project?.name} - Word Translation
-        </h2>
+      {/* Languages */}
+      <p style={{ marginTop: 16, fontSize: 16, color: '#555' }}>
+        <span style={{ fontWeight: 500 }}>Source:</span> {sourceLang} | <span style={{ fontWeight: 500 }}>Target:</span> {targetLang}
+      </p>
+    </div>
 
-        {/* Languages */}
-        <p style={{ marginTop: 16, fontSize: 16, color: '#555' }}>
-          <span style={{ fontWeight: 500 }}>Source:</span> {sourceLang} | <span style={{ fontWeight: 500 }}>Target:</span> {targetLang}
-        </p>
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <Text strong style={{ display: 'block', marginBottom: 4, fontSize: 14 }}>
-          Select Book
-        </Text>
-        <Select
-          className="custom-book-dropdown"
-          placeholder="Select a book"
-          style={{ width: 150, borderRadius: 8, fontSize: 16 }}
-          onChange={handleBookChange}
-          value={selectedBook?.book_id}
+    {/* Book Selector */}
+    <div style={{ marginBottom: 12 }}>
+      <Text strong style={{ display: 'block', marginBottom: 4, fontSize: 14 }}>
+        Select Book
+      </Text>
+      <Select
+        className="custom-book-dropdown"
+        placeholder="Select a book"
+        style={{ width: 150, borderRadius: 8, fontSize: 16 }}
+        onChange={handleBookChange}
+        value={selectedBook?.book_id}
+      >
+        {projectBooks.map((book) => (
+          <Option key={book.book_id} value={book.book_id}>
+            {book.book_name}
+          </Option>
+        ))}
+      </Select>
+    </div>
+
+    {selectedBook && (
+      <>
+        {/* Tabs */}
+        <div
+          style={{
+            width: 200,
+            height: 30,
+            display: 'flex',
+            borderRadius: 30,
+            border: '1px solid #d9d9d9',
+            position: 'relative',
+            margin: '24px auto',
+            cursor: 'pointer',
+            userSelect: 'none',
+            fontSize: 18,
+            maxWidth: '90%',
+            flexShrink: 0,
+          }}
         >
-          {projectBooks.map((book) => (
-            <Option key={book.book_id} value={book.book_id}>
-              {book.book_name}
-            </Option>
-          ))}
-        </Select>
-      </div>
-      {selectedBook && (
-        <>
           <div
             style={{
-              width: 200,
-              height: 30, // fixed height
+              position: 'absolute',
+              top: 0,
+              left: activeTab === 'editor' ? 0 : '50%',
+              width: '50%',
+              height: '100%',
+              backgroundColor: '#8b5cf6',
+              borderRadius: 30,
+              transition: 'left 0.3s',
+              zIndex: 0,
+            }}
+          />
+          <div
+            onClick={() => setActiveTab('editor')}
+            style={{
+              flex: 1,
               display: 'flex',
-              borderRadius: 30, // bigger oval
-              border: '1px solid #d9d9d9',
-              position: 'relative',
-              margin: '24px auto',
-              cursor: 'pointer',
+              justifyContent: 'center',
+              alignItems: 'center',
+              zIndex: 1,
+              color: activeTab === 'editor' ? '#fff' : '#722ed1',
+              fontWeight: 600,
               userSelect: 'none',
-              fontSize: 18,
-              maxWidth: '90%', // responsive
-              flexShrink: 0, // prevent shrinking
             }}
           >
-            {/* Sliding highlight */}
-            <div
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: activeTab === 'editor' ? 0 : '50%',
-                width: '50%',
-                height: '100%',
-                backgroundColor: '#8b5cf6', // your purple
-                borderRadius: 30,
-                transition: 'left 0.3s',
-                zIndex: 0,
-              }}
-            />
-
-            {/* Editor Tab */}
-            <div
-              onClick={() => setActiveTab('editor')}
-              style={{
-                flex: 1,
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                zIndex: 1,
-                color: activeTab === 'editor' ? '#fff' : '#722ed1',
-                fontWeight: 600,
-                userSelect: 'none',
-              }}
-            >
-              Editor
-            </div>
-
-            {/* Draft Tab */}
-            <div
-              onClick={() => setActiveTab('draft')}
-              style={{
-                flex: 1,
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                zIndex: 1,
-                color: activeTab === 'draft' ? '#fff' : '#722ed1',
-                fontWeight: 600,
-                userSelect: 'none',
-              }}
-            >
-              Draft
-            </div>
+            Editor
           </div>
-          <Card
-            title={activeTab === "editor" ? "Translation Editor" : "Draft View"}
-            style={{ flex: 1, display: "flex", flexDirection: "column" }}
-            extra={
-              activeTab === "editor" ? (
-                tokens.some(t => t.translation && t.translation.trim() !== "") ? (
-                  <Popconfirm
-                    title="Regenerate Translations? All regenerated translations will be saved automatically."
-                    icon={<ExclamationCircleOutlined />}
-                    onConfirm={() => {
-                      setRegenerateLoading(true);
-                      handleGenerateTranslations().finally(() => setRegenerateLoading(false));
-                    }}
-                    onCancel={() => message.info("Kept existing translations")}
-                    okText="Yes, Regenerate"
-                    cancelText="Cancel"
-                  >
-                    <Button type="primary" loading={regenerateLoading}>
-                      Generate Translations
-                    </Button>
-                  </Popconfirm>
-                ) : (
-                  <Button
-                    type="primary"
-                    onClick={() => {
-                      setRegenerateLoading(true);
-                      handleGenerateTranslations().finally(() => setRegenerateLoading(false));
-                    }}
-                    loading={regenerateLoading}
-                  >
+          <div
+            onClick={() => setActiveTab('draft')}
+            style={{
+              flex: 1,
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              zIndex: 1,
+              color: activeTab === 'draft' ? '#fff' : '#722ed1',
+              fontWeight: 600,
+              userSelect: 'none',
+            }}
+          >
+            Draft
+          </div>
+        </div>
+
+        <Card
+          title={activeTab === "editor" ? "Translation Editor" : "Draft View"}
+          style={{ flex: 1, display: "flex", flexDirection: "column" }}
+          extra={
+            activeTab === "editor" ? (
+              tokens.some(t => t.translation && t.translation.trim() !== "") ? (
+                <Popconfirm
+                  title="Regenerate Translations? All regenerated translations will be saved automatically."
+                  icon={<ExclamationCircleOutlined />}
+                  onConfirm={() => {
+                    setRegenerateLoading(true);
+                    handleGenerateTranslations().finally(() => setRegenerateLoading(false));
+                  }}
+                  onCancel={() => message.info("Kept existing translations")}
+                  okText="Yes, Regenerate"
+                  cancelText="Cancel"
+                >
+                  <Button type="primary" loading={regenerateLoading}>
                     Generate Translations
                   </Button>
-                )
+                </Popconfirm>
               ) : (
-                <>
-                  <Button icon={<CopyOutlined />} size="small" onClick={handleCopyDraft} style={{ marginRight: 8 }}>Copy</Button>
-                  <Button icon={<DownloadOutlined />} size="small" type="primary" onClick={handleDownloadDraft}>Download</Button>
-                </>
+                <Button
+                  type="primary"
+                  onClick={() => {
+                    setRegenerateLoading(true);
+                    handleGenerateTranslations().finally(() => setRegenerateLoading(false));
+                  }}
+                  loading={regenerateLoading}
+                >
+                  Generate Translations
+                </Button>
               )
-            }
-          >
-            <Row gutter={16} style={{ flex: 1 }}>
-              <Col span={12} style={{ height: "100%", overflowY: "auto", paddingRight: 8, maxHeight: "70vh" }}>
-                <h3>Source</h3>
-                <pre style={{ whiteSpace: "pre-wrap", background: "#f5f5f5", padding: 10, borderRadius: 4 }}>
-                  {sourceText || "No source loaded"}
-                </pre>
-              </Col>
+            ) : (
+              <>
+                <Button
+                  icon={<CopyOutlined />}
+                  size="small"
+                  onClick={handleCopyDraft}
+                  style={{ marginRight: 8 }}
+                  disabled={loadingTokens}
+                >
+                  Copy
+                </Button>
+                <Button
+                  icon={<DownloadOutlined />}
+                  size="small"
+                  type="primary"
+                  onClick={handleDownloadDraft}
+                  disabled={loadingTokens}
+                >
+                  Download
+                </Button>
+              </>
+            )
+          }
+        >
+          <Row gutter={16} style={{ flex: 1 }}>
+            <Col span={12} style={{ height: "100%", overflowY: "auto", paddingRight: 8, maxHeight: "70vh" }}>
+              <h3>Source</h3>
+              <pre style={{ whiteSpace: "pre-wrap", background: "#f5f5f5", padding: 10, borderRadius: 4 }}>
+                {sourceText || "No source loaded"}
+              </pre>
+            </Col>
 
-              <Col span={12} style={{ height: "100%", overflowY: "auto", paddingLeft: 8, maxHeight: "70vh" }}>
-                <h3>{activeTab === "editor" ? "Translation" : "Draft Translation"}</h3>
-                {loadingTokens ? (
-                  <Spin />
-                ) : tokens.length === 0 ? (
-                  <Text type="secondary">
-                    {activeTab === "editor" ? "No word tokens found for this book." : "No draft available."}
-                  </Text>
-                ) : activeTab === "editor" ? (
-                  tokens.map((token) => {
-                    const isEdited = token.translation !== token.translated_text && token.translated_text !== null;
-                    return (
-                      <div
-                        key={token.word_token_id}
-                        style={{
-                          marginBottom: 12,
-                          backgroundColor: isEdited ? "#fffbe6" : "transparent",
-                          padding: 4,
-                          borderRadius: 4,
-                        }}
-                      >
-                        <Text strong>{token.token_text}</Text>
-                        <Input
-                          placeholder="Enter translation"
-                          value={token.translation || ""}
-                          onChange={(e) => {
-                            const updatedTokens = tokens.map((t) =>
+            <Col span={12} style={{ height: "100%", overflowY: "auto", paddingLeft: 8, maxHeight: "70vh" }}>
+              <h3>{activeTab === "editor" ? "Translation" : "Draft Translation"}</h3>
+              {loadingTokens ? (
+                <Spin />
+              ) : tokens.length === 0 ? (
+                <Text type="secondary">
+                  {activeTab === "editor" ? "No word tokens found for this book." : "No draft available."}
+                </Text>
+              ) : activeTab === "editor" ? (
+                tokens.map((token) => {
+                  const isEdited = token.translation !== token.originalTranslation;
+                  return (
+                    <div
+                      key={token.word_token_id}
+                      style={{
+                        marginBottom: 12,
+                        backgroundColor: isEdited ? "#fffbe6" : "transparent",
+                        padding: 4,
+                        borderRadius: 4,
+                      }}
+                    >
+                      <Text strong>{token.token_text}</Text>
+                      <Input
+                        placeholder="Enter translation"
+                        value={token.translation || ""}
+                        onChange={(e) => {
+                          const prevTranslation = token.translation || "";
+                          const newValue = e.target.value;
+
+                          // update token in editor
+                          setTokens(prevTokens =>
+                            prevTokens.map(t =>
                               t.word_token_id === token.word_token_id
-                                ? { ...t, translation: e.target.value }
+                                ? { ...t, translation: newValue }
                                 : t
-                            );
-                            setTokens(updatedTokens);
+                            )
+                          );
 
-                            // mark token as edited **only if it differs from the last saved value**
-                            setEditedTokens(prev => ({
-                              ...prev,
-                              [token.word_token_id]: e.target.value !== token.originalTranslation
-                            }));
-                          }}
+                          // mark token as edited
+                          setEditedTokens(prev => ({
+                            ...prev,
+                            [token.word_token_id]: newValue !== token.originalTranslation
+                          }));
 
+                          // sync editor changes to draft (but don't trigger save/discard)
+                          updateDraftFromEditor(token.word_token_id, newValue, prevTranslation, token.token_text);
+                        }}
+                        style={{ marginTop: 4 }}
+                        suffix={translating[token.word_token_id] && <Spin size="small" />}
+                      />
 
-                          style={{ marginTop: 4 }}
-                          suffix={translating[token.word_token_id] && <Spin size="small" />}
-                        />
-                        {editedTokens[token.word_token_id] && (
-                          <div style={{ marginTop: 4 }}>
-                            <Button
-                              type="primary"
-                              size="small"
-                              onClick={async () => {
-                                try {
-                                  await wordTokenAPI.updateToken(token.word_token_id, {
-                                    translated_text: token.translation,
-                                    is_reviewed: true,
-                                    is_active: true,
-                                    book_name: selectedBook.book_name,
-                                  });
+                      {editedTokens[token.word_token_id] && (
+                        <div style={{ marginTop: 4 }}>
+                          <Button
+                            type="primary"
+                            size="small"
+                            onClick={async () => {
+                              try {
+                                await wordTokenAPI.updateToken(token.word_token_id, {
+                                  translated_text: token.translation,
+                                  is_reviewed: true,
+                                  is_active: true,
+                                  book_name: selectedBook.book_name,
+                                });
 
-                                  message.success("Translation saved!");
+                                message.success("Translation saved!");
 
-                                  // update snapshot
-                                  const updatedTokens = tokens.map((t) =>
+                                // update snapshot
+                                setTokens(prevTokens =>
+                                  prevTokens.map(t =>
                                     t.word_token_id === token.word_token_id
                                       ? { ...t, originalTranslation: t.translation }
                                       : t
-                                  );
-                                  setTokens(updatedTokens);
+                                  )
+                                );
 
-                                  // hide buttons
-                                  setEditedTokens(prev => ({ ...prev, [token.word_token_id]: false }));
-                                } catch (e) {
-                                  console.error(e);
-                                  message.error("Failed to save translation");
-                                }
-                              }}
-                              style={{ marginRight: 8 }}
-                            >
-                              Save
-                            </Button>
+                                setEditedTokens(prev => ({ ...prev, [token.word_token_id]: false }));
+                              } catch (e) {
+                                console.error(e);
+                                message.error("Failed to save translation");
+                              }
+                            }}
+                            style={{ marginRight: 8 }}
+                          >
+                            Save
+                          </Button>
 
-                            <Button
-                              danger
-                              size="small"
-                              onClick={() => {
-                                // revert to snapshot
-                                const revertedTokens = tokens.map((t) =>
+                          <Button
+                            danger
+                            size="small"
+                            onClick={() => {
+                              // revert token in editor
+                              setTokens(prevTokens =>
+                                prevTokens.map(t =>
                                   t.word_token_id === token.word_token_id
                                     ? { ...t, translation: t.originalTranslation }
                                     : t
-                                );
-                                setTokens(revertedTokens);
+                                )
+                              );
 
-                                message.info("Changes discarded");
+                              // rebuild draft only for this token
+                              updateDraftFromEditor(
+                                token.word_token_id,
+                                token.originalTranslation,
+                                token.translation,
+                                token.token_text
+                              );
 
-                                // hide buttons
-                                setEditedTokens(prev => ({ ...prev, [token.word_token_id]: false }));
-                              }}
-                            >
-                              Discard
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })
-                ) : (
-                  <>
+                              setEditedTokens(prev => ({ ...prev, [token.word_token_id]: false }));
+                              message.info("Changes discarded");
+                            }}
+                          >
+                            Discard
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <>
+                  {loadingDraft ? (
+                    <Spin tip="Loading draft..." />
+                  ) : (
                     <TextArea
                       rows={20}
                       value={draftContent}
-                      onChange={handleDraftChange}
+                      onChange={(e) => {
+                        setDraftContent(e.target.value);
+                        setIsDraftEdited(e.target.value !== originalDraft); // manual edits only
+                      }}
                       style={{
                         backgroundColor: isDraftEdited ? "#fffbe6" : "transparent",
                         padding: 10,
                         borderRadius: 4,
                       }}
                     />
-                    {isDraftEdited && (
-                      <div style={{ marginTop: 8 }}>
-                        <Button type="primary" onClick={handleSaveDraft} style={{ marginRight: 8 }}>Save</Button>
-                        <Button onClick={handleDiscardDraft}>Discard</Button>
-                      </div>
-                    )}
-                  </>
-                )}
-              </Col>
-            </Row>
-          </Card>
-        </>
-      )}
-    </div>
-  );
+                  )}
+                  {isDraftEdited && !loadingDraft && (
+                    <div style={{ marginTop: 8 }}>
+                      <Button
+                        type="primary"
+                        onClick={handleSaveDraft}
+                        style={{ marginRight: 8 }}
+                        disabled={loadingTokens}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        onClick={handleDiscardDraft}
+                        disabled={loadingTokens}
+                      >
+                        Discard
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </Col>
+          </Row>
+        </Card>
+      </>
+    )}
+  </div>
+);
 }
+
