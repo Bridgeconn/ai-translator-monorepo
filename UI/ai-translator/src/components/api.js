@@ -138,89 +138,91 @@ export const languagesAPI = {
 
 // ------------------ Word Tokens API ------------------
 export const wordTokenAPI = {
-  getTokensByProjectAndBook: async (projectId, book) => {
-    if (!book) return [];
+  // Get all tokens for a project & book
+  getTokensByProjectAndBook: async (projectId, bookName) => {
+    if (!bookName) return [];
     try {
-      console.log("[DEBUG] getTokensByProjectAndBook called with:", {
-        projectId,
-        book,
-      });
-  
+ 
       const response = await api.get(`/word_tokens/project/${projectId}`, {
-        params: { book_name: book },
+        params: { book_name: bookName },
       });
-  
-      console.log("[DEBUG] getTokensByProjectAndBook response:", response.data);
       return response.data.data || response.data;
     } catch (error) {
       console.error("[ERROR] getTokensByProjectAndBook failed:", error);
       throw error;
     }
   },
+ 
+  // Generate word tokens for a project & book
   generateWordTokens: async (projectId, bookName) => {
     try {
-      const encodedBook = encodeURIComponent(bookName);
-      console.log("[DEBUG] generateWordTokens called with:", {
-        projectId,
-        bookName,
-        encodedBook,
-        finalUrl: `/word_tokens/generate/${projectId}?book_name=${encodedBook}`,
-      });
-  
       const response = await api.post(
-        `/word_tokens/generate/${projectId}?book_name=${encodedBook}`
+        `/word_tokens/generate/${projectId}?book_name=${bookName}`
       );
-  
-      return response.data;
+      return response.data.data;
     } catch (error) {
       console.error("[ERROR] generateWordTokens failed:", error);
       throw error;
     }
   },
-  
-  // ✅ Update translation
-  updateToken: async (wordTokenId, payload) => {
-    const response = await api.put(`/api/${wordTokenId}`, payload);
-    return response.data;
-  }, 
-
-  generateTokens: async (projectId, bookName) => {
+ 
+  // Batch generate translated tokens
+  generateBatchTokens: async (projectId, bookName) => {
     const response = await api.post(
-      `/api/generate_batch/${projectId}?book_name=${encodeURIComponent(bookName)}`
+      `/word_tokens/translations/generate_batch/${projectId}`,
+      null,
+      { params: { book_name: bookName } }
     );
-    return response.data.data || response.data;
+    return response.data;
+  },
+ 
+  // Update a single token translation
+  updateToken: async (wordTokenId, payload) => {
+    const response = await api.put(`/word_tokens/update/${wordTokenId}`, payload);
+    return response.data;
   },
 };
-
-// ------------------ Draft API -----------------
-
+ 
+// ------------------ Draft API ------------------
 export const draftAPI = {
-  // Generate a draft for a project
-  generateDraft: async (projectId) => {
-    const res = await api.post("/word_tokens/drafts/generate", {
-      project_id: projectId,
-    });
-    return res.data;
+  // Get latest draft for a book
+  getLatestDraftForBook: async (projectId, bookName) => {
+    try {
+      const response = await api.get("/word_tokens/drafts/drafts/latest", {
+        params: { project_id: projectId, book_name: bookName },
+      });
+      return response.data; // draft object
+    } catch (error) {
+      if (error.response?.status === 404) {
+        return null; // no draft exists yet
+      }
+      console.error("[ERROR] getLatestDraftForBook failed:", error);
+      throw error;
+    }
   },
-
-  // Generate a draft for a specific book
-  generateBookDraft: async (projectId, bookName) => {
-    const res = await api.post("/word_tokens/drafts/generate/book", {
+ 
+  // Generate draft for a book
+  generateDraftForBook: async (projectId, bookName) => {
+    const response = await api.post("/word_tokens/drafts/generate/book", {
       project_id: projectId,
       book_name: bookName,
     });
-    return res.data;
+    return response.data.data;
   },
-
-  // Get latest draft for a given project + book
-  getLatestDraft: async (projectId, bookName) => {
-    const res = await api.get("/word_tokens/drafts/latest", {
-      params: { project_id: projectId, book_name: bookName },
-    });
-    return res.data;
+ 
+  // Generate draft for entire project
+  generateDraftForProject: async (projectId) => {
+    try {
+      const response = await api.post("/word_tokens/drafts/generate", {
+        project_id: projectId,
+      });
+      return response.data.data;
+    } catch (error) {
+      console.error("[ERROR] generateDraftForProject failed:", error);
+      throw error;
+    }
   },
 };
-
 
 
 // ------------------ Books API ------------------

@@ -3,20 +3,20 @@ from dotenv import load_dotenv
 import httpx
 import time
 from fastapi import HTTPException
-
+ 
 # Load environment variables
 load_dotenv()
-
+ 
 VACHAN_LOGIN_URL = "https://api.vachanengine.org/v2/ai/token"
 VACHAN_TRANSLATE_URL = "https://api.vachanengine.org/v2/ai/model/text/translate"
 VACHAN_JOB_STATUS_URL = "https://api.vachanengine.org/v2/ai/model/job"
-
+ 
 USERNAME = os.getenv("VACHAN_USERNAME")
 PASSWORD = os.getenv("VACHAN_PASSWORD")
-
+ 
 MAX_RETRIES = 15
 POLL_INTERVAL = 2
-
+ 
 def get_access_token():
     try:
         resp = httpx.post(VACHAN_LOGIN_URL, data={
@@ -38,11 +38,11 @@ def request_translation(token: str, texts: list[str], src_lang: str, tgt_lang: s
         "Accept": "application/json"
     }
     url = f"{VACHAN_TRANSLATE_URL}?device=cpu&model_name=nllb-600M&source_language={src_lang}&target_language={tgt_lang}"
-
+ 
     # Pass the whole list of tokens
     resp = httpx.post(url, json=texts, headers=headers)
     resp.raise_for_status()
-
+ 
     job_id = resp.json().get("data", {}).get("jobId")
     if not job_id:
         raise HTTPException(status_code=500, detail=f"Vachan translation request failed: {resp.text}")
@@ -51,7 +51,7 @@ def poll_job_status(token: str, job_id: int):
     """Poll until translation job completes or fails. Returns list of translations."""
     headers = {"Authorization": f"Bearer {token}"}
     url = f"{VACHAN_JOB_STATUS_URL}?job_id={job_id}"
-
+ 
     for _ in range(MAX_RETRIES):
         resp = httpx.get(url, headers=headers)
         resp.raise_for_status()
@@ -66,12 +66,27 @@ def poll_job_status(token: str, job_id: int):
                 raise HTTPException(status_code=500, detail="Vachan AI returned no translations.")
         elif "failed" in status:
             raise HTTPException(status_code=500, detail="Vachan AI job failed.")
-
+ 
         time.sleep(POLL_INTERVAL)
-
+ 
     raise HTTPException(status_code=504, detail="Timeout waiting for Vachan AI translation.")
+# def translate_texts_with_polling(src_lang: str, tgt_lang: str, texts: list[str]):
+#     """Full batch translation flow: login, request, poll until done. Returns list of translations."""
+#     token = get_access_token()
+#     job_id = request_translation(token, texts, src_lang, tgt_lang)
+#     return poll_job_status(token, job_id)
 def translate_texts_with_polling(src_lang: str, tgt_lang: str, texts: list[str]):
-    """Full batch translation flow: login, request, poll until done. Returns list of translations."""
-    token = get_access_token()
-    job_id = request_translation(token, texts, src_lang, tgt_lang)
-    return poll_job_status(token, job_id)
+    """
+    Full batch translation flow: login, request, poll until done.
+    Raises exception immediately if any failure occurs.
+    """
+    try:
+        token = get_access_token()
+        job_id = request_translation(token, texts, src_lang, tgt_lang)
+        translations = poll_job_status(token, job_id)
+        return translations
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Translation failed: {e}")
+        # Raise the exception to stop the backend batch loop immediately
+        raise

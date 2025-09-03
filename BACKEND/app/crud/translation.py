@@ -7,14 +7,14 @@ from app.models.word_token_translation import WordTokenTranslation
 from app.models.book import Book
 from app.models.project import Project
 from uuid import UUID
-
+ 
 class TranslationService:
     def generate_draft(self, db: Session, project_id):
         # 1. Validate project
         project = db.query(Project).filter(Project.project_id == project_id).first()
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
-
+ 
         # 2. Check if a draft already exists for the project (latest draft)
         existing_draft = (
             db.query(TranslationDraft)
@@ -24,12 +24,12 @@ class TranslationService:
         )
         if existing_draft:
             return existing_draft
-
+ 
         # 3. Fetch books under that source
         books = db.query(Book).filter(Book.source_id == project.source_id).all()
         if not books:
             raise HTTPException(status_code=404, detail="No books found for this project")
-
+ 
         # 4. Fetch active tokens with translations
         tokens = db.query(WordTokenTranslation).filter(
             WordTokenTranslation.project_id == project_id,
@@ -38,12 +38,12 @@ class TranslationService:
         ).all()
         if not tokens:
             raise HTTPException(status_code=404, detail="No translated words found")
-
+ 
         translation_dict = {t.token_text: t.translated_text for t in tokens}
-
+ 
         # 5. Tokenization regex
         token_pattern = re.compile(r'(\\\w+)|([^\W\d_]+)|([\W\d_])')
-
+ 
         translated_blocks = []
         for book in books:
             content = book.usfm_content or ""
@@ -57,9 +57,9 @@ class TranslationService:
                 else:
                     result.append(punct)
             translated_blocks.append(''.join(result))
-
+ 
         final_content = "\n\n".join(translated_blocks).strip()
-
+ 
         draft = TranslationDraft(
             project_id=project_id,
             draft_name=f"{project.name}_draft_{datetime.utcnow().isoformat()}",
@@ -72,14 +72,14 @@ class TranslationService:
         db.commit()
         db.refresh(draft)
         return draft
-
-
+ 
+ 
     def generate_draft_for_book(self, db: Session, project_id, book_name: str):
         # 1. Validate project
         project = db.query(Project).filter(Project.project_id == project_id).first()
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
-
+ 
         # 2. Check if a draft already exists for this book
         existing_draft = (
             db.query(TranslationDraft)
@@ -92,7 +92,7 @@ class TranslationService:
         )
         if existing_draft:
             return existing_draft
-
+ 
         # 3. Fetch book by name
         book = db.query(Book).filter(
             Book.source_id == project.source_id,
@@ -100,7 +100,7 @@ class TranslationService:
         ).first()
         if not book:
             raise HTTPException(status_code=404, detail=f"Book '{book_name}' not found in project")
-
+ 
         # 4. Fetch active tokens with translations
         tokens = db.query(WordTokenTranslation).filter(
             WordTokenTranslation.project_id == project_id,
@@ -109,12 +109,12 @@ class TranslationService:
         ).all()
         if not tokens:
             raise HTTPException(status_code=404, detail="No translated words found")
-
+ 
         translation_dict = {t.token_text.lower(): t.translated_text for t in tokens}
-
+ 
         # 5. Tokenization regex
         token_pattern = re.compile(r'(\\\w+)|([^\W\d_]+)|([\W\d_])')
-
+ 
         content = book.usfm_content or ""
         tokens_found = token_pattern.findall(content)
         result = []
@@ -126,9 +126,9 @@ class TranslationService:
                 result.append(translated_word)
             else:
                 result.append(punct)
-
+ 
         final_content = ''.join(result).strip()
-
+ 
         # 6. Save draft in DB
         draft = TranslationDraft(
             project_id=project_id,
@@ -142,11 +142,11 @@ class TranslationService:
         db.commit()
         db.refresh(draft)
         return draft
-
-
+ 
+ 
 translation_service = TranslationService()
-
-
+ 
+ 
 def get_latest_draft(db: Session, project_id: UUID, book_name: str) -> TranslationDraft:
     """
     Fetch the latest draft for a given project and book
@@ -163,3 +163,4 @@ def get_latest_draft(db: Session, project_id: UUID, book_name: str) -> Translati
     if not draft:
         raise HTTPException(status_code=404, detail="No draft found for this book")
     return draft
+ 
