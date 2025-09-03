@@ -1,5 +1,5 @@
 import React from 'react';
-import { Form, Input, Button, Card, Typography, notification } from 'antd';
+import { Form, Input, Button, Card, Typography, notification, App } from 'antd';
 import { LockOutlined, CheckCircleTwoTone, CloseCircleTwoTone } from '@ant-design/icons';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
@@ -11,6 +11,7 @@ export default function ResetPassword() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
   const navigate = useNavigate();
+  const { message } = App.useApp();
 
   const openSuccess = (msg) => {
     notification.open({
@@ -36,13 +37,13 @@ export default function ResetPassword() {
 
   const resetMutation = useMutation({
     mutationFn: authAPI.resetPassword,
-    onSuccess: () => {
-      openSuccess("Your password has been reset. Please login with your new password.");
+    onSuccess: (data) => {
+      message.success(data.message ||"Your password has been reset. Please login with your new password.");
       navigate("/login");
     },
     onError: (error) => {
       console.error("Reset error:", error);
-      openError(error.response?.data?.detail || "Password reset failed");
+      message.error(error.response?.data?.detail || "Password reset failed");
     }
   });
 

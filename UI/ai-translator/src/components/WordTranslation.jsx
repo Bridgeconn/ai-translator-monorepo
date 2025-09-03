@@ -246,14 +246,16 @@ export default function WordTranslation() {
     const fetchOrGenerateDraft = async () => {
       setLoadingDraft(true);
       try {
-        const res = await draftAPI.getLatestDraftForBook(projectId, selectedBook.book_name);
+        // 1. Try fetching latest draft
+        const res = await draftAPI.getLatestDraft(projectId, selectedBook.book_name);
         const draft = res?.data;
         setCurrentDraft(draft);
         setDraftContent(draft?.content || "");
         setOriginalDraft(draft?.content || "");
       } catch (err) {
         if (err.response?.status === 404) {
-          const genRes = await draftAPI.generateDraftForBook(projectId, selectedBook.book_name);
+          // 2. If no draft found → generate
+          const genRes = await draftAPI.generateBookDraft(projectId, selectedBook.book_name);
           const draft = genRes?.data;
           setCurrentDraft(draft);
           setDraftContent(draft?.content || "");
@@ -268,9 +270,10 @@ export default function WordTranslation() {
     };
   
     if (activeTab === "draft") {
-      fetchOrGenerateDraft();  // ✅ <-- you need this
+      fetchOrGenerateDraft();
     }
   }, [activeTab, projectId, selectedBook]);
+
   
 
   const handleDraftChange = (e) => {
@@ -383,7 +386,9 @@ return (
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
-          { title: <Link to="/dashboard/projects" style={{ color: '#8b5cf6', fontWeight: 500 }}>Projects</Link> },
+          { title: <Link to="/projects" style={{ color: '#8b5cf6', fontWeight: 500 }}>
+          Projects
+        </Link> },
           { title: <span style={{ fontWeight: 500 }}>{project?.name}</span> },
         ]}
         style={{ marginBottom: 8, fontSize: 14 }}

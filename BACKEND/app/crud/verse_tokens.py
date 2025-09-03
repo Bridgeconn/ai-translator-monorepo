@@ -44,7 +44,7 @@ if missing_vars:
     raise RuntimeError(f"Missing required environment variables: {', '.join(missing_vars)}")
 
 MAX_RETRIES = 15
-POLL_INTERVAL = 2  # seconds
+POLL_INTERVAL = 4  # seconds
 
 
 # --------------------------------------------------

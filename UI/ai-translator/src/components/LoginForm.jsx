@@ -73,26 +73,39 @@ export default function LoginForm() {
       {contextHolder}
 
       <Card style={{ width: '100%', maxWidth: 400, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{
-            width: 64,
-            height: 64,
-            backgroundColor: '#722ed1',
-            borderRadius: 8,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white',
-            fontWeight: 'bold',
-            fontSize: 24,
-            margin: '0 auto 16px'
-          }}>
-            文A
-          </div>
-          <Title level={2} style={{ margin: 0, color: '#722ed1' }}>
-            Zero Draft Generator
-          </Title>
-        </div>
+  <div style={{ textAlign: 'center', marginBottom: 32 }}>
+    <Link to="/" style={{ display: "inline-block" }}>
+    <div
+    style={{
+      backgroundColor: "#722ed1",
+      borderRadius: "8px",
+      width: "50px",
+      height: "50px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "white",
+      fontSize: "24px",
+      cursor: "pointer",
+      transition: "transform 0.2s ease, background-color 0.2s ease", // smooth hover
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.transform = "scale(1.1)";
+      e.currentTarget.style.backgroundColor = "#531dab"; // darker purple
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.transform = "scale(1)";
+      e.currentTarget.style.backgroundColor = "#722ed1";
+    }}
+  >
+    文A
+  </div>
+    </Link>
+    <Title level={2} style={{ margin: 0, color: '#722ed1' }}>
+      Zero Draft Generator
+    </Title>
+  </div>
+
 
         <Form onFinish={handleLogin} layout="vertical" size="large">
           <Form.Item

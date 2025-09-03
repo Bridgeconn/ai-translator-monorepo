@@ -195,24 +195,32 @@ export const wordTokenAPI = {
 // ------------------ Draft API -----------------
 
 export const draftAPI = {
-  getLatestDraftForBook: async (projectId, bookName) => {
-    return api.get(`/translation/translation/drafts/latest`, {
-      params: { project_id: projectId, book_name: bookName },
+  // Generate a draft for a project
+  generateDraft: async (projectId) => {
+    const res = await api.post("/word_tokens/drafts/generate", {
+      project_id: projectId,
     });
+    return res.data;
   },
-  generateDraftForBook: async (projectId, bookName) => {
-    return api.post(`/translation/translation/generate/book`, {
+
+  // Generate a draft for a specific book
+  generateBookDraft: async (projectId, bookName) => {
+    const res = await api.post("/word_tokens/drafts/generate/book", {
       project_id: projectId,
       book_name: bookName,
     });
+    return res.data;
   },
-  updateDraft: async (draftId, content) => {
-    return api.put(`/translation/translation/drafts/${draftId}`, {
-      content,
-      file_size: new Blob([content]).size, // calculate size
+
+  // Get latest draft for a given project + book
+  getLatestDraft: async (projectId, bookName) => {
+    const res = await api.get("/word_tokens/drafts/latest", {
+      params: { project_id: projectId, book_name: bookName },
     });
+    return res.data;
   },
 };
+
 
 
 // ------------------ Books API ------------------

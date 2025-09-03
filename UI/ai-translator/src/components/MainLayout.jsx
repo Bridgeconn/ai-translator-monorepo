@@ -1,6 +1,6 @@
 // src/components/MainLayout.jsx
 import React, { useState } from "react";
-import { useNavigate, useLocation, Outlet } from "react-router-dom";
+import { useNavigate, useLocation, Outlet, Link } from "react-router-dom";
 import { authAPI } from "../api";
 import {
   Layout,
@@ -164,32 +164,44 @@ const userMenuItems = token
           zIndex: 100,
         }}
       >
-        {/* Logo */}
-        <div
-          style={{
-            height: "64px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            borderBottom: "1px solid #f0f0f0",
-          }}
-        >
-          <div
-            style={{
-              width: "40px",
-              height: "40px",
-              backgroundColor: "#8b5cf6",
-              borderRadius: "8px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "white",
-              fontWeight: "bold",
-              fontSize: "14px",
-            }}
-          >
-            文A
-          </div>
+       {/* Logo */}
+<div
+  style={{
+    height: "64px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderBottom: "1px solid #f0f0f0",
+  }}
+>
+  <Link to="/dashboard" style={{ display: "inline-block" }}>
+    <div
+      style={{
+        width: "40px",
+        height: "40px",
+        backgroundColor: "#8b5cf6",
+        borderRadius: "8px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "white",
+        fontWeight: "bold",
+        fontSize: "14px",
+        cursor: "pointer", // show clickable
+        transition: "transform 0.2s ease, background-color 0.2s ease",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "scale(1.1)";
+        e.currentTarget.style.backgroundColor = "#6d28d9";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "scale(1)";
+        e.currentTarget.style.backgroundColor = "#8b5cf6";
+      }}
+    >
+      文A
+    </div>
+  </Link>
         </div>
 
         {/* Nav icons */}

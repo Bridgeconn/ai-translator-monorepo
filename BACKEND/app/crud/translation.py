@@ -2,12 +2,12 @@ import re
 from datetime import datetime
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from app.schemas.translation import UpdateDraftRequest
-from app.models.translationdraft import TranslationDraft
+from app.models.translation_draft import TranslationDraft
 from app.models.word_token_translation import WordTokenTranslation
 from app.models.book import Book
 from app.models.project import Project
 from uuid import UUID
+
 class TranslationService:
     def generate_draft(self, db: Session, project_id):
         # 1. Validate project
@@ -15,12 +15,22 @@ class TranslationService:
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
 
-        # 2. Fetch books under that source
+        # 2. Check if a draft already exists for the project (latest draft)
+        existing_draft = (
+            db.query(TranslationDraft)
+            .filter(TranslationDraft.project_id == project_id)
+            .order_by(TranslationDraft.created_at.desc())
+            .first()
+        )
+        if existing_draft:
+            return existing_draft
+
+        # 3. Fetch books under that source
         books = db.query(Book).filter(Book.source_id == project.source_id).all()
         if not books:
             raise HTTPException(status_code=404, detail="No books found for this project")
 
-        # 3. Fetch active tokens with translations
+        # 4. Fetch active tokens with translations
         tokens = db.query(WordTokenTranslation).filter(
             WordTokenTranslation.project_id == project_id,
             WordTokenTranslation.translated_text.isnot(None),
@@ -31,7 +41,7 @@ class TranslationService:
 
         translation_dict = {t.token_text: t.translated_text for t in tokens}
 
-        # 4. Tokenization regex
+        # 5. Tokenization regex
         token_pattern = re.compile(r'(\\\w+)|([^\W\d_]+)|([\W\d_])')
 
         translated_blocks = []
@@ -70,7 +80,20 @@ class TranslationService:
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
 
-        # 2. Fetch book by name
+        # 2. Check if a draft already exists for this book
+        existing_draft = (
+            db.query(TranslationDraft)
+            .filter(
+                TranslationDraft.project_id == project_id,
+                TranslationDraft.draft_name.ilike(f"%{book_name}%")
+            )
+            .order_by(TranslationDraft.created_at.desc())
+            .first()
+        )
+        if existing_draft:
+            return existing_draft
+
+        # 3. Fetch book by name
         book = db.query(Book).filter(
             Book.source_id == project.source_id,
             Book.book_name == book_name
@@ -78,7 +101,7 @@ class TranslationService:
         if not book:
             raise HTTPException(status_code=404, detail=f"Book '{book_name}' not found in project")
 
-        # 3. Fetch active tokens with translations
+        # 4. Fetch active tokens with translations
         tokens = db.query(WordTokenTranslation).filter(
             WordTokenTranslation.project_id == project_id,
             WordTokenTranslation.translated_text.isnot(None),
@@ -87,36 +110,26 @@ class TranslationService:
         if not tokens:
             raise HTTPException(status_code=404, detail="No translated words found")
 
-        # translation_dict = {t.token_text: t.translated_text for t in tokens}
         translation_dict = {t.token_text.lower(): t.translated_text for t in tokens}
 
-        # 4. Tokenization regex
+        # 5. Tokenization regex
         token_pattern = re.compile(r'(\\\w+)|([^\W\d_]+)|([\W\d_])')
 
         content = book.usfm_content or ""
         tokens_found = token_pattern.findall(content)
         result = []
-        # for tag, word, punct in tokens_found:
-        #     if tag:
-        #         result.append(tag)
-        #     elif word:
-        #         result.append(translation_dict.get(word, word))
-        #     else:
-        #         result.append(punct)
         for tag, word, punct in tokens_found:
             if tag:
-             result.append(tag)
+                result.append(tag)
             elif word:
-        # lookup lowercase version of the word
-             translated_word = translation_dict.get(word.lower(), word)
-             result.append(translated_word)
+                translated_word = translation_dict.get(word.lower(), word)
+                result.append(translated_word)
             else:
-             result.append(punct)
-
+                result.append(punct)
 
         final_content = ''.join(result).strip()
 
-        # 5. Save draft in DB
+        # 6. Save draft in DB
         draft = TranslationDraft(
             project_id=project_id,
             draft_name=f"{project.name}_{book_name}_draft_{datetime.utcnow().isoformat()}",
@@ -132,6 +145,8 @@ class TranslationService:
 
 
 translation_service = TranslationService()
+
+
 def get_latest_draft(db: Session, project_id: UUID, book_name: str) -> TranslationDraft:
     """
     Fetch the latest draft for a given project and book
@@ -147,14 +162,4 @@ def get_latest_draft(db: Session, project_id: UUID, book_name: str) -> Translati
     )
     if not draft:
         raise HTTPException(status_code=404, detail="No draft found for this book")
-    return draft
-def update_draft(db: Session, draft_id: UUID, req: UpdateDraftRequest):
-    draft = db.query(TranslationDraft).filter(TranslationDraft.draft_id == draft_id).first()
-    if not draft:
-        raise HTTPException(status_code=404, detail="Draft not found")
-
-    draft.content = req.content
-    draft.file_size = len(req.content.encode("utf-8"))
-    db.commit()
-    db.refresh(draft)
     return draft

@@ -55,25 +55,37 @@ export default function RegisterForm() {
         }}
       >
         <Space direction="vertical" style={{ width: "100%" }} align="center">
-          <div
-            style={{
-              backgroundColor: "#722ed1",
-              borderRadius: "8px",
-              width: "50px",
-              height: "50px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "white",
-              fontSize: "24px",
-            }}
-          >
-            文A
-          </div>
-          <Title level={3} style={{ marginBottom: 0, color: "#722ed1" }}>
-            Create Account
-          </Title>
-        </Space>
+  <Link to="/" style={{ display: "inline-block" }}>
+  <div
+    style={{
+      backgroundColor: "#722ed1",
+      borderRadius: "8px",
+      width: "50px",
+      height: "50px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "white",
+      fontSize: "24px",
+      cursor: "pointer",
+      transition: "transform 0.2s ease, background-color 0.2s ease", // smooth hover
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.transform = "scale(1.1)";
+      e.currentTarget.style.backgroundColor = "#531dab"; // darker purple
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.transform = "scale(1)";
+      e.currentTarget.style.backgroundColor = "#722ed1";
+    }}
+  >
+    文A
+  </div>
+  </Link>
+  <Title level={3} style={{ marginBottom: 0, color: "#722ed1" }}>
+    Create Account
+  </Title>
+</Space>
 
         <Form
           name="register"

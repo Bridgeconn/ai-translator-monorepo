@@ -1,4 +1,4 @@
-import React, { useState , useEffect} from "react";
+import React, { useState , useEffect, useRef} from "react";
 import {
   Row,
   Col,
@@ -87,26 +87,64 @@ async function requestDocTranslation(token, file, srcLangCode, tgtLangCode) {
 }
 
 // ------------------ Polling ------------------
-async function pollJobStatus(token, jobId, onStatusUpdate) {
-  while (true) {
-    const resp = await vachanApi.get(`/model/job?job_id=${jobId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const status = resp.data?.data?.status?.toLowerCase();
-    console.log(`⏳ Job ${jobId} status:`, status);
+async function pollJobStatus({ token, jobId, onStatusUpdate, notification, maxAttempts = 40, interval = 3000, signal }) {
+  let attempts = 0;
 
-    if (onStatusUpdate) onStatusUpdate(status);
-
-    if (status?.includes("finished")) {
-      return jobId;
-    }
-    if (status?.includes("failed")) {
-      throw new Error(" Translation job failed");
+  while (attempts < maxAttempts) {
+    if (signal?.aborted) {
+      notification.warning({
+        message: "Translation Cancelled",
+        description: "You cancelled the translation process.",
+      });
+      throw new Error("Polling cancelled by user");
     }
 
-    await new Promise((r) => setTimeout(r, 3000)); // poll every 3s
+    try {
+      const resp = await vachanApi.get(`/model/job?job_id=${jobId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal, // attach abort signal to axios request
+      });
+
+      const status = resp.data?.data?.status?.toLowerCase();
+      if (onStatusUpdate) onStatusUpdate(status);
+
+      if (status?.includes("finished")) {
+        notification.success({
+          message: "Translation Completed",
+          description: "Your document has been successfully translated.",
+        });
+        return jobId;
+      }
+
+      if (status?.includes("failed")) {
+        notification.error({
+          message: "Translation Failed",
+          description: "The translation job failed. Please try again later.",
+        });
+        throw new Error("Translation job failed");
+      }
+    } catch (err) {
+      if (err.name === "CanceledError") {
+        throw new Error("Polling cancelled by user");
+      }
+      notification.error({
+        message: "Server Error",
+        description: "Unable to check job status (server may be down).",
+      });
+      throw err;
+    }
+
+    attempts++;
+    await new Promise((r) => setTimeout(r, interval));
   }
+
+  notification.warning({
+    message: "Translation Timeout",
+    description: "The translation service did not respond in time.",
+  });
+  throw new Error("Polling timed out after waiting too long");
 }
+
 
 async function fetchAssets(token, jobId) {
   const resp = await vachanApi.get(`/assets?job_id=${jobId}`, {
@@ -132,6 +170,8 @@ export default function QuickTranslationPage() {
   const [loading, setLoading] = useState(false);
   const { message } = App.useApp();
   const navigate = useNavigate();
+  const controllerRef = useRef(null);
+
  // Restore draft if available
  useEffect(() => {
   const draft = localStorage.getItem("quickTranslationDraft");
@@ -439,9 +479,17 @@ export default function QuickTranslationPage() {
       setStatusMsg("⏳ Translating... please wait");
   
       // 5️⃣ Poll until job is finished
-      const finishedJobId = await pollJobStatus(token, jobId, (status) => {
-        setStatusMsg(`⏳ Job ${jobId} status: ${status}`);
+      controllerRef.current = new AbortController(); // ✅ create new controller
+      const finishedJobId = await pollJobStatus({
+        token,
+        jobId,
+        onStatusUpdate: (status) => {
+          setStatusMsg(`⏳ Job ${jobId} status: ${status}`);
+        },
+        notification,
+        signal: controllerRef.current.signal, // ✅ pass signal
       });
+
   
       // 6️⃣ Fetch translated CSV
       const csvText = await fetchAssets(token, finishedJobId);
@@ -1027,35 +1075,49 @@ export default function QuickTranslationPage() {
                 disabled={loading}
               />
             </Spin>
-            <div style={{ marginTop: 12, textAlign: "left" }}>
-              <Space>
-              <Tooltip title="save" color="#fff" overlayInnerStyle={{ color: "#000" }}>
-              <Button 
-                type="default"
-                icon={<SaveOutlined />}
-                onClick={handleSave}
-                disabled={!isTranslated || loading}
-              >
-              </Button>
-              </Tooltip>
-                <Tooltip title="copy" color="#fff" overlayInnerStyle={{ color: "#000" }}>
-                <Button
-                  icon={<CopyOutlined />}
-                  onClick={() => handleCopy(targetText)}
-                  disabled={loading || !targetText}
-                >
-                  {/* Copy */}
-                </Button >
-              </Tooltip>
+            <div style={{ marginTop: 12 }}>
+  <Row justify="space-between" align="middle">
+    <Col>
+      <Space>
+        <Tooltip title="save" color="#fff" overlayInnerStyle={{ color: "#000" }}>
+          <Button
+            type="default"
+            icon={<SaveOutlined />}
+            onClick={handleSave}
+            disabled={!isTranslated || loading}
+          />
+        </Tooltip>
 
-                <DownloadDraftButton
-                  content={targetText}
-                  disabled={loading || !targetText}
-                />
-              </Space>
-            </div>
+        <Tooltip title="copy" color="#fff" overlayInnerStyle={{ color: "#000" }}>
+          <Button
+            icon={<CopyOutlined />}
+            onClick={() => handleCopy(targetText)}
+            disabled={loading || !targetText}
+          />
+        </Tooltip>
+
+        <DownloadDraftButton
+          content={targetText}
+          disabled={loading || !targetText}
+        />
+      </Space>
+    </Col>
+
+    <Col>
+      <Button
+        danger
+        disabled={!loading} // ✅ enable only while translating
+        onClick={() => controllerRef.current?.abort()}
+      >
+        Cancel Translation
+      </Button>
+    </Col>
+  </Row>
+</div>
+
           </Card>
         </Col>
+      
 
         {/* Translate button centered */}
         <Col span={24} style={{ textAlign: "center", marginTop: 24 }}>
@@ -1075,7 +1137,7 @@ export default function QuickTranslationPage() {
               <Text type="secondary">{statusMsg}</Text>
             </div>
           )}
-        </Col>
+        </Col> 
       </Row>
       <Modal
         title="Save Translation"
