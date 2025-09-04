@@ -41,7 +41,7 @@ const ZeroDraftGenerator = () => {
     queryKey: ["sources"],
     queryFn: async () => {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:8000/sources/", {
+      const res = await fetch(import.meta.env.VITE_BACKEND_URL + "/sources/", {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -59,7 +59,7 @@ const ZeroDraftGenerator = () => {
     queryKey: ["languages"],
     queryFn: async () => {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:8000/languages/", {
+      const res = await fetch(import.meta.env.VITE_BACKEND_URL + "/languages/", {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -75,7 +75,7 @@ const ZeroDraftGenerator = () => {
   const { data: versions = [], refetch: refetchVersions } = useQuery({
     queryKey: ["versions"],
     queryFn: async () => {
-      const res = await fetch("http://localhost:8000/versions/");
+      const res = await fetch(import.meta.env.VITE_BACKEND_URL + "/versions/");
       if (!res.ok) throw new Error("Failed to fetch versions");
       const data = await res.json();
       return data.data || [];
@@ -108,7 +108,7 @@ const ZeroDraftGenerator = () => {
     queryKey: ["projects"],
     queryFn: async () => {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:8000/projects/", {
+      const res = await fetch(import.meta.env.VITE_BACKEND_URL + "/projects/", {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -182,7 +182,7 @@ const handleCreateProject = async (values) => {
 
   try {
     const token = localStorage.getItem("token");
-    const response = await fetch("http://localhost:8000/projects/", {
+    const response = await fetch(import.meta.env.VITE_BACKEND_URL + "/projects/", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -291,7 +291,7 @@ const handleCreateProject = async (values) => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `http://localhost:8000/projects/${projectId}`,
+        `import.meta.env.VITE_BACKEND_URL/projects/${projectId}`,
         {
           method: "DELETE",
           headers: {

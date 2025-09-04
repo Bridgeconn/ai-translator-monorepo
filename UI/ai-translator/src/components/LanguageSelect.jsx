@@ -12,7 +12,7 @@ export default function LanguageSelect({ label, value, onChange, disabled = fals
   } = useQuery({
     queryKey: ["languages"],
     queryFn: async () => {
-      const res = await fetch("http://localhost:8000/languages/");
+      const res = await fetch(import.meta.env.VITE_BACKEND_URL + "/languages/");
       if (!res.ok) throw new Error("Failed to fetch languages");
       return res.json();
     },

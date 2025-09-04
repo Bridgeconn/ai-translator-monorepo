@@ -16,8 +16,8 @@ const Dashboard = () => {
       setLoading(true);
 
       const [projectsResponse, sourcesResponse] = await Promise.all([
-        fetch('http://localhost:8000/projects/'),
-        fetch('http://localhost:8000/sources/')
+        fetch(import.meta.env.VITE_BACKEND_URL + '/projects/'),
+        fetch(import.meta.env.VITE_BACKEND_URL + '/sources/')
       ]);
 
       if (projectsResponse.ok && sourcesResponse.ok) {

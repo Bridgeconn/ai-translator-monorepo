@@ -21,8 +21,8 @@ const Dashboard = () => {
       
       // Replace these API calls with your actual endpoints
       const [projectsResponse, sourcesResponse] = await Promise.all([
-        fetch('http://localhost:8000/projects/'),  // Replace with your get all projects endpoint
-        fetch('http://localhost:8000/sources/')    // Replace with your get all sources endpoint
+        fetch(import.meta.env.VITE_BACKEND_URL + '/projects/'),  // Replace with your get all projects endpoint
+        fetch(import.meta.env.VITE_BACKEND_URL + '/sources/')    // Replace with your get all sources endpoint
       ]);
 
       if (projectsResponse.ok && sourcesResponse.ok) {

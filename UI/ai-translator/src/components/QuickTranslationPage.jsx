@@ -214,7 +214,7 @@ export default function QuickTranslationPage() {
       try {
         const token = localStorage.getItem("token");
         const resp = await fetch(
-          "http://localhost:8000/api/project-text-documents/",
+          import.meta.env.VITE_BACKEND_URL + "/api/project-text-documents/",
           {
             method: "GET", // ✅ explicitly tell it to use GET
             headers: {
@@ -749,7 +749,7 @@ export default function QuickTranslationPage() {
       }
  
       const response = await fetch(
-        "http://localhost:8000/api/project-text-documents/",
+        import.meta.env.VITE_BACKEND_URL + "/api/project-text-documents/",
         {
           method: "POST",
           headers: {
@@ -790,7 +790,7 @@ export default function QuickTranslationPage() {
       try {
         const token = localStorage.getItem("token");
         const resp = await fetch(
-          "http://localhost:8000/api/project-text-documents/",
+          import.meta.env.VITE_BACKEND_URL +"/api/project-text-documents/",
           {
             method: "GET",
             headers: {
@@ -907,10 +907,10 @@ export default function QuickTranslationPage() {
       let url;
       if (selectedProject) {
         // existing project → add files
-        url = `http://localhost:8000/api/project-text-documents/${selectedProject}/add-files`;
+        url = import.meta.env.VITE_BACKEND_URL + `/api/project-text-documents/${selectedProject}/add-files`;
       } else {
         // new project → create
-        url = "http://localhost:8000/api/project-text-documents/";
+        url = import.meta.env.VITE_BACKEND_URL + "/api/project-text-documents/";
       }
  
       const response = await fetch(url, {
