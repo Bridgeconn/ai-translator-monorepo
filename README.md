@@ -45,7 +45,7 @@ pnpm install
 
 pnpm run dev 
 
-# if not work : 
+## if not work : 
 Then do this in you repo path in terminal ---->    
 curl -fsSL https://get.pnpm.io/install.sh | sh -
 
