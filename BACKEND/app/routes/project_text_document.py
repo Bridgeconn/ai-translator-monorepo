@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy import UUID
+from fastapi import APIRouter, Depends, HTTPException, status, Query,Body
+from uuid import UUID
 from sqlalchemy.orm import Session
 from app.models.project_text_document import ProjectTextDocument
 from app.database import get_db
@@ -7,7 +7,7 @@ from app.models.users import User
 from app.dependencies.token import get_current_user
 from app.schemas.project_text_document import (
     ProjectTextDocumentCreate, ProjectTextDocumentResponse,
-    ProjectFileResponse, SuccessResponse, ProjectSummaryResponse
+    ProjectFileResponse, SuccessResponse, ProjectSummaryResponse, ProjectFileData, FileUpdate
 )
 from app.crud import project_text_document as crud
 from typing import List, Optional
@@ -149,3 +149,26 @@ def fetch_all_projects(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching projects: {str(e)}")
 
+
+@router.put("/{project_id}/files/{file_id}", response_model=ProjectFileResponse)
+async def update_file(
+    project_id: UUID,
+    file_id: UUID,
+    file_data: FileUpdate,   
+    db: Session = Depends(get_db),
+):
+    db_file = db.query(ProjectTextDocument).filter(
+        ProjectTextDocument.project_id == project_id,
+        ProjectTextDocument.id == file_id
+    ).first()
+
+    if not db_file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    if file_data.target_text is not None:
+        db_file.target_text = file_data.target_text
+
+    db.commit()
+    db.refresh(db_file)
+
+    return db_file

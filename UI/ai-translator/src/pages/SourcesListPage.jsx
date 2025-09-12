@@ -224,7 +224,7 @@ export default function SourcesListPage() {
       setCreateSuccessOpen(true); // ✅ show popup
     },
     onError: () => {
-      message.error(" Failed to create source");
+      message.error(" Failed to create, source already exists");
     },
   });
 
@@ -403,7 +403,7 @@ export default function SourcesListPage() {
         ref={hiddenQuickInputRef}
         style={{ display: "none" }}
         multiple
-        accept=".usfm,.sfm,.txt"
+        accept=".usfm"
         onChange={onQuickFilesChosen}
       />
 
@@ -881,7 +881,7 @@ function BookGrid({ sourceId, uploadBooksForSource, showUploadSummary }) {
           ref={hiddenInputRef}
           style={{ display: "none" }}
           multiple
-          accept=".usfm,.sfm,.txt"
+          accept=".usfm"
           onChange={onModalFilesChosen}
         />
         <Button

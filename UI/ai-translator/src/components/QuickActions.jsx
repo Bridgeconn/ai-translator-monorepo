@@ -11,12 +11,12 @@ const QuickActions = () => {
     <Card
       title="+ Quick Actions"
       style={{
-        width: 650,
+        width: "100%",
         borderRadius: 12,
         boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
         border: "none",
       }}
-      headStyle={{ fontSize: 18, fontWeight: 600 }}
+      styles={{ body: { padding: 20 }, title: { fontSize: 18, fontWeight: 600 }}}
     >
       <Text type="secondary" style={{ display: "block", marginBottom: 20 }}>
         Get started with common tasks

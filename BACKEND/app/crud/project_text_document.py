@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func, distinct
 from typing import List, Optional, Dict, Any, Union
+from datetime import datetime
 from app.models.project_text_document import ProjectTextDocument
 from app.schemas.project_text_document import (
     ProjectTextDocumentResponse, ProjectFileResponse, ProjectFileData
@@ -194,4 +195,20 @@ def get_all_projects(db: Session, project_type: str = "text_document") -> List[P
         projects_list.append(project_response)
     
     return projects_list
+
+def update_file_translation(db: Session, project_id: str, file_id: str, target_text: str):
+    """Update the translation text of a file in a project"""
+    file_record = db.query(ProjectTextDocument).filter(
+        ProjectTextDocument.project_id == project_id,
+        ProjectTextDocument.id == file_id
+    ).first()
+
+    if not file_record:
+        raise ValueError(f"File with ID {file_id} not found in project {project_id}")
+
+    file_record.target_text = target_text
+    file_record.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(file_record)
+    return file_record
 

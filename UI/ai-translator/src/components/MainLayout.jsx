@@ -141,7 +141,7 @@ const userMenuItems = token
   
     const handleMenuClick = ({ key }) => {
       if (!token && protectedPaths.includes(key)) {
-        navigate("/login"); // 🚀 force login before opening
+        navigate("/login"); //  force login before opening
         return;
       }
       navigate(key);

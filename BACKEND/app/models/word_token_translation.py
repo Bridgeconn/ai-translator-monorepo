@@ -11,7 +11,7 @@ class WordTokenTranslation(Base):
 
     word_token_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     project_id = Column(UUID(as_uuid=True), ForeignKey('projects.project_id',ondelete="CASCADE"), nullable=False)
-    book_name = Column(String(255), nullable=False)
+    book_id = Column(UUID(as_uuid=True), ForeignKey('books.book_id', ondelete="CASCADE"), nullable=False)
     token_text = Column(String(255), nullable=False)
     frequency = Column(Integer, default=1)
     translated_text = Column(Text)

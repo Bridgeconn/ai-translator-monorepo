@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Input, Button, Typography, Form, message } from "antd";
+import { Input, Button, Typography, Form,App } from "antd";
 import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import ProjectList from "../components/ProjectList";
@@ -20,6 +20,7 @@ const ZeroDraftGenerator = () => {
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [form] = Form.useForm();
+  const { message } = App.useApp();
 
   // -------------------------
   // React Query: fetch sources
@@ -73,28 +74,35 @@ const ZeroDraftGenerator = () => {
   const fetchProjects = async () => {
     setLoading(true);
     try {
-      const [normalProjects, textDocProjects] = await Promise.all([
+      const [normalResult, textDocResult] = await Promise.allSettled([
         projectsAPI.getAllProjects(),
         textDocumentAPI.getAllProjects(true),
       ]);
-
+  
+      const normalProjects =
+        normalResult.status === "fulfilled" ? normalResult.value : [];
+  
+      const textDocProjects =
+        textDocResult.status === "fulfilled" ? textDocResult.value : [];
+  
       const formattedTextDocProjects = textDocProjects.map((p) => ({
         project_id: p.project_id,
         name: p.project_name,
         translation_type: "text_document",
       }));
-
+  
       const combinedProjects = [...normalProjects, ...formattedTextDocProjects];
+  
       setAllProjects(combinedProjects);
       setFilteredProjects(combinedProjects);
     } catch (err) {
-      console.error(err);
-      message.error("Failed to fetch projects");
+      console.error("Fetch projects error:", err);
     } finally {
       setLoading(false);
     }
   };
-
+  
+  
   useEffect(() => {
     fetchProjects();
     refetchSources();

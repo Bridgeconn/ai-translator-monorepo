@@ -74,7 +74,7 @@ export default function DownloadDraftButton({ style, content, disabled = false }
 
   return (
     <Dropdown menu={menu} placement="bottomRight" trigger={["click"]} disabled={disabled}>
-      <Tooltip title="Download" color="#fff" overlayInnerStyle={{ color: "#000" }}>
+      <Tooltip title="Download" color="#fff" styles={{ body: { color: "#000"} }}>
 
       <Button
         //type="primary"

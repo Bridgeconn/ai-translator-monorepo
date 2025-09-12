@@ -43,8 +43,8 @@ class TranslationDraftOut(BaseModel):
 
         # Response models
 class SourceDraftResponse(BaseModel):
-    draft_id: int
-    project_id: int
+    draft_id: UUID
+    project_id: UUID
     draft_name: str
     content: str
     format: str
@@ -61,3 +61,5 @@ class GenerateBookDraftRequest(BaseModel):
 class UpdateDraftRequest(BaseModel):
     content: str
     file_size: Optional[int] = None
+class DraftWithMessage(TranslationDraftOut):
+    message: str

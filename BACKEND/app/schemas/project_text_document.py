@@ -18,7 +18,7 @@ class ProjectTextDocumentCreate(BaseModel):
 
 class ProjectFileResponse(BaseModel):
     """Schema for file response"""
-    id: int
+    id: UUID
     file_name: str
     source_id: str
     target_id: str
@@ -57,3 +57,5 @@ class SuccessResponse(BaseModel, Generic[T]):
     """Generic success response wrapper"""
     message: str
     data: T
+class FileUpdate(BaseModel):
+    target_text: Optional[str] = None

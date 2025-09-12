@@ -113,6 +113,10 @@ export const textDocumentAPI = {
     const res = await api.get(`/api/project-text-documents/${projectId}`);
     return res.data;
   },
+  updateFile: async (projectId, fileId, payload) => {
+    const res = await api.put(`/api/project-text-documents/${projectId}/files/${fileId}`, payload);
+    return res.data;
+  },
   
   deleteProject: async (projectId) => {
     const res = await api.delete(`/api/project-text-documents/${projectId}`); 
@@ -140,12 +144,12 @@ export const languagesAPI = {
 // ------------------ Word Tokens API ------------------
 export const wordTokenAPI = {
   // Get all tokens for a project & book
-  getTokensByProjectAndBook: async (projectId, bookName) => {
-    if (!bookName) return [];
+  getTokensByProjectAndBook: async (projectId, bookId) => {
+    if (!bookId) return [];
     try {
  
       const response = await api.get(`/word_tokens/project/${projectId}`, {
-        params: { book_name: bookName },
+        params: { book_id: bookId },
       });
       return response.data.data || response.data;
     } catch (error) {
@@ -155,10 +159,10 @@ export const wordTokenAPI = {
   },
  
   // Generate word tokens for a project & book
-  generateWordTokens: async (projectId, bookName) => {
+  generateWordTokens: async (projectId, bookId) => {
     try {
       const response = await api.post(
-        `/word_tokens/generate/${projectId}?book_name=${bookName}`
+        `/word_tokens/generate/${projectId}?book_id=${bookId}`
       );
       return response.data.data;
     } catch (error) {
@@ -168,45 +172,47 @@ export const wordTokenAPI = {
   },
  
   // Batch generate translated tokens
-  generateBatchTokens: async (projectId, bookName) => {
+  generateBatchTokens: async (projectId, bookId) => {
+    console.log("[DEBUG] generateBatchTokens called with:", bookId);
+ 
     const response = await api.post(
-      `/word_tokens/translations/generate_batch/${projectId}`,
+      `/api/generate_batch_stream/${projectId}`,
       null,
-      { params: { book_name: bookName } }
+      { params: { book_id: bookId } }
     );
     return response.data;
   },
  
   // Update a single token translation
   updateToken: async (wordTokenId, payload) => {
-    const response = await api.put(`/word_tokens/update/${wordTokenId}`, payload);
+    const response = await api.put(`/api/update/${wordTokenId}`, payload);
     return response.data;
   },
 };
  
 // ------------------ Draft API ------------------
 export const draftAPI = {
-  // Get latest draft for a book
-  getLatestDraftForBook: async (projectId, bookName) => {
+  // ✅ Get latest draft for a book
+  getLatestDraftForBook: async (projectId, bookId) => {
     try {
-      const response = await api.get("/word_tokens/drafts/drafts/latest", {
-        params: { project_id: projectId, book_name: bookName },
+      const response = await api.get("/word_tokens/drafts/drafts/latest", { // ✅ Corrected path
+        params: { project_id: projectId, book_id: bookId },
       });
-      return response.data; // draft object
+      return response.data;
     } catch (error) {
       if (error.response?.status === 404) {
-        return null; // no draft exists yet
+        return null;
       }
       console.error("[ERROR] getLatestDraftForBook failed:", error);
       throw error;
     }
   },
  
-  // Generate draft for a book
-  generateDraftForBook: async (projectId, bookName) => {
+  // ✅ Generate draft for a book
+  generateDraftForBook: async (projectId, bookId) => {
     const response = await api.post("/word_tokens/drafts/generate/book", {
       project_id: projectId,
-      book_name: bookName,
+      book_id: bookId,
     });
     return response.data.data;
   },
@@ -223,9 +229,32 @@ export const draftAPI = {
       throw error;
     }
   },
+  
+  // ✅ Save draft for a book (with updated tokens)
+  saveDraftForBook: async (projectId, bookId, editedTokens = [], content = null) => {
+    try {
+      const saveResponse = await api.put("/word_tokens/drafts/word_tokens/save", {
+        project_id: projectId,
+        book_id: bookId,
+        updated_tokens: editedTokens,
+        content: content
+      });
+      console.log("[INFO] Tokens saved:", saveResponse.data);
+    } catch (error) {
+      console.error("[ERROR] saveDraftForBook failed:", error);
+      throw error;
+    }
+  },
+  // ✅ New function to save a manual, free-form draft
+  saveManualDraft: async (projectId, bookId, content) => {
+    const response = await api.post("/word_tokens/drafts/drafts/save", { // ✅ Corrected path
+      project_id: projectId,
+      book_id: bookId,
+      content: content,
+    });
+    return response.data;
+  },
 };
-
-
 // ------------------ Books API ------------------
 export const booksAPI = {
   getAllBooks: async () => {
@@ -240,7 +269,7 @@ export const booksAPI = {
   },
 };
 
-// ------------------ Verse Tokens API ------------------
+//------------------ Verse Tokens API ------------------
 export const verseTokensAPI = {
   getVerseTokens: async (projectId, bookName) => {
     const res = await api.get(`/verse-tokens/by-project/${projectId}?book_name=${bookName}`);
@@ -290,21 +319,124 @@ export const verseTokensAPI = {
     return res.data;
   },
 };
-export const translateChapter = async (projectId, bookName, chapterNumber) => {
+// export const translateChapter = async (projectId, bookName, chapterNumber) => {
+//   const res = await api.post(
+//     `/verse_tokens/translate-chapter/${projectId}/${bookName}/${chapterNumber}`
+//   );
+//   return res.data;
+// };
+// const getVerseNumbers = async (projectId, bookName, chapterNumber) => {
+//   const res = await api.get(
+//     `/verse_tokens/verse-numbers/${projectId}/${bookName}/${chapterNumber}`
+//   );
+//   return res.data; // [1, 2, 3, ...]
+// };
+
+export const translateChapter = async (projectId, bookName, chapterNumber, verseNumbers) => {
   const res = await api.post(
-    `/verse_tokens/translate-chapter/${projectId}/${bookName}/${chapterNumber}`
+    `/verse_tokens/translate-chapter/${projectId}/${bookName}/${chapterNumber}`,
+    { verse_numbers: verseNumbers }  // 👈 send body only if verses passed
   );
   return res.data;
 };
+
+// api.js
+// export const fetchDraft = async (projectId, bookName) => {
+//   const res = await api.post(
+//     "/drafts/generate-draft/",   // must include /drafts prefix
+//     { project_id: projectId, book_name: bookName },
+//     //{ responseType: "text" }
+//   );
+//   return res.data;
+// };
 // api.js
 export const fetchDraft = async (projectId, bookName) => {
-  const res = await api.post(
-    "/drafts/generate-draft/",   // ✅ must include /drafts prefix
-    { project_id: projectId, book_name: bookName },
-    { responseType: "text" }
-  );
+  const res = await api.post("/drafts/generate-draft-json/", {
+    project_id: projectId,
+    book_name: bookName,
+  });
+  return res.data; // now contains { draft_id, content, draft_name, format }
+};
+
+//Save/update an existing draft
+export const saveDraft = async (draftId, content) => {
+  const res = await api.put(`/drafts/drafts/${draftId}`, { content });
   return res.data;
 };
 
 
 export default api;
+// // ------------------ Verse Tokens API ------------------
+// export const verseTokensAPI = {
+//   getVerseTokens: async (projectId, bookName) => {
+//     const res = await api.get(`/verse-tokens/by-project/${projectId}?book_name=${bookName}`);
+//     return res.data;
+//   },
+ 
+//   translateVerseToken: async (verseTokenId) => {
+//     const res = await api.post(`/verse-tokens/translate-verse-token/${verseTokenId}`);
+//     return res.data;
+//   },
+ 
+//   manualUpdateVerseToken: async (verseTokenId, translatedText) => {
+//     const res = await api.patch(`/verse-tokens/manual-update/${verseTokenId}`, {
+//       translated_text: translatedText,
+//     });
+//     return res.data;
+//   },
+ 
+//   getVerseTokenBatch: async (projectId, bookName, offset = 0, limit = 10) => {
+//     const res = await api.get(
+//       `/verse-tokens/by-project/${projectId}?book_name=${bookName}&offset=${offset}&limit=${limit}`
+//     );
+//     return res.data;
+//   },
+ 
+//   translateChunk: async (projectId, bookName, offset = 0, limit = 10) => {
+//     const res = await api.post(
+//       `/verse-tokens/translate-chunk/${projectId}/${bookName}?offset=${offset}&limit=${limit}`
+//     );
+//     return res.data;
+//   },
+ 
+//   saveVerseTranslation: async (verseTokenId, translatedText) => {
+//     const res = await api.patch(`/verse-tokens/manual-update/${verseTokenId}`, {
+//       translated_text: translatedText,
+//     });
+//     return res.data;
+//   },
+ 
+//   generateDraft: async (projectId, bookName) => {
+//     const res = await api.get(`/verse-tokens/generate-draft/${projectId}/${bookName}`);
+//     return res.data;
+//   },
+ 
+//   getTranslationProgress: async (projectId, bookName) => {
+//     const res = await api.get(`/verse-tokens/progress/${projectId}?book_name=${bookName}`);
+//     return res.data;
+//   },
+// };
+// export const translateChapter = async (projectId, bookName, chapterNumber) => {
+//   const res = await api.post(
+//     `/verse_tokens/translate-chapter/${projectId}/${bookName}/${chapterNumber}`
+//   );
+//   return res.data;
+// };
+// // api.js
+// export const fetchDraft = async (projectId, bookName) => {
+//   const res = await api.post(
+//     "/drafts/generate-draft/",   // must include /drafts prefix
+//     { project_id: projectId, book_name: bookName },
+//     { responseType: "text" }
+//   );
+//   return res.data;
+// };
+ 
+ 
+// // Save/update an existing draft
+// export const saveDraft = async (draftId, content) => {
+//   const res = await api.put(`/drafts/drafts/${draftId}`, { content });
+//   return res.data;
+// };
+ 
+// export default api;

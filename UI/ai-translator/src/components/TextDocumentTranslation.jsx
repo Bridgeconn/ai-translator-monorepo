@@ -10,9 +10,14 @@ import {
   Button,
   message,
   Breadcrumb,
+  Tooltip,
+  App,
 } from "antd";
+import { EditOutlined , CopyOutlined} from "@ant-design/icons";
 import { useParams, Link } from "react-router-dom";
 import { textDocumentAPI } from "./api.js";
+import DownloadDraftButton from "./DownloadDraftButton";
+
 
 const { Option } = Select;
 const { Text } = Typography;
@@ -27,6 +32,9 @@ export default function TextDocumentTranslation() {
   const [targetText, setTargetText] = useState("");
   const [loading, setLoading] = useState(false);
   const [isEdited, setIsEdited] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+
+  const { message } = App.useApp();
 
   // ------------------ Fetch Project + Files ------------------
   useEffect(() => {
@@ -58,7 +66,7 @@ export default function TextDocumentTranslation() {
     setTargetText(e.target.value);
     setIsEdited(true);
   };
-
+  
   const handleSaveDraft = async () => {
     if (!selectedFile) return;
     try {
@@ -68,6 +76,7 @@ export default function TextDocumentTranslation() {
       });
       message.success("Translation saved!");
       setIsEdited(false);
+      setIsEditing(false); // exit edit mode after save
     } catch (err) {
       console.error(err);
       message.error("Failed to save translation");
@@ -75,10 +84,11 @@ export default function TextDocumentTranslation() {
       setLoading(false);
     }
   };
-
+  
   const handleDiscardDraft = () => {
     setTargetText(selectedFile?.target_text || "");
     setIsEdited(false);
+    setIsEditing(false); // exit edit mode
     message.info("Reverted to saved translation");
   };
 
@@ -164,30 +174,83 @@ export default function TextDocumentTranslation() {
             </Col>
 
             {/* Target */}
-            <Col span={12} style={{ maxHeight: "70vh", overflowY: "auto" }}>
-              <h3>Target</h3>
-              <TextArea
-                rows={20}
-                value={targetText}
-                onChange={handleDraftChange}
-                style={{
-                  backgroundColor: isEdited ? "#fffbe6" : "transparent",
-                }}
-              />
-              {isEdited && (
-                <div style={{ marginTop: 8 }}>
-                  <Button
-                    type="primary"
-                    onClick={handleSaveDraft}
-                    style={{ marginRight: 8 }}
-                    loading={loading}
-                  >
-                    Save
-                  </Button>
-                  <Button onClick={handleDiscardDraft}>Discard</Button>
-                </div>
-              )}
-            </Col>
+
+{/* Target */}
+<Col span={12} style={{ maxHeight: "70vh", overflowY: "auto" }}>
+  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+    <h3 style={{ margin: 0 }}>Target</h3>
+    <div style={{ display: "flex", gap: 8 }}>
+      {!isEditing ? (
+        <>
+          {/* Copy Button */}
+          <Tooltip
+            title="Copy translation"
+            color="#fff"
+            style={{ color: "#000" }}
+          >
+            <Button
+              type="default"
+              icon={<CopyOutlined />}
+              onClick={() => {
+                navigator.clipboard.writeText(targetText || "");
+                message.success("Copied to clipboard!");
+              }}
+              size="middle"
+            />
+          </Tooltip>
+
+          <DownloadDraftButton
+                                content={targetText}
+                                //disabled={loading || !targetText}
+                              />
+
+          {/* Edit Button */}
+          <Tooltip
+            title="Edit draft"
+            color="#fff"
+            overlayInnerStyle={{ color: "#000" }}
+          >
+            <Button
+              type="default"
+              icon={<EditOutlined />}
+              onClick={() => setIsEditing(true)}
+              size="middle"
+            />
+          </Tooltip>
+        </>
+      ) : (
+        // Show Save + Discard when editing
+        <div>
+          <Button
+            type="primary"
+            onClick={handleSaveDraft}
+            style={{ marginRight: 8 }}
+            size="small"
+            loading={loading}
+          >
+            Save
+          </Button>
+          <Button size="small" onClick={handleDiscardDraft}>
+            Discard
+          </Button>
+        </div>
+      )}
+    </div>
+  </div>
+
+  <TextArea
+    rows={20}
+    value={targetText}
+    onChange={handleDraftChange}
+    readOnly={!isEditing}
+    style={{
+      marginTop: 8,
+      backgroundColor: isEdited ? "#fffbe6" : "transparent",
+    }}
+  />
+</Col>
+
+
           </Row>
         </Card>
       )}

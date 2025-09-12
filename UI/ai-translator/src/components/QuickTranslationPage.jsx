@@ -1,4 +1,4 @@
-import React, { useState , useEffect, useRef} from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Row,
   Col,
@@ -35,8 +35,6 @@ import { useNavigate } from "react-router-dom";
 import * as pdfjsLib from "pdfjs-dist";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
-
-
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -87,7 +85,15 @@ async function requestDocTranslation(token, file, srcLangCode, tgtLangCode) {
 }
 
 // ------------------ Polling ------------------
-async function pollJobStatus({ token, jobId, onStatusUpdate, notification, maxAttempts = 40, interval = 3000, signal }) {
+async function pollJobStatus({
+  token,
+  jobId,
+  onStatusUpdate,
+  notification,
+  maxAttempts = 40,
+  interval = 3000,
+  signal,
+}) {
   let attempts = 0;
 
   while (attempts < maxAttempts) {
@@ -145,7 +151,6 @@ async function pollJobStatus({ token, jobId, onStatusUpdate, notification, maxAt
   throw new Error("Polling timed out after waiting too long");
 }
 
-
 async function fetchAssets(token, jobId) {
   const resp = await vachanApi.get(`/assets?job_id=${jobId}`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -172,26 +177,27 @@ export default function QuickTranslationPage() {
   const navigate = useNavigate();
   const controllerRef = useRef(null);
 
- // Restore draft if available
- useEffect(() => {
-  const draft = localStorage.getItem("quickTranslationDraft");
-  if (draft) {
-    try {
-      const data = JSON.parse(draft);
-      if (data.sourceText) setSourceText(data.sourceText);
-      if (data.targetText) setTargetText(data.targetText);
-      if (data.sourceLang) setSourceLang(data.sourceLang);
-      if (data.targetLang) setTargetLang(data.targetLang);
-      if (data.filename) setFilename(data.filename);
-      if (typeof data.isTranslated === "boolean") setIsTranslated(data.isTranslated);
+  // Restore draft if available
+  useEffect(() => {
+    const draft = localStorage.getItem("quickTranslationDraft");
+    if (draft) {
+      try {
+        const data = JSON.parse(draft);
+        if (data.sourceText) setSourceText(data.sourceText);
+        if (data.targetText) setTargetText(data.targetText);
+        if (data.sourceLang) setSourceLang(data.sourceLang);
+        if (data.targetLang) setTargetLang(data.targetLang);
+        if (data.filename) setFilename(data.filename);
+        if (typeof data.isTranslated === "boolean")
+          setIsTranslated(data.isTranslated);
 
-      // Clear it after restoring
-      localStorage.removeItem("quickTranslationDraft");
-    } catch (err) {
-      console.error("Failed to restore draft:", err);
+        // Clear it after restoring
+        localStorage.removeItem("quickTranslationDraft");
+      } catch (err) {
+        console.error("Failed to restore draft:", err);
+      }
     }
-  }
-}, []);
+  }, []);
   // ------------------ Additional state for error handling ------------------
   const [saveError, setSaveError] = useState("");
   const [saveSuccess, setSaveSuccess] = useState("");
@@ -202,7 +208,8 @@ export default function QuickTranslationPage() {
   const [newProjectName, setNewProjectName] = useState("");
   const [filename, setFilename] = useState("");
   const [isTranslated, setIsTranslated] = useState(false);
-  const [createProjectModalVisible, setCreateProjectModalVisible] = useState(false);
+  const [createProjectModalVisible, setCreateProjectModalVisible] =
+    useState(false);
   const [newProjectFilename, setNewProjectFilename] = useState("");
   const [creatingProject, setCreatingProject] = useState(false);
   const [createProjectError, setCreateProjectError] = useState("");
@@ -291,6 +298,12 @@ export default function QuickTranslationPage() {
   // ------------------ Syncing Source -> Target ------------------
   const handleSourceChange = (e) => {
     const newText = e.target.value;
+    const sizeInMB = new Blob([newText]).size / 1024 / 1024;
+
+  if (sizeInMB > 2) {
+    message.error("Text input must be smaller than 2MB!");
+    return; // don’t update state
+  }
     setSourceText(newText);
 
     // Whenever source is cleared or replaced, reset target
@@ -303,33 +316,45 @@ export default function QuickTranslationPage() {
     setTargetText(e.target.value);
     setIsTargetEdited(true);
   };
+  const handleCancelTranslate = () => {
+    controllerRef.current?.abort();
+    setLoading(false);
+    setStatusMsg("Translation cancelled.");
+  };
+  
 
   // ------------------ File Upload Handler ------------------
   const handleFileUpload = async (file) => {
+    const isLt2M = file.size / 1024 / 1024 < 2;
+    if (!isLt2M) {
+      message.error("File must be smaller than 2MB!");
+      return Upload.LIST_IGNORE; // block upload
+    }
     setUploadedFile(file);
     setFilename(file.name);
     setNewProjectFilename(file.name);
-  
+
     if (file.name.endsWith(".doc")) {
-      message.error("Old Word (.doc) files are not supported. Use .docx, .txt, or .pdf.");
+      message.error(
+        "Old Word (.doc) files are not supported. Use .docx, .txt, or .pdf."
+      );
       return false;
     }
-  
+
     let textContent = "";
-  
+
     try {
       if (file.name.endsWith(".pdf")) {
         // Extract text from PDF
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-  
+
         for (let i = 1; i <= pdf.numPages; i++) {
           const page = await pdf.getPage(i);
           const content = await page.getTextContent();
-          const strings = content.items.map(item => item.str);
+          const strings = content.items.map((item) => item.str);
           textContent += strings.join(" ") + "\n";
         }
-  
       } else if (file.name.endsWith(".docx")) {
         const arrayBuffer = await file.arrayBuffer();
         const mammoth = await import("mammoth");
@@ -343,18 +368,17 @@ export default function QuickTranslationPage() {
           reader.readAsText(file);
         });
       }
-  
+
       setSourceText(textContent);
       setTargetText("");
       setIsTargetEdited(false);
       message.success(`Loaded file: ${file.name}`);
-  
     } catch (err) {
       console.error("Failed to read file:", err);
       message.error("Failed to load file.");
       return false;
     }
-  
+
     return false; // prevent auto upload
   };
 
@@ -362,9 +386,7 @@ export default function QuickTranslationPage() {
   // ------------------ USFM-Aware Translation Handler ------------------
   const handleTranslate = async () => {
     if (!sourceLang || !targetLang) {
-      message.error(
-        "Please select both source and target languages before translating."
-      );
+      message.error("Please select both source and target languages before translating.");
       return;
     }
   
@@ -373,15 +395,21 @@ export default function QuickTranslationPage() {
       return;
     }
   
+    // ✅ Create AbortController right away so user can cancel anytime
+    controllerRef.current = new AbortController();
+    const signal = controllerRef.current.signal;
+  
     try {
       setLoading(true);
       setIsTranslated(false);
+      setStatusMsg("⏳ Preparing translation...");
   
-      // 1️⃣ Get API token
+      // --- 1️⃣ Get API token ---
       const token = await getAccessToken(
         import.meta.env.VITE_VACHAN_USERNAME,
         import.meta.env.VITE_VACHAN_PASSWORD
       );
+      if (signal.aborted) throw new Error("Translation cancelled");
   
       let textToTranslate = "";
       let isUSFMContent = false;
@@ -408,14 +436,17 @@ export default function QuickTranslationPage() {
           .map((line) => line.trim())
           .join("\n");
   
-      // 2️⃣ Extract text from uploaded file or pasted text
+      // --- 2️⃣ Extract text from uploaded file or pasted text ---
       if (uploadedFile) {
         if (uploadedFile.name.endsWith(".pdf")) {
           const arrayBuffer = await uploadedFile.arrayBuffer();
+          if (signal.aborted) throw new Error("Translation cancelled");
+  
           const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
   
           let pdfText = "";
           for (let i = 1; i <= pdf.numPages; i++) {
+            if (signal.aborted) throw new Error("Translation cancelled");
             const page = await pdf.getPage(i);
             const content = await page.getTextContent();
             const strings = content.items.map((item) => item.str);
@@ -423,15 +454,16 @@ export default function QuickTranslationPage() {
           }
   
           textToTranslate = normalizeText(pdfText);
-  
         } else if (uploadedFile.name.endsWith(".docx")) {
           const arrayBuffer = await uploadedFile.arrayBuffer();
+          if (signal.aborted) throw new Error("Translation cancelled");
+  
           const mammoth = await import("mammoth");
           const { value: text } = await mammoth.extractRawText({ arrayBuffer });
           textToTranslate = normalizeText(text);
-  
         } else {
           const fileContent = await uploadedFile.text();
+          if (signal.aborted) throw new Error("Translation cancelled");
   
           if (
             uploadedFile.name.endsWith(".usfm") ||
@@ -457,44 +489,43 @@ export default function QuickTranslationPage() {
         }
       }
   
-      // 3️⃣ Prepare text file for translation API
+      if (signal.aborted) throw new Error("Translation cancelled");
+  
+      // --- 3️⃣ Prepare text file for translation API ---
       const blob = new Blob([textToTranslate], { type: "text/plain" });
       const fileToSend = new File([blob], "content_only.txt", {
         type: "text/plain",
       });
   
-      console.log(
-        "📤 Sending clean text to API:",
-        textToTranslate.substring(0, 200) + "..."
-      );
+      console.log("📤 Sending clean text to API:", textToTranslate.substring(0, 200) + "...");
   
-      // 4️⃣ Request translation job
+      // --- 4️⃣ Request translation job ---
+      setStatusMsg("⏳ Requesting translation job...");
       const jobId = await requestDocTranslation(
         token,
         fileToSend,
         sourceLang?.BCP_code,
         targetLang?.BCP_code
       );
+      if (signal.aborted) throw new Error("Translation cancelled");
   
       setStatusMsg("⏳ Translating... please wait");
   
-      // 5️⃣ Poll until job is finished
-      controllerRef.current = new AbortController(); // ✅ create new controller
+      // --- 5️⃣ Poll until job is finished ---
       const finishedJobId = await pollJobStatus({
         token,
         jobId,
-        onStatusUpdate: (status) => {
-          setStatusMsg(`⏳ Job ${jobId} status: ${status}`);
-        },
+        onStatusUpdate: (status) => setStatusMsg(`⏳ Job ${jobId} status: ${status}`),
         notification,
-        signal: controllerRef.current.signal, // ✅ pass signal
+        signal, // ✅ pass controller signal here
       });
-
+      if (signal.aborted) throw new Error("Translation cancelled");
   
-      // 6️⃣ Fetch translated CSV
+      // --- 6️⃣ Fetch translated CSV ---
       const csvText = await fetchAssets(token, finishedJobId);
+      if (signal.aborted) throw new Error("Translation cancelled");
   
-      // 7️⃣ Parse CSV
+      // --- 7️⃣ Parse CSV ---
       const parsed = Papa.parse(csvText, {
         header: true,
         skipEmptyLines: true,
@@ -504,9 +535,8 @@ export default function QuickTranslationPage() {
   
       console.log("📥 Parsed CSV data:", parsed.data);
   
-      // 8️⃣ Rebuild translation
+      // --- 8️⃣ Rebuild translation ---
       let translatedText = "";
-  
       if (isUSFMContent && usfmStructure) {
         translatedText = reconstructUSFM(usfmStructure, parsed.data);
       } else {
@@ -518,15 +548,19 @@ export default function QuickTranslationPage() {
       setIsTranslated(true);
       message.success("Translation complete!");
       setStatusMsg("");
-      setLoading(false);
     } catch (err) {
-      console.error("Translation error:", err);
+      if (err.message === "Translation cancelled") {
+        message.warning("Translation cancelled by user.");
+        setStatusMsg("Translation cancelled.");
+      } else {
+        console.error("Translation error:", err);
+        message.error(`Translation failed: ${err.message}`);
+        setStatusMsg("");
+      }
+    } finally {
       setLoading(false);
-      setStatusMsg("");
-      message.error(`Translation failed: ${err.message}`);
     }
   };
-  
   //  Helper: detect USFM
   function containsUSFMMarkers(text) {
     return /\\(id|c|v|s\d?|p|q\d?|m|nb|b|d|sp|pb|li\d?|pi\d?|pc|pr|cls|table|tr|th\d?|tc\d?|tcc\d?)\b/.test(
@@ -651,27 +685,34 @@ export default function QuickTranslationPage() {
   const handleSave = async () => {
     setSaveError("");
     setSaveSuccess("");
-   
+
     // 🔑 Check if user is logged in
     const token = localStorage.getItem("token");
     if (!token) {
-      showNotification("error", "Authentication Required", "Please login first.");
-   
+      showNotification(
+        "error",
+        "Authentication Required",
+        "Please login first."
+      );
+
       // Save current state into localStorage before redirect
-      localStorage.setItem("quickTranslationDraft", JSON.stringify({
-        sourceText,
-        targetText,
-        sourceLang,
-        targetLang,
-        filename,
-        uploadedFileName: uploadedFile?.name || null,
-        isTranslated,
-      }));
-   
+      localStorage.setItem(
+        "quickTranslationDraft",
+        JSON.stringify({
+          sourceText,
+          targetText,
+          sourceLang,
+          targetLang,
+          filename,
+          uploadedFileName: uploadedFile?.name || null,
+          isTranslated,
+        })
+      );
+
       navigate("/login"); // redirect to login
       return;
     }
-   
+
     if (!sourceLang || !targetLang) {
       const errorMsg =
         "Please select both source and target languages before saving";
@@ -679,18 +720,18 @@ export default function QuickTranslationPage() {
       showNotification("error", "Missing Languages", errorMsg);
       return;
     }
-   
+
     setSaveModalVisible(true);
     if (!filename && !uploadedFile) {
       setFilename("manual-input.txt");
     }
   };
- 
+
   // ------------------ Create Project Handler ------------------
   const handleCreateProject = async () => {
     setCreateProjectError("");
     setCreatingProject(true);
- 
+
     if (!newProjectName.trim()) {
       const errorMsg = "Please provide a project name.";
       setCreateProjectError(errorMsg);
@@ -698,7 +739,7 @@ export default function QuickTranslationPage() {
       setCreatingProject(false);
       return;
     }
- 
+
     if (!newProjectFilename.trim()) {
       const errorMsg = "Please provide a filename.";
       setCreateProjectError(errorMsg);
@@ -706,7 +747,7 @@ export default function QuickTranslationPage() {
       setCreatingProject(false);
       return;
     }
- 
+
     if (!sourceText || !targetText) {
       const errorMsg = "Source and translated text cannot be empty.";
       setCreateProjectError(errorMsg);
@@ -714,7 +755,7 @@ export default function QuickTranslationPage() {
       setCreatingProject(false);
       return;
     }
- 
+
     try {
       const payload = {
         project_name: newProjectName,
@@ -738,7 +779,7 @@ export default function QuickTranslationPage() {
           },
         ],
       };
- 
+
       const token = localStorage.getItem("token");
       if (!token) {
         const errorMsg = "Authentication token not found. Please log in again.";
@@ -747,7 +788,7 @@ export default function QuickTranslationPage() {
         setCreatingProject(false);
         return;
       }
- 
+
       const response = await fetch(
         import.meta.env.VITE_BACKEND_URL + "/api/project-text-documents/",
         {
@@ -759,7 +800,7 @@ export default function QuickTranslationPage() {
           body: JSON.stringify(payload),
         }
       );
- 
+
       if (!response.ok) {
         let errorMessage = "Failed to create project";
         try {
@@ -775,22 +816,22 @@ export default function QuickTranslationPage() {
         setCreatingProject(false);
         return;
       }
- 
+
       const result = await response.json();
       const successMsg = `Project "${newProjectName}" created successfully!`;
       showNotification("success", "Project Created", successMsg);
- 
+
       // Close create project modal
       setCreateProjectModalVisible(false);
       setNewProjectName("");
       setNewProjectFilename("");
       setCreateProjectError("");
- 
+
       // Refresh projects list
       try {
         const token = localStorage.getItem("token");
         const resp = await fetch(
-          import.meta.env.VITE_BACKEND_URL +"/api/project-text-documents/",
+          import.meta.env.VITE_BACKEND_URL + "/api/project-text-documents/",
           {
             method: "GET",
             headers: {
@@ -799,11 +840,11 @@ export default function QuickTranslationPage() {
             },
           }
         );
- 
+
         if (resp.ok) {
           const data = await resp.json();
           setProjects(data.data || []);
-         
+
           // Select the newly created project
           if (result.data && result.data.project_id) {
             setSelectedProject(result.data.project_id);
@@ -812,7 +853,7 @@ export default function QuickTranslationPage() {
       } catch (err) {
         console.error("Failed to refresh projects", err);
       }
- 
+
       // Close save modal as well since project was created and saved
       setSaveModalVisible(false);
     } catch (error) {
@@ -826,12 +867,12 @@ export default function QuickTranslationPage() {
       setCreatingProject(false);
     }
   };
- 
+
   const handleSaveConfirm = async () => {
     setSaveError("");
     setSaveSuccess("");
     setSaving(true);
- 
+  
     if (!filename) {
       const errorMsg = "Please provide a filename.";
       setSaveError(errorMsg);
@@ -839,7 +880,7 @@ export default function QuickTranslationPage() {
       setSaving(false);
       return;
     }
- 
+  
     if (!sourceText || !targetText) {
       const errorMsg = "Source and translated text cannot be empty.";
       setSaveError(errorMsg);
@@ -847,7 +888,7 @@ export default function QuickTranslationPage() {
       setSaving(false);
       return;
     }
- 
+  
     if (!sourceLang || !targetLang) {
       const errorMsg = "Source and target languages are required.";
       setSaveError(errorMsg);
@@ -855,21 +896,22 @@ export default function QuickTranslationPage() {
       setSaving(false);
       return;
     }
- 
+  
     try {
       const selectedProjectData = projects.find(
         (p) => p.project_id === selectedProject
       );
       const projectName = newProjectName || selectedProjectData?.project_name;
- 
+  
       if (!projectName) {
-        const errorMsg = "Please select a project or enter a new project name.";
+        const errorMsg =
+          "Please select a project or enter a new project name.";
         setSaveError(errorMsg);
         showNotification("error", "Missing Project", errorMsg);
         setSaving(false);
         return;
       }
- 
+  
       const payload = {
         project_name: projectName,
         files: [
@@ -892,69 +934,42 @@ export default function QuickTranslationPage() {
           },
         ],
       };
- 
+  
       const token = localStorage.getItem("token");
       if (!token) {
-        const errorMsg = "Authentication token not found. Please log in again.";
+        const errorMsg =
+          "Authentication token not found. Please log in again.";
         setSaveError(errorMsg);
         showNotification("error", "Authentication Error", errorMsg);
         setSaving(false);
         return;
       }
- 
-      console.log("Attempting to save:", payload);
- 
-      let url;
-      if (selectedProject) {
-        // existing project → add files
-        url = import.meta.env.VITE_BACKEND_URL + `/api/project-text-documents/${selectedProject}/add-files`;
-      } else {
-        // new project → create
-        url = import.meta.env.VITE_BACKEND_URL + "/api/project-text-documents/";
-      }
- 
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
- 
-      console.log("Response status:", response.status);
- 
-      if (!response.ok) {
-        let errorMessage = "Failed to save translation";
-        try {
-          const errorData = await response.json();
-          console.error("Save error:", errorData);
-          errorMessage =
-            errorData.detail ||
-            `HTTP ${response.status}: ${response.statusText}`;
-        } catch {
-          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+  
+      // 🔹 Duplicate check: same filename + identical content in selected project
+      if (selectedProjectData) {
+        const duplicate = selectedProjectData.files?.find(
+          (f) =>
+            f.file_name === filename &&
+            f.source_text === sourceText &&
+            f.target_text === targetText
+        );
+  
+        if (duplicate) {
+          Modal.confirm({
+            title: "Already Saved",
+            content:
+              "This file with the same content is already saved. Do you want to save it again?",
+            okText: "Save Again",
+            cancelText: "Cancel",
+            onOk: () => performSave(payload, token, selectedProject, projectName),
+            onCancel: () => setSaving(false),
+          });
+          return;
         }
-        setSaveError(errorMessage);
-        showNotification("error", "Save Failed", errorMessage);
-        setSaving(false);
-        return;
       }
- 
-      const result = await response.json();
-      console.log("Save successful:", result);
- 
-      const successMsg = `Translation saved successfully! File "${filename}" added to project "${projectName}"`;
-      setSaveSuccess(successMsg);
-      showNotification("success", "Save Successful", successMsg);
- 
-      setTimeout(() => {
-        setSaveModalVisible(false);
-        setNewProjectName("");
-        setSelectedProject(null);
-        setSaveSuccess("");
-        setSaveError("");
-      }, 2000);
+  
+      // 🔹 No duplicates → save normally
+      await performSave(payload, token, selectedProject, projectName);
     } catch (error) {
       console.error("Network/unexpected error:", error);
       const errorMsg =
@@ -966,6 +981,63 @@ export default function QuickTranslationPage() {
       setSaving(false);
     }
   };
+  
+  // 🔹 Extracted save logic into helper
+  const performSave = async (payload, token, selectedProject, projectName) => {
+    let url;
+    if (selectedProject) {
+      // existing project → add files
+      url =
+        import.meta.env.VITE_BACKEND_URL +
+        `/api/project-text-documents/${selectedProject}/add-files`;
+    } else {
+      // new project → create
+      url =
+        import.meta.env.VITE_BACKEND_URL + "/api/project-text-documents/";
+    }
+  
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+  
+    console.log("Response status:", response.status);
+  
+    if (!response.ok) {
+      let errorMessage = "Failed to save translation";
+      try {
+        const errorData = await response.json();
+        console.error("Save error:", errorData);
+        errorMessage =
+          errorData.detail || `HTTP ${response.status}: ${response.statusText}`;
+      } catch {
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
+      setSaveError(errorMessage);
+      showNotification("error", "Save Failed", errorMessage);
+      return;
+    }
+  
+    const result = await response.json();
+    console.log("Save successful:", result);
+  
+    const successMsg = `Translation saved successfully! File "${payload.files[0].file_name}" added to project "${projectName}"`;
+    setSaveSuccess(successMsg);
+    showNotification("success", "Save Successful", successMsg);
+  
+    setTimeout(() => {
+      setSaveModalVisible(false);
+      setNewProjectName("");
+      setSelectedProject(null);
+      setSaveSuccess("");
+      setSaveError("");
+    }, 2000);
+  };
+  
 
   return (
     <div style={{ padding: 24, marginBottom: 0 }}>
@@ -1020,128 +1092,172 @@ export default function QuickTranslationPage() {
         </Col>
 
         {/* Source Panel */}
-        <Col xs={24} md={12} style={{ marginTop: 16 }}>
-          <Card
-            title={<span>Source Text</span>}
-            extra={<span style={{ fontWeight: 500 }}>{sourceLang?.label}</span>}
-          >
-            <TextArea
-              rows={10}
-              value={sourceText}
-              onChange={handleSourceChange}
-              placeholder="Enter or upload text to translate..."
-              disabled={loading}
-            />
-            <div style={{ marginTop: 12, textAlign: "left" }}>
-              <Space>
-                <Upload
-                  beforeUpload={handleFileUpload}
-                  showUploadList={false}
-                  accept=".txt,.usfm,.docx,.pdf"
-                  disabled={loading}
-                >
-                  <Tooltip title="Upload File" color="#fff" overlayInnerStyle={{ color: "#000" }}>
-                  <Button icon={<UploadOutlined />} disabled={loading}>
-                    {/* Upload File */}
-                  </Button>
-                  </Tooltip>
-                </Upload>
-                <Tooltip title="Clear" color="#fff" overlayInnerStyle={{ color: "#000" }}>
-                <Button style={{color: "red" }}
-                  onClick={handleClearAll}
-                  icon={<CloseOutlined />} 
-                  disabled={loading}
-                >
-                  {/* Clear */}
-                </Button>
-                </Tooltip>
-              </Space>
-            </div>
-          </Card>
-        </Col>
+       {/* Source Panel */}
+<Col xs={24} md={12} style={{ marginTop: 16 }}>
+  <Card
+    title={<span>Source Text</span>}
+    extra={<span style={{ fontWeight: 500 }}>{sourceLang?.label}</span>}
+    style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+    bodyStyle={{ flex: 1, display: 'flex', flexDirection: 'column' }}
+  >
+    <TextArea
+      rows={10}
+      value={sourceText}
+      onChange={handleSourceChange}
+      placeholder="Enter or upload text to translate..."
+      disabled={loading}
+      style={{ flex: 1, resize: 'none' }}
+    />
+    
+    {/* Container for buttons with flexbox layout */}
+    <div style={{ 
+      marginTop: 12, 
+      display: "flex", 
+      justifyContent: "space-between", 
+      alignItems: "flex-end" 
+    }}>
+      {/* Left side - Upload section */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+        <Upload
+          beforeUpload={handleFileUpload}
+          showUploadList={false}
+          accept=".txt,.usfm,.docx,.pdf"
+          disabled={loading}
+        >
+          <Tooltip title="Upload File" color="#fff" styles={{ color: "#000" }}>
+            <Button icon={<UploadOutlined />} disabled={loading}>
+            </Button>
+          </Tooltip>
+        </Upload>
 
-        {/* Target Panel */}
-        <Col xs={24} md={12} style={{ marginTop: 16 }}>
-          <Card
-            title={<span>Translation</span>}
-            extra={<span style={{ fontWeight: 500 }}>{targetLang?.label}</span>}
+        <Typography.Text type="secondary" style={{ fontSize: "12px", marginTop: "4px" }}>
+          Upload files up to 2 MB (.txt, .usfm, .docx, .pdf)
+        </Typography.Text>
+      </div>
+
+      {/* Right side - Clear button */}
+      <div>
+        <Tooltip
+          title="Clear"
+          color="#fff"
+          styles={{ body: { color: "#000" }}}
+        >
+          <Button
+            style={{ color: "red" }}
+            onClick={handleClearAll}
+            icon={<CloseOutlined />}
+            disabled={loading}
           >
-            <Spin spinning={loading} tip="Translating...">
-              <TextArea
-                rows={10}
-                value={targetText}
-                onChange={handleTargetChange}
-                placeholder="Translation will appear here..."
-                disabled={loading}
+            {/* Clear */}
+          </Button>
+        </Tooltip>
+      </div>
+    </div>
+  </Card>
+</Col>
+
+{/* Target Panel */}
+<Col xs={24} md={12} style={{ marginTop: 16 }}>
+  <Card
+    title={<span>Translation</span>}
+    extra={<span style={{ fontWeight: 500 }}>{targetLang?.label}</span>}
+    style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+    bodyStyle={{ flex: 1, display: 'flex', flexDirection: 'column' }}
+  >
+    <Spin spinning={loading} tip="Translating..." style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <TextArea
+        rows={10}
+        value={targetText}
+        onChange={handleTargetChange}
+        placeholder="Translation will appear here..."
+        disabled={loading}
+        style={{ flex: 1, resize: 'none' }}
+      />
+    </Spin>
+    <div style={{ marginTop: 12 }}>
+      <Row justify="space-between" align="middle">
+        <Col>
+          <Space>
+            <Tooltip
+              title="save"
+              color="#fff"
+              styles={{ body: { color: "#000"} }}
+            >
+              <Button
+                type="default"
+                icon={<SaveOutlined />}
+                onClick={handleSave}
+                disabled={!targetText || loading || !isTranslated}
               />
-            </Spin>
-            <div style={{ marginTop: 12 }}>
-  <Row justify="space-between" align="middle">
-    <Col>
-      <Space>
-        <Tooltip title="save" color="#fff" overlayInnerStyle={{ color: "#000" }}>
-          <Button
-            type="default"
-            icon={<SaveOutlined />}
-            onClick={handleSave}
-            disabled={!isTranslated || loading}
-          />
-        </Tooltip>
+            </Tooltip>
 
-        <Tooltip title="copy" color="#fff" overlayInnerStyle={{ color: "#000" }}>
-          <Button
-            icon={<CopyOutlined />}
-            onClick={() => handleCopy(targetText)}
-            disabled={loading || !targetText}
-          />
-        </Tooltip>
+            <Tooltip
+              title="copy"
+              color="#fff"
+              styles={{ body: { color: "#000" }}}
+            >
+              <Button
+                icon={<CopyOutlined />}
+                onClick={() => handleCopy(targetText)}
+                disabled={loading || !targetText}
+              />
+            </Tooltip>
 
-        <DownloadDraftButton
-          content={targetText}
-          disabled={loading || !targetText}
-        />
-      </Space>
-    </Col>
-
-    <Col>
-      <Button
-        danger
-        disabled={!loading} // ✅ enable only while translating
-        onClick={() => controllerRef.current?.abort()}
-      >
-        Cancel Translation
-      </Button>
-    </Col>
-  </Row>
-</div>
-
-          </Card>
+            <DownloadDraftButton
+              content={targetText}
+              disabled={loading || !targetText}
+            />
+          </Space>
         </Col>
-      
+
+        {/* <Col>
+          <Button
+            danger
+            disabled={!loading} // ✅ enable only while translating
+            onClick={() => controllerRef.current?.abort()}
+          >
+            Cancel Translation
+          </Button>
+        </Col> */}
+      </Row>
+    </div>
+  </Card>
+</Col>
 
         {/* Translate button centered */}
         <Col span={24} style={{ textAlign: "center", marginTop: 24 }}>
           <Button
-            type="primary"
-            size="large"
-            icon={<TranslationOutlined />}
-            onClick={handleTranslate}
-            loading={loading}
-            disabled={loading}
-            style={{ padding: "0 32px", borderRadius: "8px" }}
+            type={loading ? "primary" : "primary"}
+            danger={loading}
+            size="medium"
+            icon={loading ? <CloseOutlined /> : <TranslationOutlined />}
+            onClick={() => {
+              if (loading) {
+                //controllerRef.current?.abort(); // cancel translation
+                handleCancelTranslate();
+              } else {
+                handleTranslate(); // start translation
+              }
+            }}
+            style={{
+              padding: "0 32px",
+              borderRadius: "8px",
+              minWidth: "200px",
+            }}
           >
-            Translate
+            {loading ? "Cancel Translation" : "Translate"}
           </Button>
+
           {statusMsg && (
             <div style={{ marginTop: 12 }}>
               <Text type="secondary">{statusMsg}</Text>
             </div>
           )}
-        </Col> 
+        </Col>
       </Row>
       <Modal
         title="Save Translation"
-        visible={saveModalVisible}
+        open={saveModalVisible}
         onOk={handleSaveConfirm}
         onCancel={() => {
           // Clear modal fields
@@ -1150,7 +1266,7 @@ export default function QuickTranslationPage() {
           setFilename("");
           setSaveError("");
           setSaveSuccess("");
- 
+
           // Close the modal
           setSaveModalVisible(false);
         }}
@@ -1169,7 +1285,7 @@ export default function QuickTranslationPage() {
             onClose={() => setSaveError("")}
           />
         )}
- 
+
         {saveSuccess && (
           <Alert
             message="Success"
@@ -1181,10 +1297,10 @@ export default function QuickTranslationPage() {
             onClose={() => setSaveSuccess("")}
           />
         )}
- 
+
         <Text strong>Select project</Text>
         <br />
-        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
           <Select
             style={{ flex: 1 }}
             placeholder="Select existing project"
@@ -1204,10 +1320,9 @@ export default function QuickTranslationPage() {
             icon={<PlusOutlined />}
             onClick={() => setCreateProjectModalVisible(true)}
             disabled={saving}
-          >
-          </Button>
+          ></Button>
         </div>
-       
+
         <Input
           style={{ marginTop: 10 }}
           placeholder="Filename"
@@ -1216,11 +1331,11 @@ export default function QuickTranslationPage() {
           disabled={!!uploadedFile || saving}
         />
       </Modal>
- 
+
       {/* Create Project Modal */}
       <Modal
         title="Create New Project"
-        visible={createProjectModalVisible}
+        open={createProjectModalVisible}
         onOk={handleCreateProject}
         onCancel={() => {
           setCreateProjectModalVisible(false);
@@ -1242,7 +1357,7 @@ export default function QuickTranslationPage() {
             onClose={() => setCreateProjectError("")}
           />
         )}
- 
+
         <Input
           placeholder="Project Name"
           value={newProjectName}
@@ -1250,7 +1365,7 @@ export default function QuickTranslationPage() {
           disabled={creatingProject}
           style={{ marginBottom: 10 }}
         />
-       
+
         <Input
           placeholder="Filename"
           value={newProjectFilename}
@@ -1258,7 +1373,6 @@ export default function QuickTranslationPage() {
           disabled={creatingProject}
         />
       </Modal>
- 
     </div>
   );
 }

@@ -49,13 +49,14 @@ const ProjectList = ({
                 justifyContent: "space-between",
                 position: "relative",
               }}
-              bodyStyle={{
+              styles={{ 
+                body:{
                 padding: 10,
                 flex: 1,
                 display: "flex",
                 flexDirection: "column",
                 justifyContent: "space-between",
-                minHeight: 160,
+                minHeight: 160,}
               }}
             >
               <div style={{ marginBottom: 12 }}>

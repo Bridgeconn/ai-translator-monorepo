@@ -1,12 +1,14 @@
 from uuid import uuid4, UUID
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from typing import Optional
+from typing import Optional, List
 import os
 import httpx
 import time
 import logging
 from dotenv import load_dotenv
+from sqlalchemy import asc, cast, Integer
+
 
 # Import models
 from app.models.project import Project
@@ -111,16 +113,32 @@ def create_verse_tokens_for_project(db: Session, project_id, book_name):
     return created_tokens
 
 
-def get_verse_tokens_by_project(db: Session, project_id: UUID, book_name: Optional[str] = None):
-    q = db.query(VerseTokenTranslation).filter(VerseTokenTranslation.project_id == project_id)
+def get_verse_tokens_by_project(db: Session, project_id: UUID, book_name: Optional[str] = None, chapter: Optional[int] = None):
+    q = (
+        db.query(VerseTokenTranslation)
+        .join(Verse, VerseTokenTranslation.verse_id == Verse.verse_id)
+        .join(Chapter, Verse.chapter_id == Chapter.chapter_id)   # 👈 join so we can use chapter_number
+        .filter(VerseTokenTranslation.project_id == project_id)
+    )
+
     if book_name:
         q = q.filter(VerseTokenTranslation.book_name == book_name)
 
+    if chapter:  # ✅ if frontend passes ?chapter=1
+        q = q.filter(Chapter.chapter_number == chapter)
+
+    # ✅ always sort properly
+    q = q.order_by(
+        asc(cast(Chapter.chapter_number, Integer)),
+        asc(cast(Verse.verse_number, Integer))
+    )
+
     tokens = q.all()
     if not tokens:
-        raise HTTPException(status_code=404, detail="No tokens found for this project.")
+        raise HTTPException(status_code=404, detail="No tokens found for this project/book/chapter.")
 
     return tokens
+
 
 
 def get_verse_token_by_id(db: Session, verse_token_id: UUID):
@@ -297,9 +315,9 @@ def translate_chunk(db: Session, project_id: UUID, book_name: str, skip: int = 0
 
 
 
-def translate_chapter(db: Session, project_id: UUID, book_name: str, chapter_number: int):
-    # 1. Fetch tokens for the specific chapter
-    tokens = (
+def translate_chapter(db: Session, project_id: UUID, book_name: str, chapter_number: int, verse_numbers: List[int]):
+    # 1. Fetch tokens for the specific chapter AND specific verses
+    query = (
         db.query(VerseTokenTranslation)
         .join(Verse, Verse.verse_id == VerseTokenTranslation.verse_id)
         .join(Chapter, Chapter.chapter_id == Verse.chapter_id)
@@ -307,14 +325,15 @@ def translate_chapter(db: Session, project_id: UUID, book_name: str, chapter_num
         .filter(
             VerseTokenTranslation.project_id == project_id,
             Book.book_name == book_name,
-            Chapter.chapter_number == chapter_number
+            Chapter.chapter_number == chapter_number,
+            Verse.verse_number.in_(verse_numbers)  # ← ADD THIS LINE
         )
         .order_by(Verse.verse_number)
-        .all()
     )
 
+    tokens = query.all()
     if not tokens:
-        raise HTTPException(status_code=404, detail="No tokens found for this chapter.")
+        raise HTTPException(status_code=404, detail="No tokens found for this selection.")
 
     # 2. Project + language info
     project = db.query(Project).filter(Project.project_id == project_id).first()
@@ -328,7 +347,7 @@ def translate_chapter(db: Session, project_id: UUID, book_name: str, chapter_num
     if not source_lang or not target_lang:
         raise HTTPException(status_code=404, detail="Languages not found.")
 
-    # 3. Prepare request
+    # 3. Prepare request - only for the filtered tokens
     texts = [t.token_text for t in tokens]
     token = get_vachan_token()
     headers = {
@@ -360,13 +379,15 @@ def translate_chapter(db: Session, project_id: UUID, book_name: str, chapter_num
             if not translations or len(translations) != len(tokens):
                 raise HTTPException(status_code=500, detail="Mismatch in translations.")
 
-            # 6. Save translations into DB
+            # 6. Save translations into DB - only for the requested verses
             for token_obj, translated in zip(tokens, translations):
                 token_obj.verse_translated_text = translated.get("translatedText")
                 token_obj.is_reviewed = False
                 db.add(token_obj)
 
             db.commit()
+            
+            # 7. Return only the tokens that were actually translated
             return tokens
 
         elif "failed" in status:

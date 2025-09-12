@@ -22,7 +22,7 @@ import {
   CopyOutlined,
 } from "@ant-design/icons";
 import api, { translateChapter } from "./api";
-import { fetchDraft } from "./api"; 
+import { fetchDraft } from "./api";
 import DownloadDraftButton from "../components/DownloadDraftButton";
  
 const { Title, Text } = Typography;
@@ -41,18 +41,26 @@ const VerseTranslationPage = () => {
   const [isTokenized, setIsTokenized] = useState(false);
  
   const [showOnlyTranslated, setShowOnlyTranslated] = useState(false);
-  const [targetLanguage, setTargetLanguage] = useState("Target Language");
+  const [targetLanguage, setTargetLanguage] = useState("Translation");
   const [rawBookContent, setRawBookContent] = useState("");
  
-const [loadingSource, setLoadingSource] = useState(false);   // fetching tokens/raw
-const [loadingTranslate, setLoadingTranslate] = useState(false); // translation only
+  const [loadingSource, setLoadingSource] = useState(false); // fetching tokens/raw
+  const [loadingTranslate, setLoadingTranslate] = useState(false); // translation only
+ 
+  const [serverDraft, setServerDraft] = useState("");
+  const [loadingDraft, setLoadingDraft] = useState(false);
+  const [translationAttempted, setTranslationAttempted] = useState(false); // Updated for clarity
+ 
+  // store edits per verse_token_id
+  const [draftId, setDraftId] = useState(null); //Added to track draft ID
+  const [editedDraft, setEditedDraft] = useState("");
+  // Track unsaved edits per verse token
+  const [editedTokens, setEditedTokens] = useState({});
+  const [activeTab, setActiveTab] = useState("editor");
 
-const [serverDraft, setServerDraft] = useState("");
-const [loadingDraft, setLoadingDraft] = useState(false);
-const [translationAttempted, setTranslationAttempted] = useState(false); // Updated for clarity
-
-const { message } = App.useApp();   //get message instance
-
+ 
+  const { message } = App.useApp(); //get message instance
+ 
   // ---------- Project / Books / Chapters ----------
   const fetchProjectDetails = async () => {
     try {
@@ -126,22 +134,39 @@ const { message } = App.useApp();   //get message instance
   // ---------- Fetch tokens for current selection (book and optional chapter) ----------
   const fetchTokensForSelection = async (bookName, chapterNumber = null) => {
     if (!bookName || bookName === "all") {
-      // Project-level view (no generation)
+      // Project-level view
       setLoadingSource(true);
       try {
         const res = await api.get(`/verse_tokens/by-project/${projectId}`, {
           params: { book_name: "", chapter: "" },
         });
         const data = Array.isArray(res.data) ? res.data : [];
-        const merged = data.map((t) => ({
+  
+        const merged = data.map((t, i) => ({
           ...t,
-          verse_translated_text: t.verse_translated_text || t.translated_text || "",
+          verse_token_id:
+            t.verse_token_id ||
+            t.id ||
+            t.token_id ||
+            `${t.book_name || "book"}-${t.chapter_number || 0}-${t.verse_number || i}`,
+          verse_translated_text:
+            t.verse_translated_text || t.translated_text || "",
         }));
-        setTokens(merged);
-        
-        setIsTokenized(merged.length > 0);
-        if (merged.length > 0 && merged[0].target_language_name) {
-          setTargetLanguage(merged[0].target_language_name);
+  
+        // Deduplicate by verse_id + token_text
+        const uniqueTokens = merged.reduce((acc, t) => {
+          const key = `${t.verse_id}-${t.token_text}`;
+          if (!acc.map[key]) {
+            acc.map[key] = true;
+            acc.list.push(t);
+          }
+          return acc;
+        }, { map: {}, list: [] }).list;
+  
+        setTokens(uniqueTokens);
+        setIsTokenized(uniqueTokens.length > 0);
+        if (uniqueTokens.length > 0 && uniqueTokens[0].target_language_name) {
+          setTargetLanguage(uniqueTokens[0].target_language_name);
         }
       } catch {
         setTokens([]);
@@ -152,92 +177,80 @@ const { message } = App.useApp();   //get message instance
       }
       return;
     }
- 
+  
+    // Chapter-specific fetching (similar to before)
     setLoadingSource(true);
     try {
       let data = [];
- 
-      // If a chapter is chosen → use the chapter-specific endpoint first
+  
       if (chapterNumber) {
-        const chapterObj = chapters.find(
-          (ch) => ch.chapter_number === chapterNumber
-        );
+        const chapterObj = chapters.find(ch => ch.chapter_number === chapterNumber);
         if (!chapterObj) {
           setTokens([]);
           setIsTokenized(false);
           message.warning("Selected chapter not found.");
           return;
         }
- 
+  
         try {
-          const res = await api.get(
-            `/api/chapters/${chapterObj.chapter_id}/tokens`
-          );
+          const res = await api.get(`/api/chapters/${chapterObj.chapter_id}/tokens`);
           data = Array.isArray(res.data) ? res.data : [];
+  
           if (data.length === 0) {
-            // no tokens → generate at book level then refetch chapter
             await ensureBookTokens(bookName);
-            const res2 = await api.get(
-              `/api/chapters/${chapterObj.chapter_id}/tokens`
-            );
+            const res2 = await api.get(`/api/chapters/${chapterObj.chapter_id}/tokens`);
             data = Array.isArray(res2.data) ? res2.data : [];
           }
         } catch (err) {
           if (err.response?.status === 404) {
             await ensureBookTokens(bookName);
-            const res2 = await api.get(
-              `/api/chapters/${chapterObj.chapter_id}/tokens`
-            );
+            const res2 = await api.get(`/api/chapters/${chapterObj.chapter_id}/tokens`);
             data = Array.isArray(res2.data) ? res2.data : [];
           } else {
             throw err;
           }
         }
       } else {
-        // No chapter → fetch by (project, book)
-        try {
-          const res = await api.get(`/verse_tokens/by-project/${projectId}`, {
+        const res = await api.get(`/verse_tokens/by-project/${projectId}`, {
+          params: { book_name: bookName, chapter: "" },
+        });
+        data = Array.isArray(res.data) ? res.data : [];
+        if (data.length === 0) {
+          await ensureBookTokens(bookName);
+          const res2 = await api.get(`/verse_tokens/by-project/${projectId}`, {
             params: { book_name: bookName, chapter: "" },
           });
-          data = Array.isArray(res.data) ? res.data : [];
-          if (data.length === 0) {
-            await ensureBookTokens(bookName);
-            const res2 = await api.get(
-              `/verse_tokens/by-project/${projectId}`,
-              {
-                params: { book_name: bookName, chapter: "" },
-              }
-            );
-            data = Array.isArray(res2.data) ? res2.data : [];
-          }
-        } catch (err) {
-          if (err.response?.status === 404) {
-            await ensureBookTokens(bookName);
-            const res2 = await api.get(
-              `/verse_tokens/by-project/${projectId}`,
-              {
-                params: { book_name: bookName, chapter: "" },
-              }
-            );
-            data = Array.isArray(res2.data) ? res2.data : [];
-          } else {
-            throw err;
-          }
+          data = Array.isArray(res2.data) ? res2.data : [];
         }
       }
- 
-      const merged = data.map((t) => ({
+  
+      const merged = data.map((t, i) => ({
         ...t,
+        verse_token_id:
+          t.verse_token_id ||
+          t.id ||
+          t.token_id ||
+          `${bookName}-${chapterNumber || t.chapter_number || 0}-${t.verse_number || i}`,
         verse_translated_text: t.verse_translated_text || t.translated_text || "",
       }));
- 
-      setTokens(merged);
-      setIsTokenized(merged.length > 0);
-      if (merged.length > 0 && merged[0].target_language_name) {
-        setTargetLanguage(merged[0].target_language_name);
+  
+      // Deduplicate here as well
+      const uniqueTokens = merged.reduce((acc, t) => {
+        const key = `${t.verse_id}-${t.token_text}`;
+        if (!acc.map[key]) {
+          acc.map[key] = true;
+          acc.list.push(t);
+        }
+        return acc;
+      }, { map: {}, list: [] }).list;
+  
+      setTokens(uniqueTokens);
+      setIsTokenized(uniqueTokens.length > 0);
+      if (uniqueTokens.length > 0 && uniqueTokens[0].target_language_name) {
+        setTargetLanguage(uniqueTokens[0].target_language_name);
       }
- 
-      if (merged.length === 0) {
+  
+      if (uniqueTokens.length === 0) {
         message.warning("No tokens available for this selection.");
       }
     } catch {
@@ -248,41 +261,75 @@ const { message } = App.useApp();   //get message instance
       setLoadingSource(false);
     }
   };
- 
+  
+  // ---------- Manual Save ----------
   // ---------- Manual Save ----------
   const handleManualUpdate = async (tokenId, newText) => {
     try {
+      // 1. Update verse token in DB
       const res = await api.patch(`/verse_tokens/manual-update/${tokenId}`, {
         translated_text: newText,
       });
+ 
+      // 2. Update local tokens state
       setTokens((prev) =>
-        prev.map((t) => (t.verse_token_id === tokenId ? res.data.data : t))
+        prev.map((t) =>
+          t.verse_token_id === tokenId ? { ...t, ...res.data.data } : t
+        )
       );
-      message.success("Saved the Translated Verses!");
-    } catch {
+ 
+      // 3. Recompute full draft text
+      const updatedDraft = tokens
+        .map((t) =>
+          t.verse_token_id === tokenId ? newText : t.verse_translated_text || ""
+        )
+        .join("\n\n");
+ 
+      // 4. Save draft in DB (if draftId available)
+      if (draftId) {
+        await api.put(`/drafts/drafts/${draftId}`, { content: updatedDraft });
+      }
+ 
+      // 5. Refresh draft content so Draft View updates immediately
+      await updateServerDraft();
+ 
+      message.success("Saved the verse and updated the draft!");
+    } catch (err) {
+      console.error("Manual update error:", err);
       message.error("Failed to update manually");
     }
   };
  
-  // ---------- Translate All (kept) ----------
   const handleTranslateAllChunks = async () => {
     if (selectedBook === "all") {
       message.info("Please select a specific book to translate.");
       return;
-    } setTranslationAttempted(true); // Mark that a translation was attempted
+    }
+    setTranslationAttempted(true);
+  
+    const key = "translating";
+    message.loading({ key, content: "Translating verses…", duration: 0 });
+  
     try {
-      setLoadingTranslate(true);
       let skip = 0;
       let hasMore = true;
- 
+  
       while (hasMore) {
         const res = await api.post(
           `/verse_tokens/translate-chunk/${projectId}/${selectedBook}`,
           null,
           { params: { skip, limit: 10, chapter: selectedChapter || "" } }
         );
-        const newTokens = Array.isArray(res.data) ? res.data : [];
- 
+        const newTokens = (Array.isArray(res.data) ? res.data : []).map((t, i) => ({
+          ...t,
+          verse_token_id:
+            t.verse_token_id ||
+            t.id ||
+            t.token_id ||
+            `${selectedBook}-${t.chapter_number || selectedChapter || "all"}-${t.verse_number || i}-${skip}`,
+          verse_translated_text: t.verse_translated_text || t.translated_text || "",
+        }));
+  
         setTokens((prev) =>
           prev.map((tok) => {
             const updated = newTokens.find(
@@ -291,142 +338,173 @@ const { message } = App.useApp();   //get message instance
             return updated ? { ...tok, ...updated } : tok;
           })
         );
- 
+  
         if (newTokens.length < 10) hasMore = false;
         else skip += 10;
       }
- 
-      message.success("All verses translated!");
+  
+      message.success({ key, content: "All verses translated!" });
     } catch (err) {
       console.error("Translation error:", err);
-    
-      let backendMsg = "";
-    
-      if (err.response) {
-        if (typeof err.response.data === "string") {
-          // HTML or plain text error body
-          backendMsg = err.response.data;
-        } else if (typeof err.response.data === "object") {
-          // JSON error body
-          backendMsg =
-            err.response.data.detail ||
-            err.response.data.message ||
-            JSON.stringify(err.response.data);
-        }
-    
-        // Add status info
-        backendMsg =
-          backendMsg ||
-          err.response.statusText ||
-          `HTTP ${err.response.status}`;
-      } else {
-        // No response from server
-        backendMsg = err.message || "Network error";
-      }
-    
-      message.error(`Error: ${backendMsg}`);
-    }
-    
-    
-     finally {
-      setLoadingTranslate(false);
+      message.error({ key, content: `Error: ${err.message || "Failed"}` });
     }
   };
- 
+  function chunkArray(array, size) {
+    const result = [];
+    for (let i = 0; i < array.length; i += size) {
+      result.push(array.slice(i, i + size));
+    }
+    return result;
+  }
+  const getVerseNumbers = async (projectId, bookName, chapterNumber) => {
+    const res = await api.get(
+      `/verse_tokens/verse_tokens/verse-numbers/${projectId}/${bookName}/${chapterNumber}`
+    );
+    return res.data; // [1, 2, 3, ...]
+  };
   // chapter Translate---------------------------------
   const handleTranslateChapter = async () => {
     if (selectedBook === "all" || !selectedChapter) {
       message.info("Please select a specific book and chapter to translate.");
       return;
-    } setTranslationAttempted(true); // Mark that a translation was attempted
+    }
   
     try {
-      setLoadingTranslate(true);
-      const newTokens = await translateChapter(projectId, selectedBook, selectedChapter);
+      const key = "translating";
+      message.loading({ key, content: "Starting translation…", duration: 0 });
   
-      // normalize translated_text → verse_translated_text
-      const merged = newTokens.map((t) => ({
-        ...t,
-        verse_translated_text: t.verse_translated_text || t.translated_text || "",
-      }));
+      // 1. Get verse numbers
+      const allVerseNumbers = await getVerseNumbers(
+        projectId,
+        selectedBook,
+        selectedChapter
+      );
+      const uniqueVerseNumbers = Array.from(new Set(allVerseNumbers));
+      const total = uniqueVerseNumbers.length;
+      const batchSize = 5;
   
-      setTokens(merged);
- 
-       //  replace, not merge
+      for (let i = 0; i < total; i += batchSize) {
+        const batch = uniqueVerseNumbers.slice(i, i + batchSize);
   
-      message.success("Chapter translated successfully!");
+        // Show placeholder while batch in progress
+        setTokens(prev =>
+          prev.map(tok =>
+            batch.includes(tok.verse_number)
+              ? { ...tok, verse_translated_text: "Translating…" }
+              : tok
+          )
+        );
+  
+        // API call
+        const newTokens = await translateChapter(
+          projectId,
+          selectedBook,
+          selectedChapter,
+          batch
+        );
+  
+        if (newTokens?.length > 0) {
+          setTokens(prev => {
+            // build updated array (always new reference)
+            const updated = prev.map(tok => {
+              const match = newTokens.find(
+                nt => nt.verse_number === tok.verse_number && nt.token_text === tok.token_text
+              );
+              return match
+                ? {
+                    ...tok,
+                    verse_translated_text: match.verse_translated_text || match.translated_text || "",
+                    lastUpdated: Date.now(),
+                  }
+                : tok;
+            });
+            return [...updated]; // <-- ensures React sees a new array
+          });
+        }
+  
+        // let React paint updates
+        await new Promise(r => setTimeout(r, 0));
+  
+        // Update progress
+        const done = Math.min(i + batchSize, total);
+        const percent = Math.round((done / total) * 100);
+        message.loading({
+          key,
+          content: `Translating verses…  (${percent}%)`,
+          duration: 0,
+        });
+      }
+  
+      message.success({ key, content: "Chapter translated successfully!" });
+  
+      // ✅ immediately refresh draft so UI shows translations without refresh
       await updateServerDraft();
+  
     } catch (err) {
       console.error("Translation error:", err);
-    
-      let backendMsg = "";
-    
-      if (err.response) {
-        if (typeof err.response.data === "string") {
-          // HTML or plain text error body
-          backendMsg = err.response.data;
-        } else if (typeof err.response.data === "object") {
-          // JSON error body
-          backendMsg =
-            err.response.data.detail ||
-            err.response.data.message ||
-            JSON.stringify(err.response.data);
-        }
-    
-        // Add status info
-        backendMsg =
-          backendMsg ||
-          err.response.statusText ||
-          `HTTP ${err.response.status}`;
-      } else {
-        // No response from server
-        backendMsg = err.message || "Network error";
-      }
-    
-      message.error(`Error: ${backendMsg}`);
-    }
-    
-    
-     finally {
-      setLoadingTranslate(false);
+      message.error({
+        key: "translating",
+        content: `Error: ${err.message || "Failed"}`,
+      });
     }
   };
+  
+  // fetch draft from server  
   
   const updateServerDraft = async () => {
     if (!projectId || selectedBook === "all") {
       setServerDraft("");
+      setDraftId(null);
       return;
     }
-  
+
     try {
       setLoadingDraft(true);
       const draft = await fetchDraft(projectId, selectedBook);
-      setServerDraft(draft);
+
+      if (draft) {
+        setServerDraft(draft.content || "");
+        setDraftId(draft.draft_id);
+      } else {
+        setServerDraft("");
+        setDraftId(null);
+      }
     } catch (err) {
       console.error(err);
       message.error("Failed to fetch draft from server");
       setServerDraft("");
+      setDraftId(null);
     } finally {
       setLoadingDraft(false);
     }
   };
+  
   useEffect(() => {
     if (selectedBook !== "all") {
       updateServerDraft();
     } else {
       setServerDraft("");
-    } setTranslationAttempted(false);
-
+    }
+    setTranslationAttempted(false);
   }, [selectedBook, selectedChapter]);
-    
-  
  
-  // ---------- Progress / Draft ----------
-  const progress = useMemo(() => {
-    if (!tokens || tokens.length === 0) return 0;
-    const translated = tokens.filter((t) => t.verse_translated_text).length;
-    return Math.round((translated / tokens.length) * 100);
-  }, [tokens]);
+  
+  // // ---------- Progress / Draft ----------
+  // const chapterStats = useMemo(() => {
+  //   if (!tokens || tokens.length === 0) return { translated: 0, total: 0 };
+  //   const total = tokens.length;
+  //   const translated = tokens.filter((t) => t.verse_translated_text).length;
+  //   return { translated, total };
+  // }, [tokens]);
+
+    // ---------- Progress / Draft ----------
+const chapterStats = useMemo(() => {
+  if (!tokens || tokens.length === 0) return { translated: 0, total: 0 };
+  const total = tokens.length;
+  const translated = tokens.filter((t) => t.verse_translated_text).length;
+  return { translated, total };
+}, [tokens]);
+
  
   const draftContent = tokens
     .filter((t) => t.verse_translated_text)
@@ -437,25 +515,24 @@ const { message } = App.useApp();   //get message instance
     ? tokens.filter((t) => t.verse_translated_text)
     : tokens;
  
-    const copyDraft = async () => {
-      try {
-        const contentToCopy = serverDraft?.trim() || draftContent?.trim();
-    
-        if (!contentToCopy) {
-          message.warning("No draft content to copy");
-          console.log(" No draft content to copy");
-          return;
-        }
-    
-        await navigator.clipboard.writeText(contentToCopy);
-        message.success("Draft copied to clipboard ");
-        console.log(" Draft copied:", contentToCopy.slice(0, 100)); // log first 100 chars
-      } catch (err) {
-        console.error(" Clipboard copy failed:", err);
-        message.error("Failed to copy draft: " + (err.message || err));
+  const copyDraft = async () => {
+    try {
+      const contentToCopy = serverDraft?.trim() || draftContent?.trim();
+ 
+      if (!contentToCopy) {
+        message.warning("No draft content to copy");
+        console.log(" No draft content to copy");
+        return;
       }
-    };    
-
+ 
+      await navigator.clipboard.writeText(contentToCopy);
+      message.success("Draft copied to clipboard ");
+      console.log(" Draft copied:", contentToCopy.slice(0, 100)); // log first 100 chars
+    } catch (err) {
+      console.error(" Clipboard copy failed:", err);
+      message.error("Failed to copy draft: " + (err.message || err));
+    }
+  };
  
   // ---------- Effects ----------
   useEffect(() => {
@@ -473,7 +550,8 @@ const { message } = App.useApp();   //get message instance
       const bookObj = books.find((b) => b.book_name === selectedBook);
       if (bookObj) {
         fetchChaptersByBook(bookObj.book_id).then(() => {
-          setSelectedChapter(1); // default to first chapter
+          setSelectedChapter(null); // reset first
+          setTimeout(() => setSelectedChapter(1), 0); // then set default
         });
       }
       setTokens([]);
@@ -498,7 +576,14 @@ const { message } = App.useApp();   //get message instance
  
   // ---------- UI ----------
   return (
-    <div style={{ paddingTop: 20, paddingRight: 20, paddingBottom: 20, paddingLeft: 20 }}>
+    <div
+      style={{
+        paddingTop: 20,
+        paddingRight: 20,
+        paddingBottom: 20,
+        paddingLeft: 20,
+      }}
+    >
       <Breadcrumb style={{ marginBottom: 16 }}>
         <Breadcrumb.Item>
           <Link to="/projects">Projects</Link>
@@ -537,283 +622,453 @@ const { message } = App.useApp();   //get message instance
           </Select>
  
           {selectedBook !== "all" && chapters.length > 0 && (
-  <Space>
-    {/* Prev Button */}
-    <Button
-      type="text"
-      disabled={!selectedChapter || selectedChapter === 1}
-      onClick={() =>
-        setSelectedChapter((prev) => Math.max(1, prev - 1))
-      }
-    >
-      ◀
-    </Button>
- 
-    {/* Chapter Dropdown */}
-    <Select
-      value={selectedChapter}
-      style={{ minWidth: 120 }}
-      onChange={(val) => setSelectedChapter(val)}
-    >
-      {chapters.map((ch) => (
-        <Option key={ch.chapter_id} value={ch.chapter_number}>
-          Chapter {ch.chapter_number}
-        </Option>
-      ))}
-    </Select>
- 
-    {/* Next Button */}
-    <Button
-      type="text"
-      disabled={!selectedChapter || selectedChapter === chapters.length}
-      onClick={() =>
-        setSelectedChapter((prev) =>
-          Math.min(chapters.length, prev + 1)
-        )
-      }
-    >
-      ▶
-    </Button>
-  </Space>
-)}
- 
-        </Space>
- 
-        <Progress
-          percent={progress}
-          style={{ marginTop: 8, marginBottom: 8 }}
-        />
-      </Space>
- 
-      <Tabs defaultActiveKey="editor">
-        {/* Editor */}
-        <TabPane tab="Translation Editor" key="editor">
-        <Row gutter={16}>
-  {/* Source */}
-  <Col span={12}>
-    <Card
-      title={
-        <Row justify="space-between" align="middle">
-          <span>Source</span>
-        </Row>
-      }
-      style={{ maxHeight: "70vh", overflowY: "scroll" }}
-    >
-      {loadingSource ? (
-        <Spin size="large" />
-      ) : isTokenized ? (
-        <>
-          {tokens.length > 0 && (
-            <Text strong style={{ display: "block", marginBottom: 12 }}>
-              {tokens[0].book_name}
-            </Text>
-          )}
-          {tokens.map((t, index) => (
-            <div
-              key={t.verse_token_id}
-              style={{
-                borderBottom: "1px solid #f0f0f0",
-                paddingTop: 8,
-                paddingBottom: 8,
-                display: "flex",
-                gap: 8,
-              }}
-            >
-              <Text strong style={{ minWidth: 30, textAlign: "right" }}>
-                {index + 1}.
-              </Text>
-              <p style={{ margin: 0 }}>{t.token_text}</p>
-            </div>
-          ))}
-        </>
-      ) : (
-        <pre style={{ whiteSpace: "pre-wrap" }}>
-          {"No content available, please select a book"}
-        </pre>
-      )}
-    </Card>
-  </Col>
- 
-  {/* Target */}
-  <Col span={12}>
-    <Card
-      title={
-        <Row justify="space-between" align="middle">
-          <span>{targetLanguage}</span>
-          <Button
-            type="dashed"
-            icon={<ThunderboltOutlined />}
-            onClick={selectedChapter ? handleTranslateChapter : handleTranslateAllChunks}
-            disabled={selectedBook === "all"}
-          >
-            Translate
-          </Button>
-        </Row>
-      }
-      style={{ maxHeight: "70vh", overflowY: "scroll" }}
-    >
-      {loadingTranslate ? (
-        <Spin size="large" />
-      ) : isTokenized ? (
-        tokens.map((t, index) => (
-          <div
-            key={t.verse_token_id}
-            style={{ borderBottom: "1px solid #f0f0f0", paddingTop: 8, paddingBottom: 8 }}
-          >
-            <Text strong style={{ display: "block", marginBottom: 4 }}>
-              Verse {index + 1}
-            </Text>
-            <>
-  <Input.TextArea
-    rows={3}
-    value={t.verse_translated_text}
-    placeholder="[No translation yet]"
-    onChange={(e) =>
-      setTokens((prev) =>
-        prev.map((tok) =>
-          tok.verse_token_id === t.verse_token_id
-            ? { ...tok, verse_translated_text: e.target.value }
-            : tok
-        )
-      )
-    }
-  />
-
-  {/* Error message in red */}
-  {translationAttempted && !t.verse_translated_text && (
-    <Typography.Text type="danger" style={{ fontSize: "14px" }}>
-      Translation failed
-    </Typography.Text>
-  )}
-</>
-
-            <Space style={{ marginTop: 6 }}>
+            <Space>
+              {/* Prev Button */}
               <Button
-                size="small"
-                icon={<SaveOutlined />}
+                type="text"
+                disabled={!selectedChapter || selectedChapter === 1 || activeTab === "draft"}
                 onClick={() =>
-                  handleManualUpdate(t.verse_token_id, t.verse_translated_text)
+                  setSelectedChapter((prev) => Math.max(1, prev - 1))
                 }
               >
-                Save
+                ◀
+              </Button>
+ 
+              {/* Chapter Dropdown */}
+              <Select
+                value={selectedChapter}
+                style={{ minWidth: 120 }}
+                onChange={(val) => setSelectedChapter(val)}
+                disabled={activeTab === "draft"}
+              >
+                {chapters.map((ch) => (
+                  <Option key={ch.chapter_id} value={ch.chapter_number}>
+                    Chapter {ch.chapter_number}
+                  </Option>
+                ))}
+              </Select>
+ 
+              {/* Next Button */}
+              <Button
+                type="text"
+                disabled={!selectedChapter || selectedChapter === chapters.length || activeTab === "draft"}
+                onClick={() =>
+                  setSelectedChapter((prev) =>
+                    Math.min(chapters.length, prev + 1)
+                  )
+                }
+              >
+                ▶
               </Button>
             </Space>
-          </div>
-        ))
-      ) : (
-        <p>Select a book to start translation</p>
-      )}
-    </Card>
-  </Col>
-</Row>
+          )}
+        </Space>
  
+        
+        {/* <Text style={{ marginTop: 8, marginBottom: 8}}>
+          Chapter Progress: {chapterStats.translated} / {chapterStats.total} verses translated
+        </Text> */}
+
+
+<Progress
+  percent={100} // always show full bar
+  success={{
+    percent:
+      chapterStats.total === 0
+        ? 0
+        : Math.round((chapterStats.translated / chapterStats.total) * 100),
+  }}
+  format={() =>
+    `${chapterStats.translated} / ${chapterStats.total} verses`
+  }
+  strokeColor={{ from: "#108ee9", to: "#87d068" }}
+  style={{ marginTop: 8, marginBottom: 8 }}
+/>
+      </Space>
+ 
+      <Tabs
+        activeKey={activeTab}
+        onChange={(key) => setActiveTab(key)}
+      >
+ 
+        {/* Editor */}
+        
+        <TabPane tab="Translation Editor" key="editor"> 
+        <Row justify="end" style={{ marginBottom: 12 }}>
+            <Button
+              type="dashed"
+              icon={<ThunderboltOutlined />}
+              onClick={selectedChapter ? handleTranslateChapter : handleTranslateAllChunks}
+              disabled={selectedBook === "all"}
+            >
+              Translate
+            </Button>
+          </Row>
+          
+          <Row gutter={16}>
+            {/* Source */}
+            <Col span={12}>
+              <Card
+                title={
+                  <Row justify="space-between" align="middle">
+                    <span>Source</span>
+                  </Row>
+                }
+                style={{ maxHeight: "70vh", overflowY: "scroll" }}
+              >
+                {loadingSource ? (
+                  <Spin size="large" />
+                ) : isTokenized ? (
+                  <>
+                    {tokens.length > 0 && (
+                      <Text
+                        strong
+                        style={{ display: "block", marginBottom: 12 }}
+                      >
+                        {tokens[0].book_name}
+                      </Text>
+                    )}
+                    {tokens.map((t, index) => (
+                      <div
+                        key={t.verse_token_id}
+                        style={{
+                          borderBottom: "1px solid #f0f0f0",
+                          paddingTop: 8,
+                          paddingBottom: 8,
+                          display: "flex",
+                          gap: 8,
+                        }}
+                      >
+                        <Text
+                          strong
+                          style={{ minWidth: 30, textAlign: "right" }}
+                        >
+                          {index + 1}.
+                        </Text>
+                        <p style={{ margin: 0 }}>{t.token_text}</p>
+                      </div>
+                      
+                    ))}
+                  </>
+                ) : (
+                  <pre style={{ whiteSpace: "pre-wrap" }}>
+                    {"No content available, please select a book"}
+                  </pre>
+                )}
+              </Card>
+            </Col>
+ 
+            {/* Target */}
+            <Col span={12}>
+              <Card
+                title={
+                  <Row justify="space-between" align="middle">
+                    <span>{targetLanguage}</span>
+                    {/* <Button
+                      type="dashed"
+                      icon={<ThunderboltOutlined />}
+                      onClick={
+                        selectedChapter
+                          ? handleTranslateChapter
+                          : handleTranslateAllChunks
+                      }
+                      disabled={selectedBook === "all"}
+                    >
+                      Translate
+                    </Button> */}
+                  </Row>
+                }
+                style={{ maxHeight: "70vh", overflowY: "scroll" }}
+              >
+                {isTokenized ? (
+  tokens.map((t, index) => (
+
+                    <div
+                      key={t.verse_token_id}
+                      style={{
+                        borderBottom: "1px solid #f0f0f0",
+                        paddingTop: 8,
+                        paddingBottom: 8,
+                      }}
+                    >
+                      <Text
+                        strong
+                        style={{ display: "block", marginBottom: 4 }}
+                      >
+                        Verse {index + 1}
+                      </Text>
+                      <>
+                     <Input.TextArea
+  value={t.verse_translated_text}
+  autoSize={{ minRows: 3, maxRows: 6 }}
+  onChange={(e) => {
+    const newText = e.target.value;
+
+    setTokens((prev) =>
+      prev.map((tok) =>
+        tok.verse_token_id === t.verse_token_id
+          ? { ...tok, verse_translated_text: newText }
+          : tok
+      )
+    );
+
+    setEditedTokens((prev) => {
+      if (!prev[t.verse_token_id]) {
+        return {
+          ...prev,
+          [t.verse_token_id]: {
+            old: t.verse_translated_text, // saved/original
+            new: newText,                 // current edit
+          },
+        };
+      }
+      return {
+        ...prev,
+        [t.verse_token_id]: {
+          ...prev[t.verse_token_id],
+          new: newText,
+        },
+      };
+    });
+  }}
+/>
+
+ 
+ 
+                        {/* {translationAttempted && !t.verse_translated_text && (
+                          <Typography.Text
+                            type="danger"
+                            style={{ fontSize: "14px" }}
+                          >
+                            Translation failed
+                          </Typography.Text>
+                        )}
+  */}
+                        <Space style={{ marginTop: 6 }}>
+                          {/* <Button
+                            size="small"
+                            icon={<SaveOutlined />}
+                            onClick={async () => {
+                              await handleManualUpdate(
+                                t.verse_token_id,
+                                t.verse_translated_text || ""
+                              );
+                            }}
+                          >
+                            Save
+                          </Button> */}
+                         {editedTokens[t.verse_token_id] && (
+  <>
+    <Button
+      size="small"
+      icon={<SaveOutlined />}
+      onClick={async () => {
+        await handleManualUpdate(
+          t.verse_token_id,
+          editedTokens[t.verse_token_id].new
+        );
+        setEditedTokens((prev) => {
+          const copy = { ...prev };
+          delete copy[t.verse_token_id];
+          return copy;
+        });
+      }}
+    >
+      Save
+    </Button>
+
+    <Button
+      size="small"
+      onClick={() => {
+        // revert token text to the old/original one
+        setTokens((prev) =>
+          prev.map((tok) =>
+            tok.verse_token_id === t.verse_token_id
+              ? {
+                  ...tok,
+                  verse_translated_text: editedTokens[t.verse_token_id].old,
+                }
+              : tok
+          )
+        );
+        setEditedTokens((prev) => {
+          const copy = { ...prev };
+          delete copy[t.verse_token_id];
+          return copy;
+        });
+      }}
+    >
+      Discard
+    </Button>
+  </>
+)}
+
+                        </Space>
+                      </>
+                    </div>
+                  ))
+                ) : (
+                  <p>Select a book to start translation</p>
+                )}
+              </Card>
+            </Col>
+          </Row>
         </TabPane>
  
         <TabPane tab="Draft View" key="draft">
-  <Row gutter={16}>
-    {/* --- New Source Draft Card --- */}
-    {selectedBook !== "all" && (
-      <Col span={12}>
-        <Card
-          title="Source Draft"
-          style={{ maxHeight: "70vh", overflowY: "scroll" }}
-        >
-          {rawBookContent ? (
-            <pre style={{ whiteSpace: "pre-wrap" }}>{rawBookContent}</pre>
-          ) : (
-            <p>No USFM content available for this book.</p>
-          )}
-        </Card>
-      </Col>
-    )}
-
-    {/* --- Existing Translation Draft Card --- */}
-    <Col span={12}>
-    <Card
-  title="Translation Draft"
-  extra={
-    <Space>
-      {/* Download → icon only */}
-      <DownloadDraftButton content={serverDraft || draftContent} />
-
-      {/* Copy → icon only */}
-      <CopyOutlined
-        style={{
-          fontSize: 20,
-          color: "#1677ff", // AntD primary blue, you can change
-          cursor:
-            !(serverDraft?.trim() ||
-              tokens.some((t) => t.verse_translated_text?.trim()))
-              ? "not-allowed"
-              : "pointer",
-        }}
-        onClick={() => {
-          if (
-            serverDraft?.trim() ||
-            tokens.some((t) => t.verse_translated_text?.trim())
-          ) {
-            copyDraft();
-          }
-        }}
+          <Row gutter={16}>
+            {/* --- New Source Draft Card --- */}
+            {selectedBook !== "all" && (
+              <Col span={12}>
+                <Card
+                  title="Source Draft"
+                  style={{ maxHeight: "70vh", overflowY: "scroll" }}
+                >
+                  {rawBookContent ? (
+                    <pre style={{ whiteSpace: "pre-wrap" }}>
+                      {rawBookContent}
+                    </pre>
+                  ) : (
+                    <p>No USFM content available for this book.</p>
+                  )}
+                </Card>
+              </Col>
+            )}
+ 
+            {/* --- Existing Translation Draft Card --- */}
+            <Col span={12}>
+              <Card
+                title="Translation Draft"
+                extra={
+                  <Space>
+                    {/* Download → icon only */}
+                    <DownloadDraftButton
+                      content={serverDraft || draftContent}
+                    />
+ 
+                    {/* Copy → icon only */}
+                    <CopyOutlined
+                      style={{
+                        fontSize: 20,
+                        color: "#1677ff", // AntD primary blue, you can change
+                        cursor: !(
+                          serverDraft?.trim() ||
+                          tokens.some((t) => t.verse_translated_text?.trim())
+                        )
+                          ? "not-allowed"
+                          : "pointer",
+                      }}
+                      onClick={() => {
+                        if (
+                          serverDraft?.trim() ||
+                          tokens.some((t) => t.verse_translated_text?.trim())
+                        ) {
+                          copyDraft();
+                        }
+                      }}
+                    />
+                  </Space>
+                }
+                style={{ maxHeight: "70vh", overflowY: "scroll" }}
+              >
+                <Row gutter={16}>
+                  {loadingDraft ? (
+                    <Col
+                      span={24}
+                      style={{
+                        textAlign: "center",
+                        paddingTop: 20,
+                        paddingRight: 20,
+                        paddingBottom: 20,
+                        paddingLeft: 20,
+                      }}
+                    >
+                      <Spin size="large" />
+                    </Col>
+) : serverDraft ? (
+  <Col span={24}>
+    <Space direction="vertical" style={{ width: "100%" }}>
+      <Input.TextArea
+        value={editedDraft || serverDraft}
+        autoSize={{ minRows: 8, maxRows: 20 }}
+        onChange={(e) => setEditedDraft(e.target.value)}
       />
-    </Space>
-  }
-  style={{ maxHeight: "70vh", overflowY: "scroll" }}
+
+      {/* Save & Discard Buttons */}
+      {editedDraft !== null && editedDraft !== serverDraft && (
+        <Space>
+        <Button
+  type="primary"
+  icon={<SaveOutlined />}
+  onClick={async () => {
+    try {
+      if (draftId) {
+        // Save draft to backend
+        const res = await api.put(`/drafts/drafts/${draftId}`, {
+          content: editedDraft,
+        });
+
+        //  Update local state directly from backend response
+        setServerDraft(res.data.content);   // Draft View shows new content
+        setEditedDraft(null);               // Reset edit mode
+
+        message.success("Draft saved successfully!");
+      } else {
+        message.warning("No draftId found to save");
+      }
+    } catch (err) {
+      console.error("Save draft error:", err);
+      message.error("Failed to save draft");
+    }
+  }}
 >
-        <Row gutter={16}>
-          {loadingDraft ? (
-            <Col
-            span={24}
-            style={{
-              textAlign: "center",
-              paddingTop: 20,
-              paddingRight: 20,
-              paddingBottom: 20,
-              paddingLeft: 20,
+  Save
+</Button>
+          <Button
+            onClick={() => {
+              setEditedDraft(null); // discard edits
+              message.info("Changes discarded");
             }}
           >
-              <Spin size="large" />
-            </Col>
-          ) : serverDraft ? (
-            <Col span={24}>
-                <pre style={{ whiteSpace: "pre-wrap" }}>{serverDraft}</pre>
-              {/* </Card> */}
-            </Col>
-          ) : (
-            <>
-              {/* fallback if server draft empty */}
-              <Col span={12}>
-                <Card
-                  title="Source"
-                  style={{ maxHeight: "70vh", overflowY: "scroll" }}
-                >
-                  {filteredTokens.map((t) => (
-                    <p key={t.verse_token_id}>{t.token_text}</p>
-                  ))}
-                </Card>
-              </Col>
-              <Col span={12}>
-                <Card
-                  title={targetLanguage}
-                  style={{ maxHeight: "70vh", overflowY: "scroll" }}
-                >
-                  {filteredTokens.map((t) => (
-                    <p key={t.verse_token_id}>
-                      {t.verse_translated_text || ""}
-                    </p>
-                  ))}
-                </Card>
-              </Col>
-            </>
-          )}
-        </Row>
+            Discard
+          </Button>
+        </Space>
+      )}
+    </Space>
+  </Col>
+) : (
+  <>
+    {/* fallback if server draft empty */}
+    <Col span={12}>
+      <Card
+        title="Source"
+        style={{ maxHeight: "70vh", overflowY: "scroll" }}
+      >
+        {filteredTokens.map((t) => (
+          <p key={t.verse_token_id}>{t.token_text}</p>
+        ))}
       </Card>
     </Col>
-  </Row>
-</TabPane>
+    <Col span={12}>
+      <Card
+        title={targetLanguage}
+        style={{ maxHeight: "70vh", overflowY: "scroll" }}
+      >
+        {filteredTokens.map((t) => (
+          <p key={t.verse_token_id}>
+            {t.verse_translated_text || ""}
+          </p>
+        ))}
+      </Card>
+    </Col>
+  </>
+)}
 
-
-
+                </Row>
+              </Card>
+            </Col>
+          </Row>
+        </TabPane>
       </Tabs>
     </div>
   );

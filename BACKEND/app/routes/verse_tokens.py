@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException,Body
 from app.database import get_db
 from sqlalchemy.orm import Session
 from uuid import UUID
@@ -9,6 +9,11 @@ from app.crud import verse_tokens as verse_token_crud
 
 # Models & Schemas
 from app.models.verse_tokens import VerseTokenTranslation
+from app.models.verse import Verse
+from app.models.project import Project
+from app.models.chapter import Chapter
+from app.models.book import Book
+
 from app.schemas.verse_tokens import (
     VerseTokenTranslationResponse,
     ManualTranslationUpdate,
@@ -134,8 +139,28 @@ def translate_chapter_route(
     project_id: UUID,
     book_name: str,
     chapter_number: int,
+    verse_numbers: List[int] = Body(..., embed=True),   # 👈 required list, always batch
     db: Session = Depends(get_db)
-):
-    return verse_token_crud.translate_chapter(db, project_id, book_name, chapter_number)
-
-
+): 
+    print("Received verse_numbers:", verse_numbers)
+    return verse_token_crud.translate_chapter(
+        db, project_id, book_name, chapter_number, verse_numbers
+    )
+@router.get("/verse_tokens/verse-numbers/{project_id}/{book_name}/{chapter_number}")
+def get_verse_numbers(project_id: UUID, book_name: str, chapter_number: int, db: Session = Depends(get_db)):
+    verses = (
+        db.query(Verse.verse_number)
+        .join(VerseTokenTranslation, Verse.verse_id == VerseTokenTranslation.verse_id)
+        .join(Chapter, Chapter.chapter_id == Verse.chapter_id)
+        .join(Book, Book.book_id == Chapter.book_id)
+        .filter(
+            VerseTokenTranslation.project_id == project_id,
+            Book.book_name == book_name,
+            Chapter.chapter_number == chapter_number
+        )
+        .order_by(Verse.verse_number)
+        .all()
+    )
+    if not verses:
+        raise HTTPException(status_code=404, detail="No verses found for this chapter.")
+    return [v[0] for v in verses]  # return list of integers

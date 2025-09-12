@@ -1,47 +1,49 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Row, Col, Select, Card, Input, Typography, Spin, Button, message, Breadcrumb,Popconfirm } from 'antd';
+import { Row, Col, Select, Card, Input, Typography, Button, message, Breadcrumb, Popconfirm, Modal } from 'antd';
 import { CopyOutlined, DownloadOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { projectsAPI, wordTokenAPI, booksAPI, languagesAPI, sourcesAPI } from './api.js';
+import { projectsAPI, wordTokenAPI, booksAPI, languagesAPI, sourcesAPI, draftAPI } from './api.js';
 import { useParams, Link } from 'react-router-dom';
-import { draftAPI } from './api.js';
- 
- 
 const { Option } = Select;
 const { Text } = Typography;
 const { TextArea } = Input;
- 
+
 export default function WordTranslation() {
   const { projectId } = useParams();
   const [selectedBook, setSelectedBook] = useState(null);
   const [tokens, setTokens] = useState([]);
   const [loadingTokens, setLoadingTokens] = useState(false);
-  const [translating, setTranslating] = useState({});
   const [activeTab, setActiveTab] = useState("editor");
   const [sourceText, setSourceText] = useState("");
   const [sourceLang, setSourceLang] = useState("Loading...");
   const [targetLang, setTargetLang] = useState("Unknown");
   const [projectBooks, setProjectBooks] = useState([]);
-  const [regenerateLoading, setRegenerateLoading] = useState(false);
   const [editedTokens, setEditedTokens] = useState({});
-  // Draft states
   const [draftContent, setDraftContent] = useState("");
   const [originalDraft, setOriginalDraft] = useState("");
   const [isDraftEdited, setIsDraftEdited] = useState(false);
   const [loadingDraft, setLoadingDraft] = useState(false);
- 
+  const [translatedCount, setTranslatedCount] = useState(0);
   const [currentDraft, setCurrentDraft] = useState(null);
   const [saving, setSaving] = useState(false);
- 
-  const translatingRef = useRef(true);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [hasGenerated, setHasGenerated] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
- 
+  const editedTokensRef = useRef(editedTokens);
+  // Derived helpers
+  const hasTokenEdits = Object.entries(editedTokens).some(([k, v]) => k !== 'draft_edited' && !!v);
+  const showEditorUnsaved = hasTokenEdits;           // show save/discard in editor
+  const showDraftUnsaved = isDraftEdited;            // show save/discard in draft
+
+  // Keep isDraftEdited in sync anytime draft/original change (avoids timing issues)
   useEffect(() => {
-    translatingRef.current = true;
-    return () => {
-      translatingRef.current = false;
-    };
-  }, []);
+    setIsDraftEdited(String(draftContent || "") !== String(originalDraft || ""));
+  }, [draftContent, originalDraft]);
+
+  useEffect(() => {
+    editedTokensRef.current = editedTokens;
+  }, [editedTokens]);
+
   // Fetch project details
   const { data: project, isLoading: projectLoading, error: projectError } = useQuery({
     queryKey: ['project', projectId],
@@ -51,7 +53,7 @@ export default function WordTranslation() {
     },
     enabled: !!projectId,
   });
- 
+
   // Fetch books for the project
   useEffect(() => {
     const fetchBooks = async () => {
@@ -65,7 +67,7 @@ export default function WordTranslation() {
     };
     fetchBooks();
   }, [project]);
- 
+
   // Fetch language names
   useEffect(() => {
     const fetchLanguages = async () => {
@@ -90,315 +92,287 @@ export default function WordTranslation() {
     };
     fetchLanguages();
   }, [project]);
- 
+
   // ------------------ Fetch or Generate tokens ------------------
-  const fetchTokens = async (bookName) => {
-    if (!bookName) return;
+  const fetchTokens = async (bookId) => {
+    if (!bookId) return;
     setLoadingTokens(true);
- 
+
     try {
-      const encodedBookName = encodeURIComponent(bookName); // ✅ Correct: encode here
- 
-      // 1️⃣ Try fetching existing tokens
-      let data = [];
+      // 1️⃣ First, try fetching existing tokens
+      let tokens = [];
       try {
-        data = await wordTokenAPI.getTokensByProjectAndBook(projectId, bookName);
+        tokens = await wordTokenAPI.getTokensByProjectAndBook(projectId, bookId);
       } catch (err) {
+        // If 404 → tokens don't exist, we'll generate them
         if (err.response?.status !== 404) throw err;
       }
- 
-      // 2️⃣ If no tokens exist → generate them
-      if (!data || data.length === 0) {
-        const genRes = await wordTokenAPI.generateTokens(projectId, bookName);
-        data = genRes?.data || [];
+
+      // 2️⃣ If no tokens exist, generate them
+      if (!tokens || tokens.length === 0) {
+        await wordTokenAPI.generateWordTokens(projectId, bookId);
+        // 2️⃣a Fetch again after generation
+        tokens = await wordTokenAPI.getTokensByProjectAndBook(projectId, bookId);
       }
-      if (!data || data.length === 0) {
-        const genRes = await wordTokenAPI.generateBatchTokens(projectId, bookName);
-      
-        if (genRes?.failed_batches?.length > 0) {
-          messageApi.error(`Translation Failed. Batch(es) failed: ${genRes.failed_batches.join(", ")}`);
-          return;
-        }
-        
-      
-        data = genRes?.translated_tokens || [];
-      }
-      
- 
+      console.log("[DEBUG] Tokens assigned:", tokens);
+
+
       // 3️⃣ Prepare tokens for editor
-      const preparedTokens = data.map((t) => ({
+      const preparedTokens = tokens.map((t) => ({
         ...t,
         translation: t.translated_text || "",
         originalTranslation: t.translated_text || "",
+
       }));
- 
+
       setTokens(preparedTokens);
+      setTranslatedCount(preparedTokens.filter(t => t.translation?.trim() !== "").length);
+      setEditedTokens(preparedTokens.reduce((acc, t) => ({ ...acc, [t.word_token_id]: false }), {}));
+      setHasGenerated(preparedTokens.some(t => t.translation?.trim() !== ""));
+
+
     } catch (e) {
       console.error("Failed to fetch or generate tokens", e);
       messageApi.error("Failed to fetch or generate tokens");
     } finally {
       setLoadingTokens(false);
     }
-};
- 
- 
- 
-  // ------------------ Handle Book Selection ------------------
-//   const handleBookChange = async (bookId) => {
-//     const selected = projectBooks.find((b) => b.book_id === bookId);
-//     // setSelectedBook(selected);
-//     // setSourceText(selected?.usfm_content || "No source content available");
- 
-//     // if (!selected?.book_name) return;
- 
-//     // const cleanBookName = selected.book_name;
-//     // console.log("[DEBUG] Selected book:", cleanBookName);
-//     // await fetchTokens(cleanBookName); // ✅ Correct: pass raw name, encoded inside fetchTokens
-//     setSelectedBook(selected);
-// setSourceText(selected?.usfm_content || "No source content available");
- 
-// // ----------- RESET STATES FOR NEW BOOK -------------
-// setTokens([]);
-// setDraftContent("");
-// setOriginalDraft("");
-// setEditedTokens({});
-// setIsDraftEdited(false);
-// // -----------------------------------------------
- 
-// if (!selected?.book_name) return;
- 
-// const cleanBookName = selected.book_name;
-// console.log("[DEBUG] Selected book:", cleanBookName);
-// await fetchTokens(cleanBookName);
- 
-// };
-const handleBookChange = async (bookId) => {
-  const selected = projectBooks.find((b) => b.book_id === bookId);
-  setSelectedBook(selected);
-  setSourceText(selected?.usfm_content || "No source content available");
- 
-  // ----------- RESET STATES FOR NEW BOOK -------------
-  setTokens([]);
-  setDraftContent("");
-  setOriginalDraft("");
-  setEditedTokens({});
-  setIsDraftEdited(false);
-  setCurrentDraft(null); // reset currentDraft
-  // -----------------------------------------------
- 
-  // Immediately fetch draft if Draft tab is active
-  if (activeTab === "draft") {
-    fetchOrGenerateDraft(); // ✅ call draft API here
-  }
- 
-  if (!selected?.book_name) return;
-  const cleanBookName = selected.book_name;
-  console.log("[DEBUG] Selected book:", cleanBookName);
-  await fetchTokens(cleanBookName);
-};
- 
-  // const handleGenerateTranslations = async () => {
-  //   if (!selectedBook) return;
-  //   setLoadingTokens(true);
- 
-  //   try {
-  //     // Call the new batch API
-  //     const result = await wordTokenAPI.generateBatchTokens(projectId, selectedBook.book_name);
-  //     const translatedTokens = result?.data || result || [];
- 
-  //     setTokens(
-  //       translatedTokens.map((t) => ({
-  //         ...t,
-  //         translation: t.translated_text || t.translation || "",
-  //         originalTranslation: t.translated_text || t.translation || "",
-  //       }))
-  //     );
- 
-  //     notification.success({
-  //       message: "Translation Regeneration Complete",
-  //       description: "All tokens translation have been regenerated and saved successfully!",
-  //       placement: "topRight",
-  //       duration: 4,
-  //     });
-  //   } catch (e) {
-  //     console.error(e);
-  //     message.error("Translation failed");
-  //   } finally {
-  //     setLoadingTokens(false);
-  //     setTranslating({});
-  //   }
-  // };
-  // ------------------ Helper: Fetch with timeout ------------------
-  
-const fetchWithTimeout = (promise, timeout = 30000) =>
-  new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("Translation request timed out")), timeout);
-    promise
-      .then(res => {
-        clearTimeout(timer);
-        resolve(res);
-      })
-      .catch(err => {
-        clearTimeout(timer);
-        reject(err);
-      });
-  });
- 
-  const handleGenerateTranslations = async () => {
-    if (!selectedBook) return;
-    setLoadingTokens(true);
-  
-    try {
-      // Fetch batch translations with timeout (5 min for large books)
-      const result = await fetchWithTimeout(
-        wordTokenAPI.generateBatchTokens(projectId, selectedBook.book_name),
-        300000
-      );
-  
-      // If any batch failed → show error and stop
-      if (result?.failed_batches?.length > 0) {
-        messageApi.error(`Translation Failed. Batch(es) failed: ${result.failed_batches.join(", ")}`);
-        setTokens([]);
-        if (!isDraftEdited) {
-          setDraftContent("");
-          setOriginalDraft("");
-        }
-        return;
-      }
-      
-  
-      const translatedTokens = Array.isArray(result) ? result : result?.translated_tokens || [];
-  
-      // ------------------ 1️⃣ Update editor tokens ------------------
-      setTokens(
-        translatedTokens.map((t) => ({
+  };
+
+  const handleBookChange = async (bookId) => {
+    // ✅ Auto-save current draft if edited
+    if (isDraftEdited && selectedBook) {
+      await draftAPI.saveManualDraft(projectId, selectedBook.book_id, draftContent);
+      messageApi.success("Previous draft saved successfully.");
+
+    }
+
+    const selected = projectBooks.find((b) => b.book_id === bookId);
+    setSelectedBook(selected);
+    setSourceText(selected?.usfm_content || "No source content available");
+    setTranslatedCount(0);
+    setHasGenerated(false); // reset for new book
+
+    // Reset states for new book
+    setTokens([]);
+    setDraftContent("");
+    setOriginalDraft("");
+    setEditedTokens({});
+    setIsDraftEdited(false);
+    setCurrentDraft(null);
+    setLoadingTokens(false);
+    setIsGenerating(false);
+
+    // Fetch draft for new book
+    if (activeTab === "draft") {
+      fetchDraftIfExists(selected);
+    }
+
+    if (!selected?.book_id) return; // ✅ Check for book_id
+    await fetchTokens(selected.book_id); // ✅ Pass book_id
+  };
+
+  // ------------------ Generate Translations ------------------//
+  const handleGenerateTranslationsSSEWithPreserveEdits = async () => {
+    if (!selectedBook?.book_id) return; // ✅ Check for bookId
+    setIsGenerating(true);
+    setTranslatedCount(0);
+    if (hasGenerated) {
+      setTokens(prev =>
+        prev.map(t => ({
           ...t,
-          translation: t.translated_text || t.translation || "",
-          originalTranslation: t.translated_text || t.translation || "",
+          translation: "",
+          // originalTranslation: "",
         }))
       );
-  
-      // ------------------ 2️⃣ Update draft ------------------
-      let baseContent = currentDraft?.content || draftContent;
-if (!baseContent || baseContent.trim() === "") {
-  baseContent = sourceText || ""; // fallback to source text
-}
- 
-const updatedDraft = translatedTokens.reduce((draft, token) => {
-  const oldText = token.token_text;
-  const newText = token.translated_text || token.translation || "";
-  const escapedOld = oldText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return draft.replace(new RegExp(`\\b${escapedOld}\\b`, 'g'), newText);
-}, baseContent);
- 
-setDraftContent(updatedDraft);
-setOriginalDraft(updatedDraft);
-setCurrentDraft({ ...currentDraft, content: updatedDraft });
- 
-      // ------------------ 3️⃣ Show success ------------------
-      messageApi.success("Translations generated successfully! Editor and Draft have been updated.");
- 
-    } catch (error) {
-      console.error("[ERROR] handleGenerateTranslations:", error);
-      setTokens([]);
-      if (!isDraftEdited) {
-        setDraftContent("");
-        setOriginalDraft("");
-      }
-  
-      messageApi.error("Translation failed. Server may be down or network is slow.");
- 
-    } finally {
-      setLoadingTokens(false);
-      setTranslating({});
     }
-  };
-  
-  
-  // ------------------ Draft Handling (via API) ------------------
-  useEffect(() => {
-    if (!projectId || !selectedBook?.book_name) return;
-  
-    const fetchOrGenerateDraft = async () => {
-      setLoadingDraft(true);
-      try {
-        // ✅ Try fetching the latest draft
-        const response = await draftAPI.getLatestDraftForBook(projectId, selectedBook.book_name);
-  
-        if (response) {
-          // Draft exists → set it
-          setCurrentDraft(response);
-          if (!draftContent) {
-            setDraftContent(response.content || "");
-            setOriginalDraft(response.content || "");
-          }
-        } else {
-          // Draft not found → generate new one
-          const generated = await draftAPI.generateDraftForBook(projectId, selectedBook.book_name);
-          setCurrentDraft(generated);
-          setDraftContent(generated?.content || "");
-          setOriginalDraft(generated?.content || "");
-          setIsDraftEdited(false);
-  
-          messageApi.success(`Draft generated for ${selectedBook.book_name}`);
+
+    try {
+      const eventSource = new EventSource(
+        `http://localhost:8000/api/generate_batch_stream/${projectId}?book_id=${encodeURIComponent(selectedBook.book_id)}`
+      );
+      let hasError = false;
+      eventSource.onmessage = (event) => {
+        let data;
+        try {
+          data = JSON.parse(event.data);
+        } catch (err) {
+          console.error("Invalid SSE JSON:", err);
+          return;
         }
-      } catch (error) {
-        console.error("[ERROR] fetchOrGenerateDraft:", error);
-        messageApi.error("Failed to fetch or generate draft");
-      } finally {
-        setLoadingDraft(false);
-      }
-    };
-  
-    if (activeTab === "draft") {
-      fetchOrGenerateDraft();
+        if (data.error) {
+          hasError = true;
+          console.error("[SSE Error]", data.error);
+          messageApi.error("Translation failed. The server might be down or the network is slow. Please try again.");
+          setIsGenerating(false);
+          eventSource.close();
+          return;
+        }
+        if (data.token) {
+          const t = data.token;
+
+          // Update tokens and mark as "justUpdated" for highlighting
+          setTokens(prevTokens => {
+            const idx = prevTokens.findIndex(x => x.word_token_id === t.word_token_id);
+            const newToken = {
+              ...t,
+              translation: t.translated_text,
+              originalTranslation: t.translated_text,
+              justUpdated: true // highlight flag
+            };
+            let updated;
+            if (idx !== -1) {
+              updated = [...prevTokens];
+              updated[idx] = { ...updated[idx], ...newToken };
+            } else {
+              updated = [...prevTokens, newToken];
+            }
+            // ✅ FIX: count translated tokens properly
+            const count = updated.filter(tok => tok.translation?.trim() !== "").length;
+            setTranslatedCount(count);
+
+            return updated;
+          });
+          // 🔹 ADD THIS: make sure editedTokens has an entry for new tokens
+          setEditedTokens(prev => {
+            if (prev && Object.prototype.hasOwnProperty.call(prev, t.word_token_id)) {
+              return prev;
+            }
+            return { ...prev, [t.word_token_id]: false };
+          });
+          // Update draft if user hasn’t edited
+          if (!editedTokensRef.current[t.word_token_id]) {
+            updateDraftFromEditor(
+              t.word_token_id,
+              t.translated_text,
+              t.originalTranslation || t.token_text,
+              t.token_text,
+              false
+            );
+          }
+
+
+          // Remove highlight after 1 second
+          setTimeout(() => {
+            setTokens(prevTokens =>
+              prevTokens.map(tok =>
+                tok.word_token_id === t.word_token_id
+                  ? { ...tok, justUpdated: false }
+                  : tok
+              )
+            );
+          }, 1000);
+        }
+
+        if (data.finished && !hasError) {
+          messageApi.success(`All ${data.total ?? translatedCount} tokens translated!`);
+          setIsGenerating(false);
+          setHasGenerated(true);
+          eventSource.close();
+        }
+      };
+
+      eventSource.onerror = (err) => {
+        console.error("SSE error:", err);
+        messageApi.error("Translation stream interrupted. Please try again.");
+        setIsGenerating(false); // 🔹 Reset on error
+        eventSource.close();
+      };
+
+    } catch (err) {
+      console.error("Failed to start SSE translation:", err);
+      messageApi.error("Failed to start translation stream.");
+      setIsGenerating(false); // 🔹 Reset on failure
+
     }
-  }, [projectId, selectedBook, activeTab]);
-  
-  const handleDraftChange = (e) => {
-    setDraftContent(e.target.value);
-    setIsDraftEdited(e.target.value !== originalDraft);
   };
-  const handleSaveDraft = () => {
-    setOriginalDraft(draftContent);
-    setIsDraftEdited(false);
-    messageApi.success("Draft saved locally!");
+
+  // ------------------ Draft Handling (via API) ------------------
+
+  const fetchDraftIfExists = async (book = selectedBook) => {
+    if (!projectId || !selectedBook?.book_id) return;
+    setLoadingDraft(true);
+    try {
+      const response = await draftAPI.getLatestDraftForBook(projectId, book.book_id);
+      if (response) {
+        setCurrentDraft(response);
+        setDraftContent(response.content || "");
+        setOriginalDraft(response.content || "");
+        setIsDraftEdited(false);
+      } else {
+        // Draft doesn't exist → show source text, but DO NOT generate
+        setDraftContent(selectedBook.usfm_content || "");
+        setOriginalDraft(selectedBook.usfm_content || "");
+        setIsDraftEdited(false);
+        setCurrentDraft(null);
+      }
+    } catch (error) {
+      console.error("[ERROR] fetchDraftIfExists:", error);
+      messageApi.error("Failed to fetch draft");
+    } finally {
+      setLoadingDraft(false);
+    }
   };
- 
-  const handleDiscardDraft = () => {
-    setDraftContent(originalDraft);
-    setIsDraftEdited(false);
-    messageApi.info("Reverted to previous draft");
+  useEffect(() => {
+    if (activeTab === "draft" && selectedBook) {
+      fetchDraftIfExists(selectedBook);
+    }
+  }, [activeTab, projectId, selectedBook]);
+
+  const handleGenerateDraft = async () => {
+    if (!projectId || !selectedBook?.book_id) return;
+    setLoadingDraft(true);
+    try {
+      const generated = await draftAPI.generateDraftForBook(projectId, selectedBook.book_id);
+      setCurrentDraft(generated);
+      setDraftContent(generated?.content || "");
+      setOriginalDraft(generated?.content || "");
+      setIsDraftEdited(false);
+      messageApi.success(`Draft generated for ${selectedBook.book_name}`);
+    } catch (error) {
+      console.error("[ERROR] handleGenerateDraft:", error);
+      messageApi.error("Failed to generate draft");
+    } finally {
+      setLoadingDraft(false);
+    }
   };
- 
+
   const handleCopyDraft = () => {
     navigator.clipboard.writeText(draftContent);
     messageApi.success("Draft copied to clipboard!");
   };
-  const updateDraftFromEditor = (tokenId, newTranslation, oldTranslation, tokenText) => {
-    if (!draftContent) return;
-  
+  const updateDraftFromEditor = (tokenId, newTranslation, oldTranslation, tokenText, isManual = false) => {
     try {
-      // Decide what to replace
-      const textToReplace = oldTranslation && oldTranslation !== tokenText ? oldTranslation : tokenText;
-      if (!textToReplace) return;
-  
-      // Escape special regex characters
-      const escapedText = textToReplace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  
-      // Replace all occurrences globally
-      const regex = new RegExp(escapedText, 'g');
-  
-      // Only replace if draftContent contains the text
-      if (regex.test(draftContent)) {
-        const updatedDraft = draftContent.replace(regex, newTranslation || '');
-        setDraftContent(updatedDraft);
+      const oldVal = String(oldTranslation || tokenText || "");
+      const newVal = String(newTranslation || "");
+
+      setDraftContent(prevDraft => {
+        if (prevDraft === null || prevDraft === undefined) return "";
+
+        // Escape special regex characters
+        const escapedOld = oldVal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const regex = new RegExp(escapedOld, "g");
+
+        // Replace only exact matches in draft
+        const updatedDraft = String(prevDraft).replace(regex, newVal);  // ✅ force string
+
+        return updatedDraft;
+      });
+
+      // Update editedTokens only if manual edit
+      if (isManual) {
+        setEditedTokens(prev => ({
+          ...prev,
+          [tokenId]: isManual
+        }));
       }
-    } catch (error) {
-      console.error("[ERROR] updateDraftFromEditor failed:", error);
+
+    } catch (err) {
+      console.error("[ERROR] updateDraftFromEditor failed:", err);
     }
   };
-  
+
+
   const handleDownloadDraft = () => {
     const blob = new Blob([draftContent], { type: "text/plain" });
     const url = window.URL.createObjectURL(blob);
@@ -411,18 +385,201 @@ setCurrentDraft({ ...currentDraft, content: updatedDraft });
     window.URL.revokeObjectURL(url);
     messageApi.success("Draft downloaded!");
   };
- 
-  if (projectLoading) return <Spin />;
+
+  const handleSaveAll = async () => {
+    if (!selectedBook) {
+      messageApi.error("No book selected");
+      return;
+    }
+    if (!projectId) {
+      messageApi.error("No project selected");
+      return;
+    }
+
+    try {
+      let updatedTokens = [];
+      let draftToSave = null;
+      let response = null;
+
+      if (activeTab === "editor") {
+        // collect edited tokens
+        updatedTokens = tokens
+          .filter(t => editedTokensRef.current[t.word_token_id])
+          .map(t => ({
+            word_token_id: t.word_token_id,
+            translated_text: String(t.translation || "")
+          }));
+        draftToSave = draftContent;
+
+        // ✅ save via tokens API
+        response = await draftAPI.saveDraftForBook(
+          projectId,
+          selectedBook.book_id,
+          updatedTokens,
+          draftToSave
+        );
+      } else if (activeTab === "draft") {
+        // free-form draft text only
+        draftToSave = String(draftContent || "");
+
+        // ✅ save via manual draft API
+        response = await draftAPI.saveManualDraft(
+          projectId,
+          selectedBook.book_id,
+          draftToSave
+        );
+      }
+
+      messageApi.success("All translations saved successfully!");
+
+      // Update local state based on response
+      if (response?.draft) {
+        setDraftContent(String(response.draft.content || ""));
+        setOriginalDraft(String(response.draft.content || ""));
+        setIsDraftEdited(false);
+      }
+      if (response?.updated_tokens) {
+        setTokens(prevTokens =>
+          prevTokens.map(t => {
+            const updated = response.updated_tokens.find(
+              u => u.word_token_id === t.word_token_id
+            );
+            return updated
+              ? {
+                ...t,
+                translation: String(updated.translated_text),
+                originalTranslation: String(updated.translated_text),
+              }
+              : t;
+          })
+        );
+        setTokens(updatedTokens);
+        // ✅ Fix: update translatedCount immediately
+        setTranslatedCount(updatedTokens.filter(t => t.translation?.trim() !== "").length);
+
+      }
+
+      // Reset edit flags
+      setEditedTokens(prev => {
+        const reset = { ...prev };
+        Object.keys(reset).forEach(k => (reset[k] = false));
+        return reset;
+      });
+    } catch (err) {
+      console.error("Failed to save translations:", err);
+      messageApi.error("Failed to save translations");
+    }
+  };
+
+  const handleDiscardAll = () => {
+    if (activeTab === "editor") {
+      setTokens(prevTokens =>
+        prevTokens.map(t => ({
+          ...t,
+          translation: t.originalTranslation || t.translation,
+        }))
+      );
+
+      setEditedTokens(prev => {
+        const reset = { ...prev };
+        Object.keys(reset).forEach(k => (reset[k] = false));
+        return reset;
+      });
+
+      messageApi.info("Editor changes discarded.");
+    } else if (activeTab === "draft") {
+      setDraftContent(originalDraft);
+      setIsDraftEdited(false);
+
+      // 🔹 Clear the draft_edited flag
+      setEditedTokens(prev => {
+        const reset = { ...prev };
+        delete reset.draft_edited;
+        return reset;
+      });
+
+      messageApi.info("Draft changes discarded.");
+    }
+  };
+
+
+  const attemptSetActiveTab = (tab) => {
+    if (tab === activeTab) return;
+
+    // If leaving draft and draft has unsaved changes -> confirm
+    if (activeTab === "draft" && showDraftUnsaved) {
+      Modal.confirm({
+        title: "Unsaved draft changes",
+        icon: <ExclamationCircleOutlined />,
+        content: "You have unsaved changes in Draft. Save them before switching? (or discard to switch without saving)",
+        okText: "Save & Switch",
+        cancelText: "Discard & Switch",
+        onOk: async () => {
+          try {
+            await handleSaveAll();
+            setActiveTab(tab);
+          } catch (err) {
+            // handleSaveAll already shows messages
+          }
+        },
+        onCancel: () => {
+          // Discard and switch
+          setDraftContent(originalDraft);
+          setIsDraftEdited(false);
+          setEditedTokens(prev => {
+            const u = { ...prev };
+            delete u.draft_edited;
+            return u;
+          });
+          setActiveTab(tab);
+        },
+      });
+      return;
+    }
+
+    // If leaving editor and tokens have unsaved edits -> confirm
+    if (activeTab === "editor" && showEditorUnsaved) {
+      Modal.confirm({
+        title: "Unsaved editor changes",
+        icon: <ExclamationCircleOutlined />,
+        content: "You have unsaved translation edits. Save them before switching? (or discard to switch without saving)",
+        okText: "Save & Switch",
+        cancelText: "Discard & Switch",
+        onOk: async () => {
+          try {
+            await handleSaveAll();
+            setActiveTab(tab);
+          } catch (err) { }
+        },
+        onCancel: () => {
+          // Discard editor edits and switch
+          setTokens(prevTokens =>
+            prevTokens.map(t => ({
+              ...t,
+              translation: t.originalTranslation || t.translation,
+            }))
+          );
+          setEditedTokens({});
+          setActiveTab(tab);
+        },
+      });
+      return;
+    }
+
+    setActiveTab(tab);
+  };
+  // if (projectLoading) return <Spin />;
+  if (projectLoading) return <div>Loading project...</div>;
   if (projectError) return <div>Error loading project</div>;
+
+  const hasTranslation = tokens?.length > 0 && tokens.some(t => t.translation?.trim() !== "");
   return (
-    <div style={{ padding: '24px', position: 'relative', height: "100vh", display: "flex", flexDirection: "column" }}>
-      {contextHolder}  {/* <-- ADD THIS LINE */}
+    <div style={{ padding: '4px', position: 'relative', height: "100vh", display: "flex", flexDirection: "column" }}>
+      {contextHolder}
       <div style={{
-        padding: '24px 32px 16px 32px',
-        backgroundColor: '#f9f9fb',
+        backgroundColor: 'rgb(245, 245, 245)',
         borderRadius: 12,
         marginBottom: 24,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
       }}>
         {/* Breadcrumb */}
         <Breadcrumb
@@ -430,20 +587,20 @@ setCurrentDraft({ ...currentDraft, content: updatedDraft });
             { title: <Link to="/projects" style={{ color: '#8b5cf6', fontWeight: 500 }}>Projects</Link> },
             { title: <span style={{ fontWeight: 500 }}>{project?.name}</span> },
           ]}
+          style={{ marginBottom: '12px' }}
         />
- 
- 
+
         {/* Project Name */}
         <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: '#1f2937' }}>
           {project?.name} - Word Translation
         </h2>
- 
+
         {/* Languages */}
         <p style={{ marginTop: 16, fontSize: 16, color: '#555' }}>
           <span style={{ fontWeight: 500 }}>Source:</span> {sourceLang} | <span style={{ fontWeight: 500 }}>Target:</span> {targetLang}
         </p>
       </div>
- 
+
       {/* Book Selector */}
       <div style={{ marginBottom: 12 }}>
         <Text strong style={{ display: 'block', marginBottom: 4, fontSize: 14 }}>
@@ -463,7 +620,7 @@ setCurrentDraft({ ...currentDraft, content: updatedDraft });
           ))}
         </Select>
       </div>
- 
+
       {selectedBook && (
         <>
           {/* Tabs */}
@@ -497,7 +654,7 @@ setCurrentDraft({ ...currentDraft, content: updatedDraft });
               }}
             />
             <div
-              onClick={() => setActiveTab('editor')}
+              onClick={() => attemptSetActiveTab('editor')}
               style={{
                 flex: 1,
                 display: 'flex',
@@ -512,7 +669,7 @@ setCurrentDraft({ ...currentDraft, content: updatedDraft });
               Editor
             </div>
             <div
-              onClick={() => setActiveTab('draft')}
+              onClick={() => attemptSetActiveTab('draft')}
               style={{
                 flex: 1,
                 display: 'flex',
@@ -527,214 +684,279 @@ setCurrentDraft({ ...currentDraft, content: updatedDraft });
               Draft
             </div>
           </div>
- 
+
           <Card
             title={activeTab === "editor" ? "Translation Editor" : "Draft View"}
             style={{ flex: 1, display: "flex", flexDirection: "column" }}
-            // extra={
-            //   activeTab === "editor" ? (
-                // tokens.some(t => t.translation && t.translation.trim() !== "") ? (
-                //   // </Popconfirm>
-                //   <Popconfirm
-                //     title="Regenerate Translations? All regenerated translations will be saved automatically."
-                //     icon={<ExclamationCircleOutlined />}
-                //     onConfirm={handleGenerateTranslations}
-                //     okText="Yes, Regenerate"
-                //     cancelText="Cancel"
-                //   >
-                //     <Button type="primary" loading={regenerateLoading}>
-                //       {tokens.some(t => t.translation) ? "Regenerate Translations" : "Generate Translations"}
-                //     </Button>
-                //   </Popconfirm>
- 
-                // ) : (
-                //   <Button
-                //     type="primary"
-                //     onClick={() => {
-                //       setRegenerateLoading(true);
-                //       handleGenerateTranslations().finally(() => setRegenerateLoading(false));
-                //     }}
-                //     loading={regenerateLoading}
-                //   >
-                //     Generate Translations
-                //   </Button>
-                // )
-                extra={
-                  activeTab === "editor" ? (
-                    tokens?.some(t => t.translation?.trim() !== "") ? (
+            extra={
+              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                {/* Show Unsaved Changes only for the active tab */}
+                {((activeTab === "editor" && showEditorUnsaved) ||
+                  (activeTab === "draft" && showDraftUnsaved)) && (
+                    <div style={{
+                      backgroundColor: '#fffbe6',
+                      padding: '4px 8px',
+                      borderRadius: '8px',
+                      border: '1px solid #fadb14',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}>
+                      <span style={{ fontWeight: 'bold', color: '#d46b08', fontSize: '12px' }}>
+                        Unsaved Changes:
+                      </span>
+                      <Button type="primary" onClick={handleSaveAll} size="small" loading={saving}>
+                        Save All
+                      </Button>
+                      <Button onClick={handleDiscardAll} size="small">
+                        Discard All
+                      </Button>
+                    </div>
+                  )}
+                {activeTab === "editor" ? (
+                  <>
+                    {/* Editor-specific buttons */}
+                    <Text type="secondary">
+                      Progress: {translatedCount}/{tokens.length}
+                    </Text>
+                    {hasGenerated ? (
                       <Popconfirm
-                        title="Regenerate Translations? All regenerated translations will be saved automatically."
+                        disabled={isGenerating}
+                        title="Regenerate Translations? All regenerated translations will overwrite unsaved edits."
                         icon={<ExclamationCircleOutlined />}
                         onConfirm={() => {
-                          setRegenerateLoading(true);
-                          handleGenerateTranslations().finally(() => setRegenerateLoading(false));
+                          if (Object.values(editedTokens).some(Boolean)) {
+                            messageApi.warning(
+                              "You have unsaved edits. Regenerating will overwrite them!"
+                            );
+                          }
+                          handleGenerateTranslationsSSEWithPreserveEdits();
                         }}
                         okText="Yes, Regenerate"
                         cancelText="Cancel"
                       >
-                        <Button type="primary" loading={regenerateLoading}>
-                          Regenerate Translations
+                        <Button type="primary" loading={isGenerating}>
+                          {isGenerating ? "Regenerating..." : "Regenerate Translations"}
                         </Button>
                       </Popconfirm>
                     ) : (
                       <Button
                         type="primary"
-                        onClick={() => {
-                          setRegenerateLoading(true);
-                          handleGenerateTranslations().finally(() => setRegenerateLoading(false));
-                        }}
-                        loading={regenerateLoading}
-                      >
-                        Generate Translations
+                        onClick={handleGenerateTranslationsSSEWithPreserveEdits}
+                        loading={isGenerating}
+                        disabled={isGenerating}
+                      >{isGenerating ? "Generating..." : "Generate Translations"}
                       </Button>
-                    )
-                  ) : (
-                    <>
-                      <Button
-                        icon={<CopyOutlined />}
-                        size="small"
-                        onClick={handleCopyDraft}
-                        style={{ marginRight: 8 }}
-                        disabled={loadingTokens}
-                      >
-                        Copy
-                      </Button>
-                      <Button
-                        icon={<DownloadOutlined />}
-                        size="small"
-                        type="primary"
-                        onClick={handleDownloadDraft}
-                        disabled={loadingTokens}
-                      >
-                        Download
-                      </Button>
-                    </>
-                  )
-                }
-                
-               >
-            <Row gutter={16} style={{ flex: 1 }}>
-              <Col span={12} style={{ height: "100%", overflowY: "auto", paddingRight: 8, maxHeight: "70vh" }}>
-                <h3>Source</h3>
-                <pre style={{ whiteSpace: "pre-wrap", background: "#f5f5f5", padding: 10, borderRadius: 4 }}>
-                  {sourceText || "No source loaded"}
-                </pre>
-              </Col>
- 
-              <Col span={12} style={{ height: "100%", overflowY: "auto", paddingLeft: 8, maxHeight: "70vh" }}>
-                <h3>{activeTab === "editor" ? "Translation" : "Draft Translation"}</h3>
-                {loadingTokens ? (
-                  <Spin />
-                ) : tokens.length === 0 ? (
-                  <Text type="secondary">
-                    {activeTab === "editor" ? "No word tokens found for this book." : "No draft available."}
-                  </Text>
-                ) : activeTab === "editor" ? (
-                  tokens.map((token) => {
-                    const isEdited = token.translation !== token.originalTranslation;
-                    return (
-                      <div
-                        key={token.word_token_id}
-                        style={{
-                          marginBottom: 12,
-                          backgroundColor: isEdited ? "#fffbe6" : "transparent",
-                          padding: 4,
-                          borderRadius: 4,
-                        }}
-                      >
-                        <Text strong>{token.token_text}</Text>
-                        <Input
-                          placeholder="Enter translation"
-                          value={token.translation || ""}
-                          onChange={(e) => {
-                            const prevTranslation = token.translation || "";
-                            const newValue = e.target.value;
- 
-                            // update token in editor
-                            setTokens(prevTokens =>
-                              prevTokens.map(t =>
-                                t.word_token_id === token.word_token_id
-                                  ? { ...t, translation: newValue }
-                                  : t
-                              )
-                            );
- 
-                            // mark token as edited
-                            setEditedTokens(prev => ({
-                              ...prev,
-                              [token.word_token_id]: newValue !== token.originalTranslation
-                            }));
- 
-                            // sync editor changes to draft (but don't trigger save/discard)
-                            updateDraftFromEditor(token.word_token_id, newValue, prevTranslation, token.token_text);
-                          }}
-                          style={{ marginTop: 4 }}
-                          suffix={translating[token.word_token_id] && <Spin size="small" />}
-                        />
- 
-                        {editedTokens[token.word_token_id] && (
-                          <div style={{ marginTop: 4 }}>
-                            <Button
-                              type="primary"
-                              size="small"
-                              onClick={() => {
-                                setTokens(prevTokens =>
-                                  prevTokens.map(t =>
-                                    t.word_token_id === token.word_token_id
-                                      ? { ...t, originalTranslation: t.translation }
-                                      : t
-                                  )
-                                );
-                                setEditedTokens(prev => ({ ...prev, [token.word_token_id]: false }));
-                                messageApi.success("Translation updated locally!");
-                              }}
-                            >
-                              Save
-                            </Button>
- 
-                            <Button
-                              danger
-                              size="small"
-                              onClick={() => {
-                                // revert token in editor
-                                setTokens(prevTokens =>
-                                  prevTokens.map(t =>
-                                    t.word_token_id === token.word_token_id
-                                      ? { ...t, translation: t.originalTranslation }
-                                      : t
-                                  )
-                                );
- 
-                                // rebuild draft only for this token
-                                updateDraftFromEditor(
-                                  token.word_token_id,
-                                  token.originalTranslation,
-                                  token.translation,
-                                  token.token_text
-                                );
- 
-                                setEditedTokens(prev => ({ ...prev, [token.word_token_id]: false }));
-                                messageApi.info("Changes discarded");
-                              }}
-                            >
-                              Discard
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })
+                    )}
+                  </>
                 ) : (
                   <>
-                    {loadingDraft ? (
-                      <Spin tip="Loading draft..." />
-                    ) : (
+                    {/* Draft-specific buttons */}
+                    <Popconfirm
+                      title="Generate a new draft? All unsaved draft edits will be lost."
+                      onConfirm={handleGenerateDraft}
+                      okText="Yes, Generate"
+                      cancelText="Cancel"
+                    >
+                      <Button
+                        type="primary"
+                        size="small"
+                        loading={loadingDraft}
+                      >
+                        {loadingDraft ? 'Generating...' : 'Generate Draft'}
+                      </Button>
+                    </Popconfirm>
+                    <Button
+                      icon={<CopyOutlined />}
+                      size="small"
+                      onClick={handleCopyDraft}
+                      disabled={loadingTokens || loadingDraft}
+                    >
+                      Copy
+                    </Button>
+                    <Button
+                      icon={<DownloadOutlined />}
+                      size="small"
+                      type="primary"
+                      onClick={handleDownloadDraft}
+                      disabled={loadingTokens || loadingDraft}
+                    >
+                      Download
+                    </Button>
+                  </>
+                )}
+              </div>
+            }
+          >
+            <Row gutter={16} style={{ flex: 1 }}>
+              <Col span={12} style={{ height: "100%" }}>
+                <h3>Source</h3>
+                <div style={{
+                  height: "60vh",
+                  overflowY: "auto",
+                  border: "1px solid #d9d9d9",
+                  borderRadius: 4,
+                  padding: 10
+                }}>
+                  <pre style={{ whiteSpace: "pre-wrap", background: "#fff" }}>
+                    {sourceText || "No source loaded"}
+                  </pre>
+                </div>
+              </Col>
+
+              <Col span={12} style={{ height: "100%" }}>
+                <h3>{activeTab === "editor" ? "Translation" : "Draft Translation"}</h3>
+                <div style={{
+                  height: "60vh",
+                  overflowY: "auto",
+                  border: "1px solid #d9d9d9",
+                  borderRadius: 4,
+                  padding: '10px',
+                  backgroundColor: '#FFFFFF',
+                }}>
+                  {tokens.length === 0 ? (
+                    <Text type="secondary">
+                      {activeTab === "editor" ? "No word tokens found for this book." : "No draft available."}
+                    </Text>
+                  ) : activeTab === "editor" ? (
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                    }}>
+                      {tokens.map((token, index) => (
+                        <div
+                          key={token.word_token_id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            padding: '12px 20px',
+                            borderBottom: index === tokens.length - 1 ? 'none' : '1px solid #f0f0f0',
+                            backgroundColor: token.justUpdated
+                              ? "#d6f5d6"
+                              : (token.translation !== token.originalTranslation ? "#fffef7" : "transparent"),
+                            transition: "background-color 0.5s",
+                            gap: '20px',
+                            width: 'fit-content'
+                          }}
+                        >
+                          {/* Source Token Box */}
+                          <div style={{
+                            minWidth: '140px',
+                            maxWidth: '140px',
+                            padding: '8px 16px',
+                            backgroundColor: '#FFFFFF',
+                            border: '1px solid #e0e0e0',
+                            borderRadius: '8px',
+                            textAlign: 'center',
+                            fontWeight: '500',
+                            fontSize: '16px',
+                            color: '#2c3e50'
+                          }}>
+                            {token.token_text}
+                          </div>
+
+                          {/* Separator Line */}
+                          <div style={{
+                            width: '2px',
+                            height: '20px',
+                            backgroundColor: '#e0e0e0',
+                            borderRadius: '1px'
+                          }} />
+
+
+                          <div style={{ flex: 1, position: 'relative' }}>
+                            <Input
+                              value={token.translation || ""}
+                              onChange={(e) => {
+                                const newTranslation = e.target.value;
+                                setTokens(prev =>
+                                  prev.map(t =>
+                                    t.word_token_id === token.word_token_id
+                                      ? { ...t, translation: newTranslation }
+                                      : t
+                                  )
+                                );
+                                // Mark this token as edited
+                                setEditedTokens(prev => ({
+                                  ...prev,
+                                  [token.word_token_id]: true
+                                }));
+                                updateDraftFromEditor(
+                                  token.word_token_id,
+                                  newTranslation,
+                                  token.originalTranslation,
+                                  token.token_text,
+                                  true
+                                );
+                                // Update translated count live
+                                setTranslatedCount(prev =>
+                                  tokens
+                                    .map(t =>
+                                      t.word_token_id === token.word_token_id
+                                        ? { ...t, translation: newTranslation }
+                                        : t
+                                    )
+                                    .filter(t => t.translation?.trim() !== "").length
+                                );
+                              }}
+                              style={{
+                                fontSize: '16px',
+                                border: 'none',
+                                boxShadow: 'none',
+                                backgroundColor: editedTokens[token.word_token_id] ? '#fffbe6' : 'transparent',
+                                padding: '8px 12px',
+                                borderBottom: '1px solid #e0e0e0'
+                              }}
+                              placeholder="Enter translation here..."
+                              size="medium"
+                              variant="unstyled"
+                            />
+
+                            {/* Status Indicator */}
+                            {token.translation !== token.originalTranslation && (
+                              <div style={{
+                                position: 'absolute',
+                                right: '8px',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                width: '6px',
+                                height: '6px',
+                                borderRadius: '50%',
+                                backgroundColor: '#faad14'
+                              }} />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <>
                       <TextArea
                         rows={20}
                         value={draftContent}
                         onChange={(e) => {
-                          setDraftContent(e.target.value);
-                          setIsDraftEdited(e.target.value !== originalDraft); // manual edits only
+                          const val = e.target.value;
+                          setDraftContent(String(val));
+
+                          const draftChanged = val !== originalDraft;
+                          setIsDraftEdited(draftChanged);
+
+                          // This is the crucial logic to fix the saving issue.
+                          // It now uses a dedicated key to mark draft changes.
+                          if (draftChanged) {
+                            setEditedTokens(prev => ({
+                              ...prev,
+                              'draft_edited': true // Use a dedicated key to mark draft changes
+                            }));
+                          } else {
+                            // If the draft is reverted to its original state, remove the key.
+                            setEditedTokens(prev => {
+                              const updated = { ...prev };
+                              delete updated.draft_edited;
+                              return updated;
+                            });
+                          }
                         }}
                         style={{
                           backgroundColor: isDraftEdited ? "#fffbe6" : "transparent",
@@ -742,27 +964,9 @@ setCurrentDraft({ ...currentDraft, content: updatedDraft });
                           borderRadius: 4,
                         }}
                       />
-                    )}
-                    {isDraftEdited && !loadingDraft && (
-                      <div style={{ marginTop: 8 }}>
-                        <Button
-                          type="primary"
-                          onClick={handleSaveDraft}
-                          style={{ marginRight: 8 }}
-                          disabled={loadingTokens}
-                        >
-                          Save
-                        </Button>
-                        <Button
-                          onClick={handleDiscardDraft}
-                          disabled={loadingTokens}
-                        >
-                          Discard
-                        </Button>
-                      </div>
-                    )}
-                  </>
-                )}
+                    </>
+                  )}
+                </div>
               </Col>
             </Row>
           </Card>
@@ -770,7 +974,4 @@ setCurrentDraft({ ...currentDraft, content: updatedDraft });
       )}
     </div>
   );
-}
- 
- 
- 
+};

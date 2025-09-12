@@ -3,6 +3,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
 from app.database import Base
+from sqlalchemy.orm import relationship
 
 
 class TranslationDraft(Base):
@@ -16,3 +17,5 @@ class TranslationDraft(Base):
     file_size = Column(Integer, nullable=False)
     download_count = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())  # <-- new
+    project = relationship("Project", back_populates="drafts")
