@@ -174,7 +174,7 @@ export const wordTokenAPI = {
   // Batch generate translated tokens
   generateBatchTokens: async (projectId, bookId) => {
     console.log("[DEBUG] generateBatchTokens called with:", bookId);
- 
+
     const response = await api.post(
       `/api/generate_batch_stream/${projectId}`,
       null,
@@ -189,13 +189,13 @@ export const wordTokenAPI = {
     return response.data;
   },
 };
- 
+
 // ------------------ Draft API ------------------
 export const draftAPI = {
   // ✅ Get latest draft for a book
   getLatestDraftForBook: async (projectId, bookId) => {
     try {
-      const response = await api.get("/word_tokens/drafts/drafts/latest", { // ✅ Corrected path
+      const response = await api.get("/word_tokens/drafts/latest", { // ✅ Corrected path
         params: { project_id: projectId, book_id: bookId },
       });
       return response.data;
@@ -239,21 +239,24 @@ export const draftAPI = {
         updated_tokens: editedTokens,
         content: content
       });
+  
       console.log("[INFO] Tokens saved:", saveResponse.data);
+      return saveResponse.data; //  Return updated tokens and content
     } catch (error) {
       console.error("[ERROR] saveDraftForBook failed:", error);
       throw error;
     }
   },
+  
   // ✅ New function to save a manual, free-form draft
   saveManualDraft: async (projectId, bookId, content) => {
-    const response = await api.post("/word_tokens/drafts/drafts/save", { // ✅ Corrected path
+    const response = await api.put("/word_tokens/drafts/save", { 
       project_id: projectId,
       book_id: bookId,
-      content: content,
+      content
     });
     return response.data;
-  },
+  }  
 };
 // ------------------ Books API ------------------
 export const booksAPI = {

@@ -341,38 +341,58 @@ export default function WordTranslation() {
     navigator.clipboard.writeText(draftContent);
     messageApi.success("Draft copied to clipboard!");
   };
+  // const updateDraftFromEditor = (tokenId, newTranslation, oldTranslation, tokenText, isManual = false) => {
+  //   try {
+  //     const oldVal = String(oldTranslation || tokenText || "");
+  //     const newVal = String(newTranslation || "");
+
+  //     setDraftContent(prevDraft => {
+  //       if (prevDraft === null || prevDraft === undefined) return "";
+
+  //       // Escape special regex characters
+  //       const escapedOld = oldVal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  //       const regex = new RegExp(escapedOld, "g");
+
+  //       // Replace only exact matches in draft
+  //       const updatedDraft = String(prevDraft).replace(regex, newVal);  // ✅ force string
+
+  //       return updatedDraft;
+  //     });
+
+  //     // Update editedTokens only if manual edit
+  //     if (isManual) {
+  //       setEditedTokens(prev => ({
+  //         ...prev,
+  //         [tokenId]: isManual
+  //       }));
+  //     }
+
+  //   } catch (err) {
+  //     console.error("[ERROR] updateDraftFromEditor failed:", err);
+  //   }
+  // };
+
   const updateDraftFromEditor = (tokenId, newTranslation, oldTranslation, tokenText, isManual = false) => {
     try {
-      const oldVal = String(oldTranslation || tokenText || "");
-      const newVal = String(newTranslation || "");
-
-      setDraftContent(prevDraft => {
-        if (prevDraft === null || prevDraft === undefined) return "";
-
-        // Escape special regex characters
-        const escapedOld = oldVal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        const regex = new RegExp(escapedOld, "g");
-
-        // Replace only exact matches in draft
-        const updatedDraft = String(prevDraft).replace(regex, newVal);  // ✅ force string
-
-        return updatedDraft;
-      });
-
-      // Update editedTokens only if manual edit
+      const oldVal = String(oldTranslation || tokenText || "").trim();
+      if (!oldVal) return; // Prevent empty regex replacement
+  
+      const escapedOld = oldVal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(escapedOld, "g");
+  
+      setDraftContent(prevDraft => String(prevDraft).replace(regex, newTranslation));
+  
       if (isManual) {
         setEditedTokens(prev => ({
           ...prev,
-          [tokenId]: isManual
+          [tokenId]: true
         }));
       }
-
     } catch (err) {
       console.error("[ERROR] updateDraftFromEditor failed:", err);
     }
   };
-
-
+  
   const handleDownloadDraft = () => {
     const blob = new Blob([draftContent], { type: "text/plain" });
     const url = window.URL.createObjectURL(blob);
@@ -453,10 +473,10 @@ export default function WordTranslation() {
               : t;
           })
         );
-        setTokens(updatedTokens);
         // ✅ Fix: update translatedCount immediately
-        setTranslatedCount(updatedTokens.filter(t => t.translation?.trim() !== "").length);
-
+        setTranslatedCount(
+          response.updated_tokens.filter(t => t.translated_text?.trim() !== "").length
+        );
       }
 
       // Reset edit flags
@@ -870,18 +890,22 @@ export default function WordTranslation() {
                               value={token.translation || ""}
                               onChange={(e) => {
                                 const newTranslation = e.target.value;
-                                setTokens(prev =>
-                                  prev.map(t =>
-                                    t.word_token_id === token.word_token_id
-                                      ? { ...t, translation: newTranslation }
-                                      : t
-                                  )
+                                const updatedTokens = tokens.map(t =>
+                                  t.word_token_id === token.word_token_id
+                                    ? { ...t, translation: newTranslation }
+                                    : t
                                 );
-                                // Mark this token as edited
+                                
+                                setTokens(updatedTokens);
+                                setTranslatedCount(
+                                  updatedTokens.filter(t => t.translation?.trim() !== "").length
+                                );
+                                
                                 setEditedTokens(prev => ({
                                   ...prev,
                                   [token.word_token_id]: true
                                 }));
+                                
                                 updateDraftFromEditor(
                                   token.word_token_id,
                                   newTranslation,
@@ -889,16 +913,7 @@ export default function WordTranslation() {
                                   token.token_text,
                                   true
                                 );
-                                // Update translated count live
-                                setTranslatedCount(prev =>
-                                  tokens
-                                    .map(t =>
-                                      t.word_token_id === token.word_token_id
-                                        ? { ...t, translation: newTranslation }
-                                        : t
-                                    )
-                                    .filter(t => t.translation?.trim() !== "").length
-                                );
+                                
                               }}
                               style={{
                                 fontSize: '16px',

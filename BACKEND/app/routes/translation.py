@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from uuid import UUID
 from app.database import get_db
 from app.schemas.translation import (
-    SaveManualDraftRequest,
+    UpsertDraftRequest,
     SuccessDraftResponse,
     GenerateDraftRequest,
     GenerateBookDraftRequest,
@@ -25,7 +25,7 @@ def generate_draft_for_book(req: GenerateBookDraftRequest, db: Session = Depends
     draft = translation_service.generate_draft_for_book(db, req.project_id, req.book_id) # ✅ Changed to req.book_id
     return {"message": f"Draft for book '{req.book_id}' generated successfully", "data": draft}
  
-@router.get("/drafts/latest", response_model=TranslationDraftResponse)
+@router.get("/latest", response_model=TranslationDraftResponse)
 def read_latest_draft(project_id: UUID, book_id: UUID, db: Session = Depends(get_db)):
     """
     Get the latest draft for a given project and book.
@@ -55,13 +55,13 @@ def save_tokens(
         "content": result["content"]  # return rebuilt content too
     }
 # ------------------ Save Manual Draft (New Route) ------------------
-@router.post("/drafts/save", status_code=status.HTTP_201_CREATED)
-def save_manual_draft(req: SaveManualDraftRequest, db: Session = Depends(get_db)):
+@router.put("/save", status_code=status.HTTP_200_OK)
+def save_manual_draft(req: UpsertDraftRequest, db: Session = Depends(get_db)):
     """
     Save a manually edited draft, creating a new version.
     """
     try:
-        new_draft = translation_service.save_manual_draft(db, req.project_id, req.book_id, req.content)
+        new_draft = translation_service.upsert_manual_draft(db, req.project_id, req.book_id, req.content)
         return {"message": "Manual draft saved successfully", "draft": new_draft}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save manual draft: {e}")
