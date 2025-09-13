@@ -341,53 +341,32 @@ export default function WordTranslation() {
     navigator.clipboard.writeText(draftContent);
     messageApi.success("Draft copied to clipboard!");
   };
-  // const updateDraftFromEditor = (tokenId, newTranslation, oldTranslation, tokenText, isManual = false) => {
-  //   try {
-  //     const oldVal = String(oldTranslation || tokenText || "");
-  //     const newVal = String(newTranslation || "");
-
-  //     setDraftContent(prevDraft => {
-  //       if (prevDraft === null || prevDraft === undefined) return "";
-
-  //       // Escape special regex characters
-  //       const escapedOld = oldVal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  //       const regex = new RegExp(escapedOld, "g");
-
-  //       // Replace only exact matches in draft
-  //       const updatedDraft = String(prevDraft).replace(regex, newVal);  // ✅ force string
-
-  //       return updatedDraft;
-  //     });
-
-  //     // Update editedTokens only if manual edit
-  //     if (isManual) {
-  //       setEditedTokens(prev => ({
-  //         ...prev,
-  //         [tokenId]: isManual
-  //       }));
-  //     }
-
-  //   } catch (err) {
-  //     console.error("[ERROR] updateDraftFromEditor failed:", err);
-  //   }
-  // };
-
   const updateDraftFromEditor = (tokenId, newTranslation, oldTranslation, tokenText, isManual = false) => {
     try {
-      const oldVal = String(oldTranslation || tokenText || "").trim();
-      if (!oldVal) return; // Prevent empty regex replacement
-  
-      const escapedOld = oldVal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const regex = new RegExp(escapedOld, "g");
-  
-      setDraftContent(prevDraft => String(prevDraft).replace(regex, newTranslation));
-  
+      const oldVal = String(oldTranslation || tokenText || "");
+      const newVal = String(newTranslation || "");
+
+      setDraftContent(prevDraft => {
+        if (prevDraft === null || prevDraft === undefined) return "";
+
+        // Escape special regex characters
+        const escapedOld = oldVal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const regex = new RegExp(escapedOld, "g");
+
+        // Replace only exact matches in draft
+        const updatedDraft = String(prevDraft).replace(regex, newVal);  // ✅ force string
+
+        return updatedDraft;
+      });
+
+      // Update editedTokens only if manual edit
       if (isManual) {
         setEditedTokens(prev => ({
           ...prev,
-          [tokenId]: true
+          [tokenId]: isManual
         }));
       }
+
     } catch (err) {
       console.error("[ERROR] updateDraftFromEditor failed:", err);
     }
@@ -473,10 +452,11 @@ export default function WordTranslation() {
               : t;
           })
         );
-        // ✅ Fix: update translatedCount immediately
-        setTranslatedCount(
-          response.updated_tokens.filter(t => t.translated_text?.trim() !== "").length
-        );
+       
+  // ✅ recalc based on all tokens to account for deletes
+  setTranslatedCount(
+    tokens.filter(t => t.translation?.trim() !== "").length
+  );
       }
 
       // Reset edit flags
@@ -493,33 +473,24 @@ export default function WordTranslation() {
 
   const handleDiscardAll = () => {
     if (activeTab === "editor") {
-      setTokens(prevTokens =>
-        prevTokens.map(t => ({
-          ...t,
-          translation: t.originalTranslation || t.translation,
-        }))
-      );
-
+      const resetTokens = tokens.map(t => ({
+        ...t,
+        translation: t.originalTranslation || t.translation,
+      }));
+      setTokens(resetTokens);
+    
+      // ✅ recalc translatedCount after discarding
+      setTranslatedCount(resetTokens.filter(t => t.translation?.trim() !== "").length);
+    
       setEditedTokens(prev => {
         const reset = { ...prev };
         Object.keys(reset).forEach(k => (reset[k] = false));
         return reset;
       });
-
+    
       messageApi.info("Editor changes discarded.");
-    } else if (activeTab === "draft") {
-      setDraftContent(originalDraft);
-      setIsDraftEdited(false);
-
-      // 🔹 Clear the draft_edited flag
-      setEditedTokens(prev => {
-        const reset = { ...prev };
-        delete reset.draft_edited;
-        return reset;
-      });
-
-      messageApi.info("Draft changes discarded.");
     }
+    
   };
 
 
