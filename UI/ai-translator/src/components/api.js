@@ -355,7 +355,8 @@ export const translateChapter = async (projectId, bookName, chapterNumber, verse
   return res.data;
 };
 
-export const fetchDraft = async (projectId, bookName) => {
+// 1. Generate or fetch existing draft (JSON)
+export const generateDraftJson = async (projectId, bookName) => {
   const res = await api.post("/drafts/generate-draft-json/", {
     project_id: projectId,
     book_name: bookName,
