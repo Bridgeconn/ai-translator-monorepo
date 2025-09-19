@@ -87,13 +87,14 @@ class TranslationService:
      book = db.query(Book).filter(
         Book.source_id == project.source_id,
         Book.book_id == book_id
-    ).first()
+     ).first()
      if not book:
         raise HTTPException(status_code=404, detail=f"Book '{book_id}' not found in project")
 
     # Fetch translations
      tokens = db.query(WordTokenTranslation).filter(
         WordTokenTranslation.project_id == project_id,
+        WordTokenTranslation.book_id == book_id,       # 🔥 add this
         WordTokenTranslation.translated_text.isnot(None),
     ).all()
      if not tokens:
@@ -114,14 +115,22 @@ class TranslationService:
             rebuilt.append(punct)
      final_content = ''.join(rebuilt).strip()
 
-    # Check if draft exists
+    # 🔄 Always refresh if draft exists
      existing_draft = (
         db.query(WordDraft)
         .filter(WordDraft.project_id == project_id, WordDraft.book_id == book_id)
+        .order_by(WordDraft.created_at.desc())
         .first()
     )
      if existing_draft:
-        return existing_draft   # ✅ Don't overwrite, just return
+        existing_draft.content = final_content
+        existing_draft.file_size = len(final_content.encode("utf-8"))
+        existing_draft.updated_at = datetime.now(timezone.utc)
+
+        db.add(existing_draft)
+        db.commit()
+        db.refresh(existing_draft)
+        return existing_draft
 
     # Otherwise create new draft
      draft = WordDraft(
@@ -158,13 +167,13 @@ class TranslationService:
             raise HTTPException(status_code=404, detail="No draft found for this book")
         return latest_draft
     
-    def save_tokens_for_book(self, db: Session, project_id: UUID, book_id: UUID, updated_tokens: list, content: str = None):
+    def save_tokens_for_book(self, db: Session, project_id: UUID, book_id: UUID, updated_tokens: list):
      if isinstance(project_id, str):
         project_id = UUID(project_id)
 
      updated_tokens_response = []
 
-    # 1️⃣ Save tokens
+    # 1️⃣ Save tokens only
      for t in updated_tokens:
         token_id_str = t.get("word_token_id")
         translated_text = t.get("translated_text")
@@ -190,49 +199,7 @@ class TranslationService:
             })
 
      db.commit()
-
-    # 2️⃣ Update draft content
-     draft = (
-        db.query(WordDraft)
-        .filter(WordDraft.project_id == project_id, WordDraft.book_id == book_id)
-        .order_by(WordDraft.created_at.desc())
-        .first()
-    )
-     if not draft:
-        raise HTTPException(status_code=404, detail="No draft exists. Please generate first!")
-
-     if content:
-        draft.content = content
-     else:
-        # rebuild from tokens
-        tokens = db.query(WordTokenTranslation).filter_by(
-            project_id=project_id,
-            book_id=book_id
-        ).all()
-        token_dict = {t.token_text.lower(): t.translated_text for t in tokens if t.translated_text}
-
-        book = db.query(Book).filter_by(book_id=book_id).first()
-        if book:
-            token_pattern = re.compile(r'(\\\w+)|([^\W\d_]+)|([\W\d_])')
-            tokens_found = token_pattern.findall(book.usfm_content or "")
-            rebuilt = []
-            for tag, word, punct in tokens_found:
-                if tag:
-                    rebuilt.append(tag)
-                elif word:
-                    rebuilt.append(token_dict.get(word.lower(), word))
-                else:
-                    rebuilt.append(punct)
-            draft.content = ''.join(rebuilt)
-
-     draft.file_size = len(draft.content.encode("utf-8"))
-     draft.updated_at = datetime.now(timezone.utc)
-
-     db.add(draft)
-     db.commit()
-     db.refresh(draft)
-
-     return {"updated_tokens": updated_tokens_response, "content": draft.content}
+     return {"updated_tokens": updated_tokens_response}
 
     def upsert_manual_draft(self, db: Session, project_id: UUID, book_id: UUID, content: str):
         #  Fetch latest draft for this project+book

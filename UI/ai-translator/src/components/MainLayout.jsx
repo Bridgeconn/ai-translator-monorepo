@@ -5,7 +5,6 @@ import {
   Layout,
   Avatar,
   Dropdown,
-  message,
   Typography,
   Menu,
   Modal,
@@ -35,8 +34,8 @@ export default function MainLayout() {
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const { message } = App.useApp();
-// inside MainLayout.jsx
+  const { notification } = App.useApp();
+  // inside MainLayout.jsx
 const token = localStorage.getItem("token");
 const protectedPaths = ["/dashboard", "/projects", "/sources"];
 
@@ -61,11 +60,15 @@ const onMenuClick = ({ key }) => {
   const handleLogout = async () => {
     try {
       await authAPI.logout();
-      message.success("Logged out successfully");
-      navigate("/login");
+      notification.success({
+        message: "Success",
+        description: "Logged out successfully",
+      });      navigate("/login");
     } catch (error) {
-      message.error("Logout failed");
-      localStorage.removeItem("token");
+      notification.error({
+        message: "Error",
+        description: "Logout failed",
+      });      localStorage.removeItem("token");
       localStorage.removeItem("user");
       navigate("/login");
     }
@@ -73,16 +76,22 @@ const onMenuClick = ({ key }) => {
 
   const handlePasswordReset = async () => {
     if (!currentPassword) {
-      message.error("Please enter your current password");
-      return;
+      notification.error({
+        message: "Error",
+        description: "Please enter your current password",
+      });      return;
     }
     if (!newPassword) {
-      message.error("Please enter a new password");
-      return;
+      notification.error({
+        message: "Error",
+        description: "Please enter a new password",
+      });      return;
     }
     if (newPassword.length < 6) {
-      message.error("New password must be at least 6 characters");
-      return;
+      notification.error({
+        message: "Error",
+        description: "New password must be at least 6 characters",
+      });      return;
     }
 
     try {
@@ -90,14 +99,18 @@ const onMenuClick = ({ key }) => {
         current_password: currentPassword, 
         password: newPassword 
       });
-      message.success("Password updated successfully");
-      localStorage.removeItem("token");
+      notification.success({
+        message: "Success",
+        description: "Password updated successfully",
+      });      localStorage.removeItem("token");
       localStorage.removeItem("user");
       //navigate("/login");
     } catch (error) {
       console.error(error);
-      message.error("Failed to update password");
-    } finally {
+      notification.error({
+        message: "Error",
+        description: "Failed to update password",
+      });    } finally {
       setPasswordModalVisible(false);
       setCurrentPassword("");
       setNewPassword("");
@@ -150,7 +163,9 @@ const userMenuItems = token
 
   const selectedKey = location.pathname;
 
-  return (
+  return location.pathname === "/" ? (
+    <HomePage/> // render full-page gradient directly
+  ) : (
     <Layout style={{ minHeight: "100vh" }}>
       {/* Sidebar */}
       <Sider
@@ -180,7 +195,7 @@ const userMenuItems = token
       style={{
         width: "40px",
         height: "40px",
-        backgroundColor: "#8b5cf6",
+        backgroundColor: "rgb(44, 141, 251)",
         borderRadius: "8px",
         display: "flex",
         alignItems: "center",
@@ -193,11 +208,11 @@ const userMenuItems = token
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = "scale(1.1)";
-        e.currentTarget.style.backgroundColor = "#6d28d9";
+        e.currentTarget.style.backgroundColor = "rgb(44, 141, 251)";
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = "scale(1)";
-        e.currentTarget.style.backgroundColor = "#8b5cf6";
+        e.currentTarget.style.backgroundColor = "rgb(44, 141, 251)";
       }}
     >
       文A
@@ -278,15 +293,15 @@ const userMenuItems = token
                 icon={<UserOutlined />}
                 style={{
                   cursor: "pointer",
-                  backgroundColor: "#8b5cf6",
+                  backgroundColor: "rgb(44, 141, 251)",
                   color: "white",
                 }}
                 size="default"
               />
             </Dropdown>
-            {/* <Text style={{ fontSize: "12px", marginTop: "4px", color: "#722ed1" }}>
+            <Text style={{ fontSize: "12px", marginTop: "4px", color: "rgb(0, 2, 0, 0.88)" }}>
               {user.full_name || user.username || "User"}
-            </Text> */}
+            </Text> 
 
 <Text strong style={{ fontSize: "12px", marginTop: "4px", color: "#722ed1" }}>
     Welcome, {user.full_name || user.username || "User"}
@@ -295,15 +310,15 @@ const userMenuItems = token
         </Header>
 
         <Content
-          style={{
-            marginTop: 64,
-            padding: "24px",
-            background: "#f5f5f5",
-            minHeight: "calc(100vh - 64px)",
-          }}
-        >
-          <Outlet /> {/* This renders nested pages */}
-        </Content>
+  style={{
+    marginTop: location.pathname === "/" ? 0 : 64, // only offset for other pages
+    padding: location.pathname === "/" ? 0 : 24,
+    background: location.pathname === "/" ? "transparent" : "#f5f5f5",
+    minHeight: "100vh",
+  }}
+>
+  <Outlet />
+</Content>
       </Layout>
 
       {/* Reset Password Modal */}

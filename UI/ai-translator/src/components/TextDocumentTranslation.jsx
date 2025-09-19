@@ -13,7 +13,7 @@ import {
   Tooltip,
   App,
 } from "antd";
-import { EditOutlined , CopyOutlined} from "@ant-design/icons";
+import { EditOutlined, CopyOutlined } from "@ant-design/icons";
 import { useParams, Link } from "react-router-dom";
 import { textDocumentAPI } from "./api.js";
 import DownloadDraftButton from "./DownloadDraftButton";
@@ -66,7 +66,7 @@ export default function TextDocumentTranslation() {
     setTargetText(e.target.value);
     setIsEdited(true);
   };
-  
+
   const handleSaveDraft = async () => {
     if (!selectedFile) return;
     try {
@@ -84,7 +84,7 @@ export default function TextDocumentTranslation() {
       setLoading(false);
     }
   };
-  
+
   const handleDiscardDraft = () => {
     setTargetText(selectedFile?.target_text || "");
     setIsEdited(false);
@@ -118,7 +118,7 @@ export default function TextDocumentTranslation() {
           items={[
             {
               title: (
-                <Link to="/projects" style={{ color: "#8b5cf6", fontWeight: 500 }}>
+                <Link to="/projects" style={{ color: "#2c8dfb", fontWeight: 500 }}>
                   Projects
                 </Link>
               ),
@@ -175,82 +175,80 @@ export default function TextDocumentTranslation() {
 
             {/* Target */}
 
-{/* Target */}
-<Col span={12} style={{ maxHeight: "70vh", overflowY: "auto" }}>
-  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-    <h3 style={{ margin: 0 }}>Target</h3>
-    <div style={{ display: "flex", gap: 8 }}>
-      {!isEditing ? (
-        <>
-          {/* Copy Button */}
-          <Tooltip
-            title="Copy translation"
-            color="#fff"
-            style={{ color: "#000" }}
-          >
-            <Button
-              type="default"
-              icon={<CopyOutlined />}
-              onClick={() => {
-                navigator.clipboard.writeText(targetText || "");
-                message.success("Copied to clipboard!");
-              }}
-              size="middle"
-            />
-          </Tooltip>
+            {/* Target */}
+            <Col span={12} style={{ maxHeight: "70vh", overflowY: "auto" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <h3 style={{ margin: 0 }}>Target</h3>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {!isEditing ? (
+                    <>
+                      {/* Copy Button */}
+                      <Tooltip
+                        title="Copy translation"
+                        color="#fff"
+                        style={{ color: "#000" }}
+                      >
+                        <Button
+                          type="default"
+                          icon={<CopyOutlined />}
+                          onClick={() => {
+                            navigator.clipboard.writeText(targetText || "");
+                            message.success("Copied to clipboard!");
+                          }}
+                          size="middle"
+                        />
+                      </Tooltip>
 
-          <DownloadDraftButton
-                                content={targetText}
-                                //disabled={loading || !targetText}
-                              />
+                      <DownloadDraftButton
+                        content={targetText}
+                      //disabled={loading || !targetText}
+                      />
 
-          {/* Edit Button */}
-          <Tooltip
-            title="Edit draft"
-            color="#fff"
-            overlayInnerStyle={{ color: "#000" }}
-          >
-            <Button
-              type="default"
-              icon={<EditOutlined />}
-              onClick={() => setIsEditing(true)}
-              size="middle"
-            />
-          </Tooltip>
-        </>
-      ) : (
-        // Show Save + Discard when editing
-        <div>
-          <Button
-            type="primary"
-            onClick={handleSaveDraft}
-            style={{ marginRight: 8 }}
-            size="small"
-            loading={loading}
-          >
-            Save
-          </Button>
-          <Button size="small" onClick={handleDiscardDraft}>
-            Discard
-          </Button>
-        </div>
-      )}
-    </div>
-  </div>
+                      {/* Edit Button */}
+                      <Tooltip
+                        title="Edit draft"
+                        color="#fff"
+                        style={{ color: "#000" }}
+                      >
+                        <Button
+                          type="default"
+                          icon={<EditOutlined />}
+                          onClick={() => setIsEditing(true)}
+                          size="middle"
+                        />
+                      </Tooltip>
+                    </>
+                  ) : (
+                    // Show Save + Discard when editing
+                    <div>
+                      <Button
+                        type="primary"
+                        onClick={handleSaveDraft}
+                        style={{ marginRight: 8 }}
+                        size="small"
+                        loading={loading}
+                      >
+                        Save
+                      </Button>
+                      <Button size="small" onClick={handleDiscardDraft}>
+                        Discard
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
 
-  <TextArea
-    rows={20}
-    value={targetText}
-    onChange={handleDraftChange}
-    readOnly={!isEditing}
-    style={{
-      marginTop: 8,
-      backgroundColor: isEdited ? "#fffbe6" : "transparent",
-    }}
-  />
-</Col>
-
-
+              <TextArea
+                rows={20}
+                value={targetText}
+                onChange={handleDraftChange}
+                readOnly={!isEditing}
+                style={{
+                  marginTop: 8,
+                  backgroundColor: isEdited ? "#fffbe6" : "transparent",
+                }}
+              />
+            </Col>
           </Row>
         </Card>
       )}

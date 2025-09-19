@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 
 const { Option } = Select;
 
-export default function LanguageSelect({ label, value, onChange, disabled = false }) {
+export default function LanguageSelect({ label, value, onChange, disabled = false,placeholder = "Select language"}) {
   // React Query for fetching languages
   const {
     data: languages = [],
@@ -28,8 +28,10 @@ export default function LanguageSelect({ label, value, onChange, disabled = fals
       <strong>{label}</strong>
       <Select
         showSearch
-        placeholder="Select language"
-        style={{ width: 180 }}
+        placeholder={placeholder}
+        style={{ width: 200,
+          boxShadow: "0 2px 6px rgba(0,0,0,0.15)", // ✅ shadow effect
+          borderRadius: "6px"   }}
         loading={isLoading}
         value={value ? value.language_id : undefined}
         notFoundContent={

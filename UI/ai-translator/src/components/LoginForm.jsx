@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, Card, Typography, Space, message, Modal } from 'antd';
+import { Form, Input, Button, Card, Typography, Space, notification, Modal } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
@@ -12,16 +12,20 @@ export default function LoginForm() {
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotForm] = Form.useForm();
 
-  // ---- Message API for antd v5 ----
-  const [msgApi, contextHolder] = message.useMessage();
+  // ---- Notification API for antd v5 ----
+  const [notificationApi, contextHolder] = notification.useNotification();
 
   // ---- Login mutation ----
   const loginMutation = useMutation({
     mutationFn: authAPI.login,
     onSuccess: async (data) => {
       localStorage.setItem('token', data.access_token);
-      msgApi.success('Login successful!');
-
+      notificationApi.success({
+        message: "Login Successful",
+        description: "Welcome back! Redirecting...",
+        placement: "top",
+      });
+      
       try {
         const user = await authAPI.getCurrentUser();
         localStorage.setItem('user', JSON.stringify(user));
@@ -33,8 +37,12 @@ export default function LoginForm() {
     },
     onError: (error) => {
       console.error('Login error:', error);
-      msgApi.error(error.response?.data?.detail || 'Login failed');
-    }
+      notificationApi.error({
+        message: "Login Failed",
+        description: error.response?.data?.detail || "Something went wrong",
+        placement: "top",
+      });
+          }
   });
 
   const handleLogin = (values) => {
@@ -45,8 +53,12 @@ export default function LoginForm() {
   const forgotPasswordMutation = useMutation({
     mutationFn: authAPI.forgotPassword,
     onSuccess: () => {
-      msgApi.success('If that email exists, a reset link has been sent.');
-      forgotForm.resetFields();
+      notificationApi.info({
+        message: "Password Reset",
+        description: "If that email exists, a reset link has been sent.",
+        placement: "top",
+      });
+            forgotForm.resetFields();
       setForgotOpen(false);
     },
     onError: () => {
@@ -61,53 +73,65 @@ export default function LoginForm() {
   };
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      display: 'flex', 
-      justifyContent: 'center', 
-      alignItems: 'center',
-      backgroundColor: '#f0f2f5',
-      padding: '20px'
-    }}>
-      {/* Render message contextHolder for notifications */}
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '20px',
+        background: `
+      radial-gradient(circle at top left, rgba(114,46,209,0.14) 0%, transparent 70%),
+      radial-gradient(circle at bottom right, rgba(79,70,229,0.14) 0%, transparent 70%),
+      repeating-linear-gradient(45deg, rgba(255,255,255,0.02), rgba(255,255,255,0.02) 10px, transparent 10px, transparent 20px),
+      #f5f6fa
+       `,
+
+      }}
+    >
+      {/* Render contextHolder for notifications */}
       {contextHolder}
 
       <Card style={{ width: '100%', maxWidth: 400, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-  <div style={{ textAlign: 'center', marginBottom: 32 }}>
-    <Link to="/" style={{ display: "inline-block" }}>
-    <div
-    style={{
-      backgroundColor: "#722ed1",
-      borderRadius: "8px",
-      width: "50px",
-      height: "50px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      color: "white",
-      fontSize: "24px",
-      cursor: "pointer",
-      transition: "transform 0.2s ease, background-color 0.2s ease", // smooth hover
-    }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.transform = "scale(1.1)";
-      e.currentTarget.style.backgroundColor = "#531dab"; // darker purple
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.transform = "scale(1)";
-      e.currentTarget.style.backgroundColor = "#722ed1";
-    }}
-  >
-    文A
-  </div>
-    </Link>
-    <Title level={2} style={{ margin: 0, color: '#722ed1' }}>
-      Zero Draft Generator
-    </Title>
-  </div>
+        <Space direction="vertical" style={{ width: "100%" }} align="center">
+          <Link to="/" style={{ display: "inline-block" }}>
+            <div
+              style={{
+                backgroundColor: "rgb(44, 141, 251)", // updated to match home page
+                backdropFilter: "blur(8px)",             // adds glassy effect like home page
+                width: "50px",
+                height: "50px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: "12px",
+                color: "white",
+                fontSize: "20px",  // ⬅️ scaled down
+                fontWeight: "bold", // ⬅️ add this
+                cursor: "pointer",
+                boxShadow: "0 2px 8px rgba(114, 46, 209, 0.25)", // lighter shadow since smaller
+                transition: "transform 0.2s ease, background-color 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "scale(1.1)";
+                e.currentTarget.style.backgroundColor = "rgb(44, 141, 251)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "scale(1)";
+                e.currentTarget.style.backgroundColor = "rgb(44, 141, 251)";
+              }}
+            >
+              文A
+            </div>
+          </Link>
+          <Title level={2} style={{ marginBottom: 0, color: "rgba(0, 0, 0, 0.88)" }}>
+            Zero Draft Generator
+          </Title>
+        </Space>
 
 
-        <Form onFinish={handleLogin} layout="vertical" size="large">
+
+        <Form onFinish={handleLogin} layout="vertical" size="large" style={{ marginTop: 20 }}>
           <Form.Item
             name="username"
             rules={[{ required: true, message: 'Please enter your username!' }]}
@@ -132,7 +156,17 @@ export default function LoginForm() {
               htmlType="submit"
               block
               loading={loginMutation.isPending}
-              style={{ backgroundColor: '#722ed1', borderColor: '#722ed1' }}
+              style={{
+                background: "rgb(44, 141, 251)", // gradient like Register
+                border: "none",
+                transition: "all 0.3s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.filter = "brightness(1.05)"; // subtle hover glow
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.filter = "brightness(1)";
+              }}
             >
               Sign In
             </Button>
@@ -140,8 +174,22 @@ export default function LoginForm() {
 
           <div style={{ textAlign: 'center' }}>
             <Space>
-              <Text type="secondary">Don't have an account?</Text>
-              <Link to="/register" style={{ color: '#722ed1' }}>
+              <Text style={{ color: 'rgba(0, 0, 0, 0.70)' }}>Don't have an account?</Text>
+              <Link
+                to="/register"
+                style={{
+                  color: 'rgb(44,141, 251)',
+                  fontWeight: 500,
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = 'rgb(244, 67, 54)'; 
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = 'rgb(44,141, 251)';
+                  e.currentTarget.style.textDecoration = 'none';
+                }}
+              >
                 Sign Up
               </Link>
             </Space>
