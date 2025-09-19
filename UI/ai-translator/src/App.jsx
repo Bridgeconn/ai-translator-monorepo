@@ -32,9 +32,9 @@ const ProtectedOutlet = () => {
 // Ant Design theme
 const theme = {
   token: {
-    colorPrimary: "#722ed1",
-    colorPrimaryHover: "#9b6ff3",  // hover color
-    colorPrimaryActive: "#5b36c9", // pressed color
+    colorPrimary: "#2C8DFB",
+    colorPrimaryHover: "#4DA3FC", // lighter blue on hover
+    colorPrimaryActive: "#1A73E8", // darker blue when pressed
     borderRadius: 8,
   },
 };

@@ -50,12 +50,25 @@ export const authAPI = {
     });
     return response.data;
   },
-
   register: async (userData) => {
-    const response = await api.post("/users/", userData);
-    return response.data;
+    try {
+      const response = await api.post("/users/", userData);
+      return response.data;
+    } catch (error) {
+      const errData = error.response?.data;
+  
+      if (typeof errData?.detail === "string") {
+        return { error: errData.detail }; // ✅ Return object instead of throwing
+      }
+  
+      if (Array.isArray(errData)) {
+        return { error: errData[0]?.msg || "Validation error" };
+      }
+  
+      return { error: "Registration failed" };
+    }
   },
-
+    
   getCurrentUser: async () => {
     const response = await api.get("/users/me");
     return response.data;
@@ -322,18 +335,6 @@ export const verseTokensAPI = {
     return res.data;
   },
 };
-// export const translateChapter = async (projectId, bookName, chapterNumber) => {
-//   const res = await api.post(
-//     `/verse_tokens/translate-chapter/${projectId}/${bookName}/${chapterNumber}`
-//   );
-//   return res.data;
-// };
-// const getVerseNumbers = async (projectId, bookName, chapterNumber) => {
-//   const res = await api.get(
-//     `/verse_tokens/verse-numbers/${projectId}/${bookName}/${chapterNumber}`
-//   );
-//   return res.data; // [1, 2, 3, ...]
-// };
 
 export const translateChapter = async (projectId, bookName, chapterNumber, verseNumbers) => {
   const res = await api.post(
@@ -343,16 +344,6 @@ export const translateChapter = async (projectId, bookName, chapterNumber, verse
   return res.data;
 };
 
-// api.js
-// export const fetchDraft = async (projectId, bookName) => {
-//   const res = await api.post(
-//     "/drafts/generate-draft/",   // must include /drafts prefix
-//     { project_id: projectId, book_name: bookName },
-//     //{ responseType: "text" }
-//   );
-//   return res.data;
-// };
-// api.js
 export const fetchDraft = async (projectId, bookName) => {
   const res = await api.post("/drafts/generate-draft-json/", {
     project_id: projectId,
@@ -369,77 +360,3 @@ export const saveDraft = async (draftId, content) => {
 
 
 export default api;
-// // ------------------ Verse Tokens API ------------------
-// export const verseTokensAPI = {
-//   getVerseTokens: async (projectId, bookName) => {
-//     const res = await api.get(`/verse-tokens/by-project/${projectId}?book_name=${bookName}`);
-//     return res.data;
-//   },
- 
-//   translateVerseToken: async (verseTokenId) => {
-//     const res = await api.post(`/verse-tokens/translate-verse-token/${verseTokenId}`);
-//     return res.data;
-//   },
- 
-//   manualUpdateVerseToken: async (verseTokenId, translatedText) => {
-//     const res = await api.patch(`/verse-tokens/manual-update/${verseTokenId}`, {
-//       translated_text: translatedText,
-//     });
-//     return res.data;
-//   },
- 
-//   getVerseTokenBatch: async (projectId, bookName, offset = 0, limit = 10) => {
-//     const res = await api.get(
-//       `/verse-tokens/by-project/${projectId}?book_name=${bookName}&offset=${offset}&limit=${limit}`
-//     );
-//     return res.data;
-//   },
- 
-//   translateChunk: async (projectId, bookName, offset = 0, limit = 10) => {
-//     const res = await api.post(
-//       `/verse-tokens/translate-chunk/${projectId}/${bookName}?offset=${offset}&limit=${limit}`
-//     );
-//     return res.data;
-//   },
- 
-//   saveVerseTranslation: async (verseTokenId, translatedText) => {
-//     const res = await api.patch(`/verse-tokens/manual-update/${verseTokenId}`, {
-//       translated_text: translatedText,
-//     });
-//     return res.data;
-//   },
- 
-//   generateDraft: async (projectId, bookName) => {
-//     const res = await api.get(`/verse-tokens/generate-draft/${projectId}/${bookName}`);
-//     return res.data;
-//   },
- 
-//   getTranslationProgress: async (projectId, bookName) => {
-//     const res = await api.get(`/verse-tokens/progress/${projectId}?book_name=${bookName}`);
-//     return res.data;
-//   },
-// };
-// export const translateChapter = async (projectId, bookName, chapterNumber) => {
-//   const res = await api.post(
-//     `/verse_tokens/translate-chapter/${projectId}/${bookName}/${chapterNumber}`
-//   );
-//   return res.data;
-// };
-// // api.js
-// export const fetchDraft = async (projectId, bookName) => {
-//   const res = await api.post(
-//     "/drafts/generate-draft/",   // must include /drafts prefix
-//     { project_id: projectId, book_name: bookName },
-//     { responseType: "text" }
-//   );
-//   return res.data;
-// };
- 
- 
-// // Save/update an existing draft
-// export const saveDraft = async (draftId, content) => {
-//   const res = await api.put(`/drafts/drafts/${draftId}`, { content });
-//   return res.data;
-// };
- 
-// export default api;
