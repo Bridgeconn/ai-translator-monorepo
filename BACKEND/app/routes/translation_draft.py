@@ -44,6 +44,7 @@ def generate_draft(req: GenerateDraftRequest, db: Session = Depends(get_db)):
         raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating draft: {str(e)}")
+    
 @router.post("/generate-draft-json/")
 def generate_draft_json(req: GenerateDraftRequest, db: Session = Depends(get_db)):
     """
@@ -99,9 +100,12 @@ def generate_draft_content(req: GenerateDraftRequest, db: Session = Depends(get_
         raise HTTPException(status_code=500, detail=f"Error generating draft: {str(e)}")
  
 @router.put("/drafts/{draft_id}")
-def update_draft(draft_id: UUID, req: UpdateDraftRequest, db: Session = Depends(get_db)):
-    draft = translation_service.update_draft(db, draft_id, req.content)
- 
+def update_draft(
+    draft_id: UUID,
+    req: UpdateDraftRequest,
+    db: Session = Depends(get_db)
+):
+    draft = translation_service.update_draft(db, draft_id, req)
     return SourceDraftResponse(
         draft_id=draft.draft_id,
         project_id=draft.project_id,
@@ -112,22 +116,32 @@ def update_draft(draft_id: UUID, req: UpdateDraftRequest, db: Session = Depends(
         created_at=draft.created_at.isoformat(),
         message="Draft updated successfully"
     )
- 
-@router.get("/drafts/latest/{project_id}/{book_name}")
+
+@router.get("/drafts/latest/{project_id}/{book_name}", response_model=SourceDraftResponse)
 def get_latest_draft(project_id: UUID, book_name: str, db: Session = Depends(get_db)):
     """
     Fetch the latest draft for a given project + book.
     """
+    print("DEBUG get_latest_draft book_name:", repr(book_name))
+
     draft = (
         db.query(TranslationDraft)
         .filter(TranslationDraft.project_id == project_id)
-        .filter(TranslationDraft.draft_name.like(f"{book_name}_%"))  # ensures book-wise
+        .filter(TranslationDraft.draft_name.ilike(f"{book_name}_%"))  # ensures book-wise
         .order_by(TranslationDraft.created_at.desc())
         .first()
     )
+
     if not draft:
         raise HTTPException(status_code=404, detail="No draft found for this book")
 
-    return draft
-
- 
+    return SourceDraftResponse(
+        draft_id=draft.draft_id,
+        project_id=draft.project_id,
+        draft_name=draft.draft_name,
+        content=draft.content,  # USFM content here
+        format=draft.format,
+        file_size=draft.file_size,
+        created_at=draft.created_at,
+        message="Latest draft fetched successfully"
+    )

@@ -22,7 +22,7 @@ import {
   CopyOutlined,
 } from "@ant-design/icons";
 import api, { translateChapter } from "./api";
-import { fetchDraft } from "./api";
+import { generateDraftJson, saveDraft, fetchLatestDraft } from "./api";
 import DownloadDraftButton from "../components/DownloadDraftButton";
  
 const { Title, Text } = Typography;
@@ -57,6 +57,7 @@ const VerseTranslationPage = () => {
   // Track unsaved edits per verse token
   const [editedTokens, setEditedTokens] = useState({});
   const [activeTab, setActiveTab] = useState("editor");
+  const [originalDraft, setOriginalDraft] = useState(""); // NEW
 
  
   const { message } = App.useApp(); //get message instance
@@ -263,7 +264,6 @@ const VerseTranslationPage = () => {
   };
   
   // ---------- Manual Save ----------
-  // ---------- Manual Save ----------
   const handleManualUpdate = async (tokenId, newText) => {
     try {
       // 1. Update verse token in DB
@@ -278,20 +278,21 @@ const VerseTranslationPage = () => {
         )
       );
  
-      // 3. Recompute full draft text
-      const updatedDraft = tokens
-        .map((t) =>
-          t.verse_token_id === tokenId ? newText : t.verse_translated_text || ""
-        )
-        .join("\n\n");
+    
  
-      // 4. Save draft in DB (if draftId available)
-      if (draftId) {
-        await api.put(`/drafts/drafts/${draftId}`, { content: updatedDraft });
-      }
+    //   // 4. Save draft in DB (if draftId available)
+    //   if (draftId) {
+    //     await saveDraft(draftId, newText);
+    //  }
  
       // 5. Refresh draft content so Draft View updates immediately
-      await updateServerDraft();
+      // await updateServerDraft();
+         // Instead, keep local draft state updated
+    setServerDraft(prev => {
+      if (!prev) return prev;
+      // Optional: update the verse in the draft content if needed
+      return prev.replace(/oldVerseText/, newText);
+    });
  
       message.success("Saved the verse and updated the draft!");
     } catch (err) {
@@ -438,7 +439,7 @@ const VerseTranslationPage = () => {
       message.success({ key, content: "Chapter translated successfully!" });
   
       // ✅ immediately refresh draft so UI shows translations without refresh
-      await updateServerDraft();
+      // await updateServerDraft();
   
     } catch (err) {
       console.error("Translation error:", err);
@@ -460,13 +461,24 @@ const VerseTranslationPage = () => {
 
     try {
       setLoadingDraft(true);
-      const draft = await fetchDraft(projectId, selectedBook);
-
+      let draft = null;
+      try {
+        draft = await fetchLatestDraft(projectId, selectedBook);
+      } catch (err) {
+        if (err.response?.status === 404) {
+          // no draft exists yet → generate one
+          draft = await generateDraftJson(projectId, selectedBook);
+        } else {
+          throw err;
+        }
+      }
       if (draft) {
         setServerDraft(draft.content || "");
-        setDraftId(draft.draft_id);
+        setOriginalDraft(draft.content || ""); // NEW
+    setDraftId(draft.draft_id);
       } else {
         setServerDraft("");
+        setOriginalDraft(""); // NEW
         setDraftId(null);
       }
     } catch (err) {
@@ -478,24 +490,13 @@ const VerseTranslationPage = () => {
       setLoadingDraft(false);
     }
   };
+  // useEffect(() => {
+  //   // Only fetch draft when Draft tab is active
+  //   if (activeTab === "draft" && selectedBook !== "all") {
+  //     updateServerDraft();
+  //   }
+  // }, [activeTab, selectedBook]);
   
-  useEffect(() => {
-    if (selectedBook !== "all") {
-      updateServerDraft();
-    } else {
-      setServerDraft("");
-    }
-    setTranslationAttempted(false);
-  }, [selectedBook, selectedChapter]);
- 
-  
-  // // ---------- Progress / Draft ----------
-  // const chapterStats = useMemo(() => {
-  //   if (!tokens || tokens.length === 0) return { translated: 0, total: 0 };
-  //   const total = tokens.length;
-  //   const translated = tokens.filter((t) => t.verse_translated_text).length;
-  //   return { translated, total };
-  // }, [tokens]);
 
     // ---------- Progress / Draft ----------
 const chapterStats = useMemo(() => {
@@ -505,19 +506,14 @@ const chapterStats = useMemo(() => {
   return { translated, total };
 }, [tokens]);
 
- 
-  const draftContent = tokens
-    .filter((t) => t.verse_translated_text)
-    .map((t) => t.verse_translated_text)
-    .join("\n\n");
- 
+
   const filteredTokens = showOnlyTranslated
     ? tokens.filter((t) => t.verse_translated_text)
     : tokens;
  
   const copyDraft = async () => {
     try {
-      const contentToCopy = serverDraft?.trim() || draftContent?.trim();
+      const contentToCopy = serverDraft?.trim();
  
       if (!contentToCopy) {
         message.warning("No draft content to copy");
@@ -557,8 +553,14 @@ const chapterStats = useMemo(() => {
       setTokens([]);
       setIsTokenized(false);
       fetchRawBook(selectedBook);
-      fetchTokensForSelection(selectedBook, null);
-    } else {
+      const loadTokens = async () => {
+        await ensureBookTokens(selectedBook);
+        // small delay to allow backend insert to commit
+        await new Promise(r => setTimeout(r, 300));
+        await fetchTokensForSelection(selectedBook, null);
+      };
+      loadTokens();
+      } else {
       setSelectedChapter(null);
       setTokens([]);
       setIsTokenized(false);
@@ -664,14 +666,8 @@ const chapterStats = useMemo(() => {
           )}
         </Space>
  
-        
-        {/* <Text style={{ marginTop: 8, marginBottom: 8}}>
-          Chapter Progress: {chapterStats.translated} / {chapterStats.total} verses translated
-        </Text> */}
-
-
-<Progress
-  percent={100} // always show full bar
+        <Progress
+  percent={100}
   success={{
     percent:
       chapterStats.total === 0
@@ -681,9 +677,14 @@ const chapterStats = useMemo(() => {
   format={() =>
     `${chapterStats.translated} / ${chapterStats.total} verses`
   }
-  strokeColor={{ from: "#108ee9", to: "#87d068" }}
+  strokeColor={
+    chapterStats.translated === 0
+      ? "#bfbfbf" // solid gray bar when nothing is translated
+      : { from: "#108ee9", to: "#87d068" } // blue→green gradient once progress starts
+  }
   style={{ marginTop: 8, marginBottom: 8 }}
 />
+
       </Space>
  
       <Tabs
@@ -943,7 +944,7 @@ const chapterStats = useMemo(() => {
                   <Space>
                     {/* Download → icon only */}
                     <DownloadDraftButton
-                      content={serverDraft || draftContent}
+                      content={serverDraft}
                     />
  
                     {/* Copy → icon only */}
@@ -967,6 +968,42 @@ const chapterStats = useMemo(() => {
                         }
                       }}
                     />
+                    {/* Generate Draft Button */}
+    <Button
+      type="primary"
+      onClick={async () => {
+        try {
+          setLoadingDraft(true);
+
+          // 1️⃣ If there are unsaved edits in editor, merge them into tokens
+          const mergedTokens = tokens.map(t => {
+            const edited = editedTokens[t.verse_token_id];
+            return edited ? { ...t, verse_translated_text: edited.new } : t;
+          });
+
+          // 2️⃣ Call API to generate draft using latest translations
+          const draft = await generateDraftJson(projectId, selectedBook, mergedTokens);
+
+          // 3️⃣ Update state
+          setServerDraft(draft.content || "");
+          setOriginalDraft(draft.content || ""); // NEW
+          setDraftId(draft.draft_id);
+
+          // 4️⃣ Clear temporary edited tokens
+          setEditedTokens({});
+          setEditedDraft(null);
+
+          message.success("Draft generated successfully!");
+        } catch (err) {
+          console.error("Generate draft error:", err);
+          message.error("Failed to generate draft");
+        } finally {
+          setLoadingDraft(false);
+        }
+      }}
+    >
+      Generate Draft
+    </Button>
                   </Space>
                 }
                 style={{ maxHeight: "70vh", overflowY: "scroll" }}
@@ -991,6 +1028,7 @@ const chapterStats = useMemo(() => {
       <Input.TextArea
         value={editedDraft || serverDraft}
         autoSize={{ minRows: 8, maxRows: 20 }}
+        style={{ whiteSpace: "pre-wrap", fontFamily: "monospace" }}
         onChange={(e) => setEditedDraft(e.target.value)}
       />
 
@@ -1004,12 +1042,8 @@ const chapterStats = useMemo(() => {
     try {
       if (draftId) {
         // Save draft to backend
-        const res = await api.put(`/drafts/drafts/${draftId}`, {
-          content: editedDraft,
-        });
-
-        //  Update local state directly from backend response
-        setServerDraft(res.data.content);   // Draft View shows new content
+        const res = await saveDraft(draftId, editedDraft);
+        setServerDraft(res.content);
         setEditedDraft(null);               // Reset edit mode
 
         message.success("Draft saved successfully!");
@@ -1026,7 +1060,7 @@ const chapterStats = useMemo(() => {
 </Button>
           <Button
             onClick={() => {
-              setEditedDraft(null); // discard edits
+              setEditedDraft(originalDraft); // discard edits
               message.info("Changes discarded");
             }}
           >
@@ -1037,32 +1071,18 @@ const chapterStats = useMemo(() => {
     </Space>
   </Col>
 ) : (
-  <>
-    {/* fallback if server draft empty */}
-    <Col span={12}>
-      <Card
-        title="Source"
-        style={{ maxHeight: "70vh", overflowY: "scroll" }}
-      >
-        {filteredTokens.map((t) => (
-          <p key={t.verse_token_id}>{t.token_text}</p>
-        ))}
-      </Card>
-    </Col>
-    <Col span={12}>
-      <Card
-        title={targetLanguage}
-        style={{ maxHeight: "70vh", overflowY: "scroll" }}
-      >
-        {filteredTokens.map((t) => (
-          <p key={t.verse_token_id}>
-            {t.verse_translated_text || ""}
-          </p>
-        ))}
-      </Card>
-    </Col>
-  </>
-)}
+  <Col span={24}>
+    <Card
+      title="Translation Draft"
+      style={{ maxHeight: "70vh", overflowY: "scroll" }}
+    >
+      <p style={{ fontStyle: "italic", color: "#888" }}>
+        No translation draft available yet. Run translation to generate one.
+      </p>
+    </Card>
+  </Col>
+)
+}
 
                 </Row>
               </Card>

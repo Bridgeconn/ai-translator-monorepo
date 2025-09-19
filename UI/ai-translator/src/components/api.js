@@ -274,8 +274,19 @@ export const booksAPI = {
 
 //------------------ Verse Tokens API ------------------
 export const verseTokensAPI = {
+  // Generate verse tokens
+  generateVerseTokens: async (projectId, bookName) => {
+    const res = await api.post(`/generate-verse-tokens/${projectId}`, null, {
+      params: { book_name: bookName }, // query param
+    });
+    return res.data;
+  },
+
+  // Get verse tokens
   getVerseTokens: async (projectId, bookName) => {
-    const res = await api.get(`/verse-tokens/by-project/${projectId}?book_name=${bookName}`);
+    const res = await api.get(`/verse-tokens/by-project/${projectId}`, {
+      params: { book_name: bookName }, // safer than string interpolation
+    });
     return res.data;
   },
 
@@ -352,21 +363,35 @@ export const translateChapter = async (projectId, bookName, chapterNumber, verse
 //   );
 //   return res.data;
 // };
-// api.js
-export const fetchDraft = async (projectId, bookName) => {
+// // api.js
+// export const fetchDraft = async (projectId, bookName) => {
+//   const res = await api.post("/drafts/generate-draft-json/", {
+//     project_id: projectId,
+//     book_name: bookName,
+//   });
+//   return res.data; // now contains { draft_id, content, draft_name, format }
+// };
+
+// // 1. Generate or fetch existing draft (JSON)
+export const generateDraftJson = async (projectId, bookName) => {
   const res = await api.post("/drafts/generate-draft-json/", {
     project_id: projectId,
     book_name: bookName,
   });
-  return res.data; // now contains { draft_id, content, draft_name, format }
+  return res.data; // { draft_id, draft_name, content, format }
 };
 
 //Save/update an existing draft
 export const saveDraft = async (draftId, content) => {
-  const res = await api.put(`/drafts/drafts/${draftId}`, { content });
+  const res = await api.put(`drafts/drafts/${draftId}`, { content });
   return res.data;
 };
 
+// 3. Fetch the latest draft for a project + book
+export const fetchLatestDraft = async (projectId, bookName) => {
+  const res = await api.get(`/drafts/drafts/latest/${projectId}/${bookName}`);
+  return res.data;
+};
 
 export default api;
 // // ------------------ Verse Tokens API ------------------
