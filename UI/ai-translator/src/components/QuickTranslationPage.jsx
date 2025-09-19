@@ -8,11 +8,9 @@ import {
   Space,
   Typography,
   Card,
-  App,
   Spin,
   Modal,
   Select,
-  notification,
   Alert,
   Tooltip,
 } from "antd";
@@ -33,7 +31,7 @@ import vachanApi from "../api/vachan";
 import Papa from "papaparse"; // CSV parser
 import { useNavigate } from "react-router-dom";
 import * as pdfjsLib from "pdfjs-dist";
-
+import { App } from "antd";
 pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
 const { TextArea } = Input;
@@ -98,11 +96,7 @@ async function pollJobStatus({
 
   while (attempts < maxAttempts) {
     if (signal?.aborted) {
-      notification.warning({
-        message: "Translation Cancelled",
-        description: "You cancelled the translation process.",
-      });
-      throw new Error("Polling cancelled by user");
+      throw new Error("Translation cancelled");
     }
 
     try {
@@ -115,10 +109,6 @@ async function pollJobStatus({
       if (onStatusUpdate) onStatusUpdate(status);
 
       if (status?.includes("finished")) {
-        notification.success({
-          message: "Translation Completed",
-          description: "Your document has been successfully translated.",
-        });
         return jobId;
       }
 
@@ -131,7 +121,7 @@ async function pollJobStatus({
       }
     } catch (err) {
       if (err.name === "CanceledError") {
-        throw new Error("Polling cancelled by user");
+        throw new Error("Translation cancelled");
       }
       notification.error({
         message: "Server Error",
@@ -173,7 +163,7 @@ export default function QuickTranslationPage() {
   const [uploadedFile, setUploadedFile] = useState(null);
   const [statusMsg, setStatusMsg] = useState("");
   const [loading, setLoading] = useState(false);
-  const { message } = App.useApp();
+  const { notification } = App.useApp();
   const navigate = useNavigate();
   const controllerRef = useRef(null);
 
@@ -248,12 +238,18 @@ export default function QuickTranslationPage() {
   // ------------------ Enhanced notification helper ------------------
   const showNotification = (type, title, description, duration = 4) => {
     try {
-      message[type](description, duration);
       notification[type]({
         message: title,
         description: description,
         duration: duration,
-        placement: "topRight",
+        placement: "top", // appears top-center
+        style: {
+          fontSize: "13px",       // smaller than 14px
+          padding: "6px 12px",    // tighter padding
+          borderRadius: "4px",    // subtle rounded corners
+          maxWidth: "350px",      // restrict width
+          boxShadow: "0 2px 6px rgba(0,0,0,0.15)", // subtle shadow
+        },
       });
 
       // Method 3: Console log for debugging
@@ -269,10 +265,10 @@ export default function QuickTranslationPage() {
   const handleCopy = (content) => {
     try {
       navigator.clipboard.writeText(content);
-      message.success(" Copied!");
+      showNotification("success", "Copied", "Text copied to clipboard!");
     } catch (err) {
       console.error("Failed to copy: ", err);
-      message.error(" Copy failed!");
+      showNotification("error", "Copy Failed", "Could not copy text.");
     }
   };
 
@@ -280,10 +276,10 @@ export default function QuickTranslationPage() {
     try {
       const clipText = await navigator.clipboard.readText();
       setContent(clipText);
-      message.success("📥 Pasted!");
+      showNotification("success", "Pasted", "Text pasted from clipboard!");
     } catch (err) {
       console.error("Failed to paste: ", err);
-      message.error(" Paste failed!");
+      showNotification("error", "Paste Failed", "Could not paste text.");
     }
   };
 
@@ -292,7 +288,7 @@ export default function QuickTranslationPage() {
     setTargetText("");
     setUploadedFile(null); // <--- clear uploaded file
     setIsTargetEdited(false);
-    message.info(" All text cleared!");
+    showNotification("info", "Cleared", "All text cleared successfully.");
   };
 
   // ------------------ Syncing Source -> Target ------------------
@@ -300,10 +296,10 @@ export default function QuickTranslationPage() {
     const newText = e.target.value;
     const sizeInMB = new Blob([newText]).size / 1024 / 1024;
 
-  if (sizeInMB > 2) {
-    message.error("Text input must be smaller than 2MB!");
-    return; // don’t update state
-  }
+    if (sizeInMB > 2) {
+      showNotification("error", "Too Large", "Text input must be smaller than 2MB!");
+      return; // don’t update state
+    }
     setSourceText(newText);
 
     // Whenever source is cleared or replaced, reset target
@@ -321,13 +317,13 @@ export default function QuickTranslationPage() {
     setLoading(false);
     setStatusMsg("Translation cancelled.");
   };
-  
+
 
   // ------------------ File Upload Handler ------------------
   const handleFileUpload = async (file) => {
     const isLt2M = file.size / 1024 / 1024 < 2;
     if (!isLt2M) {
-      message.error("File must be smaller than 2MB!");
+      showNotification("error", "File Too Large", "File must be smaller than 2MB!");
       return Upload.LIST_IGNORE; // block upload
     }
     setUploadedFile(file);
@@ -335,9 +331,8 @@ export default function QuickTranslationPage() {
     setNewProjectFilename(file.name);
 
     if (file.name.endsWith(".doc")) {
-      message.error(
-        "Old Word (.doc) files are not supported. Use .docx, .txt, or .pdf."
-      );
+      showNotification("error", "Unsupported File", "Old Word (.doc) files are not supported. Use .docx, .txt, or .pdf.");
+
       return false;
     }
 
@@ -372,49 +367,47 @@ export default function QuickTranslationPage() {
       setSourceText(textContent);
       setTargetText("");
       setIsTargetEdited(false);
-      message.success(`Loaded file: ${file.name}`);
+      showNotification("success", "File Loaded", `Loaded file: ${file.name}`);
     } catch (err) {
       console.error("Failed to read file:", err);
-      message.error("Failed to load file.");
+      showNotification("error", "File Load Failed", "Failed to load file.");
       return false;
     }
 
     return false; // prevent auto upload
   };
-
-  // ------------------ Translation Call ------------------
   // ------------------ USFM-Aware Translation Handler ------------------
   const handleTranslate = async () => {
     if (!sourceLang || !targetLang) {
-      message.error("Please select both source and target languages before translating.");
+      showNotification("error", "Missing Languages", "Please select both source and target languages before translating.");
       return;
     }
-  
+
     if (!sourceText.trim() && !uploadedFile) {
-      message.warning("Please enter or upload some source text first.");
+      showNotification("warning", "Missing Input", "Please enter or upload some source text first.");
       return;
     }
-  
+
     // ✅ Create AbortController right away so user can cancel anytime
     controllerRef.current = new AbortController();
     const signal = controllerRef.current.signal;
-  
+
     try {
       setLoading(true);
       setIsTranslated(false);
       setStatusMsg("⏳ Preparing translation...");
-  
+
       // --- 1️⃣ Get API token ---
       const token = await getAccessToken(
         import.meta.env.VITE_VACHAN_USERNAME,
         import.meta.env.VITE_VACHAN_PASSWORD
       );
       if (signal.aborted) throw new Error("Translation cancelled");
-  
+
       let textToTranslate = "";
       let isUSFMContent = false;
       let usfmStructure = null;
-  
+
       // Normalization helpers
       const normalizeText = (text) =>
         text
@@ -428,22 +421,22 @@ export default function QuickTranslationPage() {
               .trim()
           )
           .join("\n");
-  
+
       const normalizeTranslation = (text) =>
         text
           .replace(/\r\n/g, "\n")
           .split("\n")
           .map((line) => line.trim())
           .join("\n");
-  
+
       // --- 2️⃣ Extract text from uploaded file or pasted text ---
       if (uploadedFile) {
         if (uploadedFile.name.endsWith(".pdf")) {
           const arrayBuffer = await uploadedFile.arrayBuffer();
           if (signal.aborted) throw new Error("Translation cancelled");
-  
+
           const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-  
+
           let pdfText = "";
           for (let i = 1; i <= pdf.numPages; i++) {
             if (signal.aborted) throw new Error("Translation cancelled");
@@ -452,19 +445,19 @@ export default function QuickTranslationPage() {
             const strings = content.items.map((item) => item.str);
             pdfText += strings.join(" ") + "\n";
           }
-  
+
           textToTranslate = normalizeText(pdfText);
         } else if (uploadedFile.name.endsWith(".docx")) {
           const arrayBuffer = await uploadedFile.arrayBuffer();
           if (signal.aborted) throw new Error("Translation cancelled");
-  
+
           const mammoth = await import("mammoth");
           const { value: text } = await mammoth.extractRawText({ arrayBuffer });
           textToTranslate = normalizeText(text);
         } else {
           const fileContent = await uploadedFile.text();
           if (signal.aborted) throw new Error("Translation cancelled");
-  
+
           if (
             uploadedFile.name.endsWith(".usfm") ||
             containsUSFMMarkers(fileContent)
@@ -488,17 +481,17 @@ export default function QuickTranslationPage() {
           textToTranslate = normalizeText(sourceText);
         }
       }
-  
+
       if (signal.aborted) throw new Error("Translation cancelled");
-  
+
       // --- 3️⃣ Prepare text file for translation API ---
       const blob = new Blob([textToTranslate], { type: "text/plain" });
       const fileToSend = new File([blob], "content_only.txt", {
         type: "text/plain",
       });
-  
+
       console.log("📤 Sending clean text to API:", textToTranslate.substring(0, 200) + "...");
-  
+
       // --- 4️⃣ Request translation job ---
       setStatusMsg("⏳ Requesting translation job...");
       const jobId = await requestDocTranslation(
@@ -508,9 +501,9 @@ export default function QuickTranslationPage() {
         targetLang?.BCP_code
       );
       if (signal.aborted) throw new Error("Translation cancelled");
-  
+
       setStatusMsg("⏳ Translating... please wait");
-  
+
       // --- 5️⃣ Poll until job is finished ---
       const finishedJobId = await pollJobStatus({
         token,
@@ -520,11 +513,11 @@ export default function QuickTranslationPage() {
         signal, // ✅ pass controller signal here
       });
       if (signal.aborted) throw new Error("Translation cancelled");
-  
+
       // --- 6️⃣ Fetch translated CSV ---
       const csvText = await fetchAssets(token, finishedJobId);
       if (signal.aborted) throw new Error("Translation cancelled");
-  
+
       // --- 7️⃣ Parse CSV ---
       const parsed = Papa.parse(csvText, {
         header: true,
@@ -532,9 +525,9 @@ export default function QuickTranslationPage() {
         dynamicTyping: false,
         trimHeaders: true,
       });
-  
+
       console.log("📥 Parsed CSV data:", parsed.data);
-  
+
       // --- 8️⃣ Rebuild translation ---
       let translatedText = "";
       if (isUSFMContent && usfmStructure) {
@@ -542,19 +535,19 @@ export default function QuickTranslationPage() {
       } else {
         translatedText = simpleTranslation(textToTranslate, parsed.data);
       }
-  
+
       setTargetText(normalizeTranslation(translatedText));
       setIsTargetEdited(false);
       setIsTranslated(true);
-      message.success("Translation complete!");
+      showNotification("success", "Translation Complete", "Your translation is ready.");
       setStatusMsg("");
     } catch (err) {
       if (err.message === "Translation cancelled") {
-        message.warning("Translation cancelled by user.");
+        showNotification("warning", "Translation Cancelled", "Translation cancelled by user.");
         setStatusMsg("Translation cancelled.");
       } else {
         console.error("Translation error:", err);
-        message.error(`Translation failed: ${err.message}`);
+        showNotification("error", "Translation Failed", err.message);
         setStatusMsg("");
       }
     } finally {
@@ -673,7 +666,8 @@ export default function QuickTranslationPage() {
 
     return sourceLines
       .map((line) => {
-        const lineSentences = line.split(/(?<=[.!?])\s+/); // split line into sentences
+        const lineSentences = line.split(/(?<=[.!?।])\s+/);
+        // split line into sentences
         const translatedSentences = lineSentences.map(
           () => translations[translationIndex++] || ""
         );
@@ -872,7 +866,7 @@ export default function QuickTranslationPage() {
     setSaveError("");
     setSaveSuccess("");
     setSaving(true);
-  
+
     if (!filename) {
       const errorMsg = "Please provide a filename.";
       setSaveError(errorMsg);
@@ -880,7 +874,7 @@ export default function QuickTranslationPage() {
       setSaving(false);
       return;
     }
-  
+
     if (!sourceText || !targetText) {
       const errorMsg = "Source and translated text cannot be empty.";
       setSaveError(errorMsg);
@@ -888,7 +882,7 @@ export default function QuickTranslationPage() {
       setSaving(false);
       return;
     }
-  
+
     if (!sourceLang || !targetLang) {
       const errorMsg = "Source and target languages are required.";
       setSaveError(errorMsg);
@@ -896,13 +890,13 @@ export default function QuickTranslationPage() {
       setSaving(false);
       return;
     }
-  
+
     try {
       const selectedProjectData = projects.find(
         (p) => p.project_id === selectedProject
       );
       const projectName = newProjectName || selectedProjectData?.project_name;
-  
+
       if (!projectName) {
         const errorMsg =
           "Please select a project or enter a new project name.";
@@ -911,7 +905,7 @@ export default function QuickTranslationPage() {
         setSaving(false);
         return;
       }
-  
+
       const payload = {
         project_name: projectName,
         files: [
@@ -934,7 +928,7 @@ export default function QuickTranslationPage() {
           },
         ],
       };
-  
+
       const token = localStorage.getItem("token");
       if (!token) {
         const errorMsg =
@@ -944,7 +938,7 @@ export default function QuickTranslationPage() {
         setSaving(false);
         return;
       }
-  
+
       // 🔹 Duplicate check: same filename + identical content in selected project
       if (selectedProjectData) {
         const duplicate = selectedProjectData.files?.find(
@@ -953,7 +947,7 @@ export default function QuickTranslationPage() {
             f.source_text === sourceText &&
             f.target_text === targetText
         );
-  
+
         if (duplicate) {
           Modal.confirm({
             title: "Already Saved",
@@ -967,7 +961,7 @@ export default function QuickTranslationPage() {
           return;
         }
       }
-  
+
       // 🔹 No duplicates → save normally
       await performSave(payload, token, selectedProject, projectName);
     } catch (error) {
@@ -981,7 +975,7 @@ export default function QuickTranslationPage() {
       setSaving(false);
     }
   };
-  
+
   // 🔹 Extracted save logic into helper
   const performSave = async (payload, token, selectedProject, projectName) => {
     let url;
@@ -995,7 +989,7 @@ export default function QuickTranslationPage() {
       url =
         import.meta.env.VITE_BACKEND_URL + "/api/project-text-documents/";
     }
-  
+
     const response = await fetch(url, {
       method: "POST",
       headers: {
@@ -1004,9 +998,9 @@ export default function QuickTranslationPage() {
       },
       body: JSON.stringify(payload),
     });
-  
+
     console.log("Response status:", response.status);
-  
+
     if (!response.ok) {
       let errorMessage = "Failed to save translation";
       try {
@@ -1021,14 +1015,14 @@ export default function QuickTranslationPage() {
       showNotification("error", "Save Failed", errorMessage);
       return;
     }
-  
+
     const result = await response.json();
     console.log("Save successful:", result);
-  
+
     const successMsg = `Translation saved successfully! File "${payload.files[0].file_name}" added to project "${projectName}"`;
     setSaveSuccess(successMsg);
     showNotification("success", "Save Successful", successMsg);
-  
+
     setTimeout(() => {
       setSaveModalVisible(false);
       setNewProjectName("");
@@ -1037,7 +1031,7 @@ export default function QuickTranslationPage() {
       setSaveError("");
     }, 2000);
   };
-  
+
 
   return (
     <div style={{ padding: 24, marginBottom: 0 }}>
@@ -1056,7 +1050,11 @@ export default function QuickTranslationPage() {
       <Row gutter={24}>
         {/* Language Settings Section */}
         <Col span={24}>
-          <Card>
+          <Card
+            style={{
+              boxShadow: "0 4px 10px rgba(0,0,0,0.15)", // ✅ shadow effect
+              borderRadius: "10px",                     // rounded corners
+            }}>
             <Title level={4}>🌐 Language Settings</Title>
             <Row gutter={16} align="middle" justify="center">
               <Col xs={24} md={10}>
@@ -1065,19 +1063,22 @@ export default function QuickTranslationPage() {
                   onChange={setSourceLang}
                   disabled={loading}
                   placeholder="Select source language"
+
                 />
               </Col>
               <Col xs={24} md={4} style={{ textAlign: "center" }}>
-                <Button
-                  shape="circle"
-                  icon={<SwapOutlined />}
-                  onClick={() => {
-                    const temp = sourceLang;
-                    setSourceLang(targetLang);
-                    setTargetLang(temp);
-                  }}
-                  disabled={loading}
-                />
+                <Tooltip title="Swap Languages" color="#fff">
+                  <Button
+                    shape="circle"
+                    icon={<SwapOutlined />}
+                    onClick={() => {
+                      const temp = sourceLang;
+                      setSourceLang(targetLang);
+                      setTargetLang(temp);
+                    }}
+                    disabled={loading}
+                  />
+                </Tooltip>
               </Col>
               <Col xs={24} md={10}>
                 <LanguageSelect
@@ -1085,6 +1086,7 @@ export default function QuickTranslationPage() {
                   onChange={setTargetLang}
                   disabled={loading}
                   placeholder="Select target language"
+
                 />
               </Col>
             </Row>
@@ -1092,137 +1094,163 @@ export default function QuickTranslationPage() {
         </Col>
 
         {/* Source Panel */}
-       {/* Source Panel */}
-<Col xs={24} md={12} style={{ marginTop: 16 }}>
-  <Card
-    title={<span>Source Text</span>}
-    extra={<span style={{ fontWeight: 500 }}>{sourceLang?.label}</span>}
-    style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
-    bodyStyle={{ flex: 1, display: 'flex', flexDirection: 'column' }}
-  >
-    <TextArea
-      rows={10}
-      value={sourceText}
-      onChange={handleSourceChange}
-      placeholder="Enter or upload text to translate..."
-      disabled={loading}
-      style={{ flex: 1, resize: 'none' }}
-    />
-    
-    {/* Container for buttons with flexbox layout */}
-    <div style={{ 
-      marginTop: 12, 
-      display: "flex", 
-      justifyContent: "space-between", 
-      alignItems: "flex-end" 
-    }}>
-      {/* Left side - Upload section */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
-        <Upload
-          beforeUpload={handleFileUpload}
-          showUploadList={false}
-          accept=".txt,.usfm,.docx,.pdf"
-          disabled={loading}
-        >
-          <Tooltip title="Upload File" color="#fff" styles={{ color: "#000" }}>
-            <Button icon={<UploadOutlined />} disabled={loading}>
-            </Button>
-          </Tooltip>
-        </Upload>
-
-        <Typography.Text type="secondary" style={{ fontSize: "12px", marginTop: "4px" }}>
-          Upload files up to 2 MB (.txt, .usfm, .docx, .pdf)
-        </Typography.Text>
-      </div>
-
-      {/* Right side - Clear button */}
-      <div>
-        <Tooltip
-          title="Clear"
-          color="#fff"
-          styles={{ body: { color: "#000" }}}
-        >
-          <Button
-            style={{ color: "red" }}
-            onClick={handleClearAll}
-            icon={<CloseOutlined />}
-            disabled={loading}
+        <Col xs={24} md={12} style={{ marginTop: 16 }}>
+          <Card
+            title={<span>Source Text</span>}
+            extra={<span style={{ fontWeight: 500 }}>{sourceLang?.label}</span>}
+            style={{
+              height: '100%', display: 'flex', flexDirection: 'column', boxShadow: "0 4px 10px rgba(0,0,0,0.15)", // ✅ shadow effect
+              borderRadius: "10px",
+            }}
+            bodyStyle={{ flex: 1, display: 'flex', flexDirection: 'column' }}
           >
-            {/* Clear */}
-          </Button>
-        </Tooltip>
-      </div>
-    </div>
-  </Card>
-</Col>
-
-{/* Target Panel */}
-<Col xs={24} md={12} style={{ marginTop: 16 }}>
-  <Card
-    title={<span>Translation</span>}
-    extra={<span style={{ fontWeight: 500 }}>{targetLang?.label}</span>}
-    style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
-    bodyStyle={{ flex: 1, display: 'flex', flexDirection: 'column' }}
-  >
-    <Spin spinning={loading} tip="Translating..." style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-      <TextArea
-        rows={10}
-        value={targetText}
-        onChange={handleTargetChange}
-        placeholder="Translation will appear here..."
-        disabled={loading}
-        style={{ flex: 1, resize: 'none' }}
-      />
-    </Spin>
-    <div style={{ marginTop: 12 }}>
-      <Row justify="space-between" align="middle">
-        <Col>
-          <Space>
-            <Tooltip
-              title="save"
-              color="#fff"
-              styles={{ body: { color: "#000"} }}
-            >
-              <Button
-                type="default"
-                icon={<SaveOutlined />}
-                onClick={handleSave}
-                disabled={!targetText || loading || !isTranslated}
-              />
-            </Tooltip>
-
-            <Tooltip
-              title="copy"
-              color="#fff"
-              styles={{ body: { color: "#000" }}}
-            >
-              <Button
-                icon={<CopyOutlined />}
-                onClick={() => handleCopy(targetText)}
-                disabled={loading || !targetText}
-              />
-            </Tooltip>
-
-            <DownloadDraftButton
-              content={targetText}
-              disabled={loading || !targetText}
+            <TextArea
+              rows={10}
+              value={sourceText}
+              onChange={handleSourceChange}
+              placeholder="Enter or upload text to translate..."
+              disabled={loading}
+              style={{
+                flex: 1,
+                resize: 'none',
+                color: "#000",            // text color
+                '::placeholder': {        // placeholder styling
+                  color: "#888",          // slightly darker grey
+                  opacity: 1,             // ensure it shows properly
+                },
+              }}
             />
-          </Space>
+            {/* Container for buttons with flexbox layout */}
+            <div style={{
+              marginTop: 12,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-end"
+            }}>
+              {/* Left side - Upload section */}
+              <div style={{display: "flex", justifyContent: "space-between", marginTop: 16 }}>
+                <Upload
+                  beforeUpload={handleFileUpload}
+                  showUploadList={false}
+                  accept=".txt,.usfm,.docx,.pdf"
+                  disabled={loading}
+                >
+
+                <Typography.Text
+                  type="secondary"
+                  style={{ fontSize: "12px", marginTop: "7px", display: "block" }}
+                >
+                  <strong>Drop .txt, .usfm, .docx, .pdf up to 2 MB</strong>
+                </Typography.Text>
+                  <Tooltip title="Upload upto 2 MB(.txt, .usfm, .docx, .pdf )" color="#fff">
+                    <Button
+                      icon={<UploadOutlined />}
+                      disabled={loading}
+                      style={{
+                        background: "rgb(44 151 222 / 85%)",   // matches your .btn
+                        border: "1px solid #e5e7eb",
+                        borderRadius: "6px",
+                        color: "#000",
+                        padding: "6px 14px",
+                        cursor: loading ? "not-allowed" : "pointer",
+                      }}
+                    />
+                  </Tooltip>
+                </Upload>
+              </div>
+              {/* Right side - Clear button */}
+              <div>
+                <Tooltip
+                  title="Clear"
+                  color="#fff"
+                  styles={{ body: { color: "#000" } }}
+                >
+                  <Button
+                    style={{
+                      backgroundColor: "rgb(229, 118 ,119)",
+                      color: "white",
+                      boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+                      border: "none",
+                    }} onClick={handleClearAll}
+                    icon={<CloseOutlined />}
+                    disabled={loading}
+                  >
+                    {/* Clear */}
+                  </Button>
+                </Tooltip>
+              </div>
+            </div>
+          </Card>
         </Col>
 
-        {/* <Col>
-          <Button
-            danger
-            disabled={!loading} // ✅ enable only while translating
-            onClick={() => controllerRef.current?.abort()}
+        {/* Target Panel */}
+        <Col xs={24} md={12} style={{ marginTop: 16 }}>
+          <Card
+            title={<span>Translation</span>}
+            extra={<span style={{ fontWeight: 500 }}>{targetLang?.label}</span>}
+            style={{
+              height: '100%', display: 'flex', flexDirection: 'column', boxShadow: "0 4px 10px rgba(0,0,0,0.15)", // ✅ shadow effect
+              borderRadius: "10px",
+            }}
+            bodyStyle={{ flex: 1, display: 'flex', flexDirection: 'column' }}
           >
-            Cancel Translation
-          </Button>
-        </Col> */}
-      </Row>
-    </div>
-  </Card>
-</Col>
+            <Spin spinning={loading} tip="Translating..." style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <TextArea
+                rows={10}
+                value={targetText}
+                onChange={handleTargetChange}
+                placeholder="Translation will appear here..."
+                disabled={loading}
+                style={{
+                  flex: 1,
+                  resize: 'none',
+                  color: "#000",
+                  '::placeholder': {
+                    color: "#888",
+                    opacity: 1,
+                  },
+                }}
+              />
+            </Spin>
+            <div style={{ marginTop: 12 }}>
+              <Row justify="space-between" align="middle">
+                <Col>
+                  <Space>
+                    <Tooltip
+                      title="Save Translation"
+                      color="#fff"
+                      styles={{ body: { color: "#000" } }}
+                    >
+                      <Button
+                        type="default"
+                        icon={<SaveOutlined />}
+                        onClick={handleSave}
+                        disabled={!targetText || loading || !isTranslated}
+                      />
+                    </Tooltip>
+
+                    <Tooltip
+                      title="Copy translation to clipboard"
+                      color="#fff"
+                      styles={{ body: { color: "#000" } }}
+                    >
+                      <Button
+                        icon={<CopyOutlined />}
+                        onClick={() => handleCopy(targetText)}
+                        disabled={loading || !targetText}
+                      />
+                    </Tooltip>
+
+                    <DownloadDraftButton
+                      content={targetText}
+                      disabled={loading || !targetText}
+                    />
+                  </Space>
+                </Col>
+              </Row>
+            </div>
+          </Card>
+        </Col>
 
         {/* Translate button centered */}
         <Col span={24} style={{ textAlign: "center", marginTop: 24 }}>
@@ -1243,7 +1271,11 @@ export default function QuickTranslationPage() {
               padding: "0 32px",
               borderRadius: "8px",
               minWidth: "200px",
+              backgroundColor: loading ? "#ff4d4f" : "rgb(44,141,251)", // blue when idle, red when cancel
+              borderColor: loading ? "#ff4d4f" : "rgb(44,141,251)",
+              color: "#fff",
             }}
+            
           >
             {loading ? "Cancel Translation" : "Translate"}
           </Button>

@@ -47,12 +47,12 @@ def save_tokens(
         project_id=request.project_id,
         book_id=request.book_id,
         updated_tokens=[t.dict() for t in request.updated_tokens],
-        content=request.content  # optional
+        
     )
     return {
         "message": "Tokens updated successfully",
         "updated_tokens": result["updated_tokens"],
-        "content": result["content"]  # return rebuilt content too
+        "content": result.get("content", "")  # return rebuilt content too
     }
 # ------------------ Save Manual Draft (New Route) ------------------
 @router.put("/save", status_code=status.HTTP_200_OK)

@@ -6,7 +6,7 @@ import {
   Typography,
   Card,
   Space,
-  message,
+  notification,
 } from "antd";
 import {
   UserOutlined,
@@ -17,25 +17,38 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { authAPI } from "./api";
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 export default function RegisterForm() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const onFinish = async (values) => {
-    try {
-      setLoading(true);
-      await authAPI.register(values);
-      message.success("Registration successful! Please login.");
-      navigate("/login");
-    } catch (error) {
-      message.error(error.response?.data?.detail || "Registration failed");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // ✅ Add this line to create a context-aware message
+  const [notificationApi, contextHolder] = notification.useNotification();
 
+  const onFinish = async (values) => {
+    setLoading(true);
+
+    const result = await authAPI.register(values);
+
+    if (result?.error) {
+      // ✅ Use context-bound message
+      notificationApi.error({
+        message: "Registration Failed",
+        description: result.error,
+        placement: "top",
+      });
+    } else {
+      notificationApi.success({
+        message: "Registration Successful",
+        description: "Please login to continue.",
+        placement: "top",
+      });
+      navigate("/login");
+    }
+
+    setLoading(false);
+  };
   return (
     <div
       style={{
@@ -43,9 +56,20 @@ export default function RegisterForm() {
         justifyContent: "center",
         alignItems: "center",
         minHeight: "100vh",
-        backgroundColor: "#f5f6fa",
+        position: "relative",               // allows layering
+        // overflow: "hidden",                 // hides any overflowing shapes
+        background: `
+        radial-gradient(circle at top left, rgba(114,46,209,0.14) 0%, transparent 70%),
+        radial-gradient(circle at bottom right, rgba(79,70,229,0.14) 0%, transparent 70%),
+        repeating-linear-gradient(45deg, rgba(255,255,255,0.02), rgba(255,255,255,0.02) 10px, transparent 10px, transparent 20px),
+
+        #f5f6fa
+        `,
+
+        padding: "20px",
       }}
     >
+      {contextHolder}
       <Card
         style={{
           width: 400,
@@ -55,37 +79,41 @@ export default function RegisterForm() {
         }}
       >
         <Space direction="vertical" style={{ width: "100%" }} align="center">
-  <Link to="/" style={{ display: "inline-block" }}>
-  <div
-    style={{
-      backgroundColor: "#722ed1",
-      borderRadius: "8px",
-      width: "50px",
-      height: "50px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      color: "white",
-      fontSize: "24px",
-      cursor: "pointer",
-      transition: "transform 0.2s ease, background-color 0.2s ease", // smooth hover
-    }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.transform = "scale(1.1)";
-      e.currentTarget.style.backgroundColor = "#531dab"; // darker purple
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.transform = "scale(1)";
-      e.currentTarget.style.backgroundColor = "#722ed1";
-    }}
-  >
-    文A
-  </div>
-  </Link>
-  <Title level={3} style={{ marginBottom: 0, color: "#722ed1" }}>
-    Create Account
-  </Title>
-</Space>
+          <Link to="/" style={{ display: "inline-block" }}>
+            <div
+              style={{
+                backgroundColor: "rgb(44, 141, 251)",
+                backdropFilter: "blur(8px)",
+                borderRadius: "12px",
+                width: "50px",
+                height: "50px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "white",
+                fontSize: "24px",
+                fontWeight: "bold",
+                boxShadow: "0 2px 8px rgba(114, 46, 209, 0.25)",
+                cursor: "pointer",
+                transition: "transform 0.2s ease, background-color 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "scale(1.1)";
+                e.currentTarget.style.backgroundColor = "rgb(44, 141, 251)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "scale(1)";
+                e.currentTarget.style.backgroundColor = "rgb(44, 141, 251)";
+              }}
+            >
+              文A
+            </div>
+
+          </Link>
+          <Title level={3} style={{ marginBottom: 0, color: "rgb(0, 0, 0, 0.85)" }}>
+            Create Account
+          </Title>
+        </Space>
 
         <Form
           name="register"
@@ -97,24 +125,13 @@ export default function RegisterForm() {
           <Form.Item
             name="full_name"
             rules={[
-              { required: true, message: "Please enter your full name!" },
               {
                 pattern: /^[A-Za-z ]+$/,
                 message: "Full name can only contain letters and spaces!",
               },
-              {
-                validator(_, value) {
-                  if (!value || value.trim().length === 0) {
-                    return Promise.reject(
-                      new Error("Full name cannot be empty or spaces only!")
-                    );
-                  }
-                  return Promise.resolve();
-                },
-              },
             ]}
           >
-            <Input prefix={<IdcardOutlined />} placeholder="Full Name" />
+            <Input prefix={<IdcardOutlined />} placeholder="Full Name (optional)" />
           </Form.Item>
 
           {/* Username */}
@@ -191,17 +208,43 @@ export default function RegisterForm() {
               loading={loading}
               block
               style={{
-                background: "linear-gradient(90deg, #722ed1, #b37feb)",
+                background: "rgb(44, 141, 251)",
                 border: "none",
               }}
             >
               Create Account
             </Button>
           </Form.Item>
-
-          <div style={{ textAlign: "center" }}>
-            Already have an account? <Link to="/login">Sign In</Link>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: "6px",   // keeps a nice space between text and link
+              marginTop: "8px", // optional, adds breathing room
+            }}
+          >
+            <Text style={{ color: 'rgba(0, 0, 0, 0.70)' }}>Already have an account?</Text>
+            <Link
+              to="/login"
+              style={{
+                color: "rgb(44, 141, 251)",
+                fontWeight: 500,
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "rgb(244, 67, 54)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "rgb(44, 141, 251)";
+                e.currentTarget.style.textDecoration = "none";
+              }}
+            >
+              Sign In
+            </Link>
           </div>
+
+
         </Form>
       </Card>
     </div>
