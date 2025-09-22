@@ -548,33 +548,31 @@ const chapterStats = useMemo(() => {
       if (bookObj) {
         fetchChaptersByBook(bookObj.book_id).then(() => {
           setSelectedChapter(null); // reset first
-          setTimeout(() => setSelectedChapter(1), 0); // then set default
+          // set chapter AFTER tokens are ensured
+          ensureBookTokens(selectedBook).then(() => {
+            setSelectedChapter(1); // trigger tokens fetch in chapter effect
+          });
         });
       }
+  
       setTokens([]);
       setIsTokenized(false);
       fetchRawBook(selectedBook);
-      const loadTokens = async () => {
-        await ensureBookTokens(selectedBook);
-        await fetchTokensForSelection(selectedBook, null);
-      };
-      loadTokens();
-      } else {
+      updateServerDraft(); 
+    } else {
       setSelectedChapter(null);
       setTokens([]);
       setIsTokenized(false);
       setRawBookContent("");
     }
   }, [selectedBook]);
- 
+  
   useEffect(() => {
-    // When a chapter is picked, fetch/generate only that chapter's tokens
     if (selectedBook !== "all" && selectedChapter) {
       fetchTokensForSelection(selectedBook, selectedChapter);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedChapter]);
- 
+  }, [selectedBook, selectedChapter]);
+  
   // ---------- UI ----------
   return (
     <div
