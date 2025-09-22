@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func, distinct
 from typing import List, Optional, Dict, Any, Union
+from uuid import UUID
 from datetime import datetime
 from app.models.project_text_document import ProjectTextDocument
 from app.schemas.project_text_document import (
@@ -24,7 +25,8 @@ def get_project_by_id(db: Session, project_id: str) -> Optional[ProjectTextDocum
 def create_project_with_files(
     db: Session, 
     project_name: str, 
-    files: List[Union[ProjectFileData, Dict[str, Any]]]
+    files: List[Union[ProjectFileData, Dict[str, Any]]],
+    user_id: UUID
 ):
     """Create a new project with files"""
     import uuid
@@ -45,6 +47,7 @@ def create_project_with_files(
             
             new_file = ProjectTextDocument(
                 project_id=project_id,
+                owner_id=user_id,
                 project_name=project_name,
                 project_type="text_document",  # Set project type
                 translation_type="text_document",  # Set translation type
@@ -75,7 +78,8 @@ def add_files_to_existing_project(
     db: Session, 
     project_id: str, 
     project_name: str, 
-    files: List[Union[ProjectFileData, Dict[str, Any]]]
+    files: List[Union[ProjectFileData, Dict[str, Any]]],
+    user_id: UUID
 ):
     """Add files to an existing project"""
     from datetime import datetime
@@ -83,7 +87,8 @@ def add_files_to_existing_project(
     # Verify project exists
     existing_project = db.query(ProjectTextDocument).filter(
         ProjectTextDocument.project_id == project_id,
-        ProjectTextDocument.project_type == "text_document"
+        ProjectTextDocument.project_type == "text_document",
+        ProjectTextDocument.owner_id == user_id
     ).first()
     
     if not existing_project:
@@ -107,7 +112,8 @@ def add_files_to_existing_project(
         # Check if filename already exists in this project
         existing_file = db.query(ProjectTextDocument).filter(
             ProjectTextDocument.project_id == project_id,
-            ProjectTextDocument.file_name == filename
+            ProjectTextDocument.file_name == filename,
+            ProjectTextDocument.owner_id == user_id
         ).first()
         
         if existing_file:
@@ -126,6 +132,7 @@ def add_files_to_existing_project(
 
             new_file = ProjectTextDocument(
                 project_id=project_id,
+                owner_id=user_id,
                 project_name=project_name,
                 project_type="text_document",
                 translation_type="text_document",
@@ -152,9 +159,9 @@ def add_files_to_existing_project(
         db.rollback()
         raise e
 
-def get_all_projects(db: Session, project_type: str = "text_document") -> List[ProjectTextDocumentResponse]:
+def get_all_projects(db: Session, user_id: UUID, project_type: str = "text_document") -> List[ProjectTextDocumentResponse]:
     """
-    Fetch all unique projects with their associated files, filtered by project type
+    Fetch all unique projects with their associated files, filtered by project type and owner.
     """
     # Get all unique project IDs and names for text document projects
     unique_projects = db.query(
@@ -165,7 +172,8 @@ def get_all_projects(db: Session, project_type: str = "text_document") -> List[P
         func.min(ProjectTextDocument.created_at).label('created_at'),
         func.max(ProjectTextDocument.updated_at).label('updated_at')
     ).filter(
-        ProjectTextDocument.project_type == project_type
+        ProjectTextDocument.project_type == project_type,
+        ProjectTextDocument.owner_id == user_id  # ✅ filter by owner
     ).group_by(
         ProjectTextDocument.project_id,
         ProjectTextDocument.project_name,
@@ -178,7 +186,8 @@ def get_all_projects(db: Session, project_type: str = "text_document") -> List[P
     for project in unique_projects:
         # Get all files for this project
         project_files = db.query(ProjectTextDocument).filter(
-            ProjectTextDocument.project_id == project.project_id
+            ProjectTextDocument.project_id == project.project_id,
+            ProjectTextDocument.owner_id == user_id  # ✅ filter by owner
         ).all()
         
         # Create the response object
