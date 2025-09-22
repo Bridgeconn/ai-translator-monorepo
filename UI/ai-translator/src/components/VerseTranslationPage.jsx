@@ -709,7 +709,7 @@ const chapterStats = useMemo(() => {
   }
   style={{ marginTop: 8, marginBottom: 8 }}
 />
-      </Space>
+ </Space>
  
       <Tabs
         activeKey={activeTab}
