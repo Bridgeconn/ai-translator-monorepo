@@ -21,6 +21,8 @@ class Project(Base):
     created_at = Column(TIMESTAMP, default=func.current_timestamp())
     updated_at = Column(TIMESTAMP, default=func.current_timestamp(), onupdate=func.current_timestamp())
     is_active = Column(Boolean, nullable=False)
+    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+
     
     # Relationships
     source = relationship("Source", back_populates="projects")
