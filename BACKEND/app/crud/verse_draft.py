@@ -1,6 +1,7 @@
 import re
 from sqlalchemy import UUID
 from sqlalchemy.orm import Session, joinedload
+from app.schemas.translation_draft import UpdateDraftRequest
 from app.models.verse import Verse
 from app.models.verse_tokens import VerseTokenTranslation
 from app.models.translation_draft import TranslationDraft
@@ -298,15 +299,23 @@ class TranslationService:
 
         return draft
 
-    def update_draft(self, db: Session, draft_id: UUID, content: str) -> TranslationDraft:
+  
+    def update_draft(self, db: Session, draft_id: UUID, request: UpdateDraftRequest):
         draft = db.query(TranslationDraft).filter(TranslationDraft.draft_id == draft_id).first()
         if not draft:
             raise HTTPException(status_code=404, detail="Draft not found")
 
-        draft.content = content
-        draft.updated_at = datetime.utcnow()
-        draft.file_size = len(content.encode("utf-8"))
+        if request.content:
+            draft.content = request.content
+            draft.file_size = request.file_size or len(request.content.encode("utf-8"))
+
+        if request.draft_name:
+            draft.draft_name = request.draft_name
+
+        if request.format:
+            draft.format = request.format
 
         db.commit()
         db.refresh(draft)
         return draft
+

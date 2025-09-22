@@ -1,4 +1,3 @@
-// src/components/MainLayout.jsx
 import React, { useState } from "react";
 import { useNavigate, useLocation, Outlet, Link } from "react-router-dom";
 import { authAPI } from "../api";
@@ -21,6 +20,8 @@ import {
   ThunderboltOutlined,
   KeyOutlined,
 } from "@ant-design/icons";
+
+import { Tooltip } from "antd"; //  add this at the top with other imports
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -220,37 +221,47 @@ const userMenuItems = token
         </div>
 
         {/* Nav icons */}
-        <Menu
-          mode="vertical"
-          selectedKeys={[selectedKey]}
-          onClick={handleMenuClick}
-          style={{ border: "none", background: "transparent" }}
-          items={navigationItems.map((item) => ({
-            key: item.key,
-            icon: (
-              <div
-                style={{
-                  fontSize: "20px",
-                  color: selectedKey === item.key ? "#8b5cf6" : "#8c8c8c",
-                  display: "flex",
-                  justifyContent: "center",
-                }}
-              >
-                {item.icon}
-              </div>
-            ),
-            style: {
-              height: "60px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "8px 0",
-              borderRadius: "8px",
-              backgroundColor:
-                selectedKey === item.key ? "rgba(139,92,246,0.1)" : "transparent",
-            },
-          }))}
-        />
+       {/* Nav icons with labels */}
+{/* Nav icons with hover labels */}
+<Menu
+  mode="vertical"
+  selectedKeys={[selectedKey]}
+  onClick={handleMenuClick}
+  style={{ border: "none", background: "transparent" }}
+  items={navigationItems.map((item) => ({
+    key: item.key,
+    icon: (
+      <Tooltip title={item.label} placement="right">
+        <div
+          style={{
+            fontSize: "20px",
+            color: selectedKey === item.key ? "#8b5cf6" : "#8c8c8c",
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          {item.icon}
+        </div>
+      </Tooltip>
+    ),
+    // 👇 no permanent label — only tooltip
+    label: null,
+    style: {
+      height: "60px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      margin: "8px 0",
+      borderRadius: "8px",
+      borderLeft:
+        selectedKey === item.key ? "4px solid #8b5cf6" : "4px solid transparent",
+      backgroundColor:
+        selectedKey === item.key ? "rgba(139,92,246,0.12)" : "transparent",
+      transition: "all 0.2s ease",
+    },
+  }))}
+ />
+
       </Sider>
 
       <Layout style={{ marginLeft: 80 }}>
@@ -290,7 +301,11 @@ const userMenuItems = token
             </Dropdown>
             <Text style={{ fontSize: "12px", marginTop: "4px", color: "rgb(0, 2, 0, 0.88)" }}>
               {user.full_name || user.username || "User"}
-            </Text>
+            </Text> 
+
+<Text strong style={{ fontSize: "12px", marginTop: "4px", color: "#722ed1" }}>
+    Welcome, {user.full_name || user.username || "User"}
+  </Text>
           </div>
         </Header>
 

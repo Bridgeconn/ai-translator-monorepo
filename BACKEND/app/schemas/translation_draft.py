@@ -46,11 +46,11 @@ class SourceDraftResponse(BaseModel):
     draft_id: UUID
     project_id: UUID
     draft_name: str
-    content: str
-    format: str
-    file_size: int
-    created_at: str
-    message: str
+    content: Optional[str]  # This holds the USFM content
+    format: Optional[str]
+    file_size: Optional[int]
+    created_at: datetime
+    message: Optional[str] = None
 
 class DraftContentResponse(BaseModel):
     content: str
@@ -59,7 +59,9 @@ class GenerateBookDraftRequest(BaseModel):
     project_id: UUID
     book_name: str
 class UpdateDraftRequest(BaseModel):
-    content: str
-    file_size: Optional[int] = None
+    draft_name: Optional[str]
+    content: Optional[str]
+    file_size: Optional[int]
+    format: Optional[str]
 class DraftWithMessage(TranslationDraftOut):
     message: str
