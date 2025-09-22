@@ -6,7 +6,7 @@ from app.models import sources as source_models, languages as language_models, p
 from app.models import verse as verse_models, chapter as chapter_models, book as book_models, books_details as book_details_models
  
  
-def create_project(db: Session, project: schemas.ProjectCreate):
+def create_project(db: Session, project: schemas.ProjectCreate, user_id: UUID):
     # ✅ Check if project already exists with same name, source, target and type
     existing = db.query(project_models.Project).filter(
         project_models.Project.name == project.name,
@@ -59,6 +59,7 @@ def create_project(db: Session, project: schemas.ProjectCreate):
         total_items=0,
         completed_items=0,
         is_active=True,
+        owner_id=user_id
     )
     db.add(db_project)
     db.commit()
@@ -124,11 +125,16 @@ def get_project_by_id(db: Session, project_id: UUID):
     return db_project
  
  
-def get_projects(db: Session):
-    projects = db.query(project_models.Project).all()
+def get_projects(db: Session, user_id: UUID):
+    projects = db.query(project_models.Project).filter(
+        project_models.Project.owner_id == user_id
+    ).all()
+
     if not projects:
         raise HTTPException(status_code=404, detail="No projects found")
+
     return projects
+
  
  
 def get_projects_by_source_id(db: Session, source_id: UUID):

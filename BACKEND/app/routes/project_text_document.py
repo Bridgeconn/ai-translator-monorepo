@@ -33,7 +33,7 @@ def create_or_add_files(
         
         #  Create new project with files
         project_id, files = crud.create_project_with_files(
-            db, request.project_name, request.files
+            db, request.project_name, request.files, current_user.user_id
         )
         return SuccessResponse(
             message=f"New project '{request.project_name}' created successfully with {len(files)} files.",
@@ -63,7 +63,7 @@ def add_files_to_existing(
     """Add files to an existing text document project"""
     try:
         # Pass the files as they are - CRUD will handle Pydantic objects
-        new_files = crud.add_files_to_existing_project(db, project_id, request.project_name, request.files)
+        new_files = crud.add_files_to_existing_project(db, project_id, request.project_name, request.files, current_user.user_id)
         return SuccessResponse(
             message=f"Successfully added {len(new_files)} files to project '{request.project_name}'",
             data={
@@ -134,7 +134,7 @@ def fetch_all_projects(
                 data=projects_summary
             )
         else:
-            projects = crud.get_all_projects(db, project_type="text_document")
+            projects = crud.get_all_projects(db,current_user.user_id, project_type="text_document")
             
             if not projects:
                 return SuccessResponse(
