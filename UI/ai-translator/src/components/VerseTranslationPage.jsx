@@ -439,7 +439,7 @@ const VerseTranslationPage = () => {
   
       message.success({ key, content: "Chapter translated successfully!" });
   
-      // ✅ immediately refresh draft so UI shows translations without refresh
+      // immediately refresh draft so UI shows translations without refresh
       // await updateServerDraft();
   
     } catch (err) {
@@ -663,8 +663,8 @@ const chapterStats = useMemo(() => {
           )}
         </Space>
  
-<Progress
-  percent={100} // always show full bar
+        <Progress
+  percent={100} // always full width
   success={{
     percent:
       chapterStats.total === 0
@@ -674,11 +674,7 @@ const chapterStats = useMemo(() => {
   format={() =>
     `${chapterStats.translated} / ${chapterStats.total} verses`
   }
-   strokeColor={
-    chapterStats.translated === 0
-      ? "#d9d9d9" // plain grey bar if nothing translated
-      : { from: "#108ee9", to: "#87d068" } // gradient once progress > 0
-  }
+  strokeColor="#d9d9d9" // always grey
   style={{ marginTop: 8, marginBottom: 8 }}
 />
       </Space>
@@ -971,21 +967,21 @@ const chapterStats = useMemo(() => {
         try {
           setLoadingDraft(true);
 
-          // 1️⃣ If there are unsaved edits in editor, merge them into tokens
+          // 1️ If there are unsaved edits in editor, merge them into tokens
           const mergedTokens = tokens.map(t => {
             const edited = editedTokens[t.verse_token_id];
             return edited ? { ...t, verse_translated_text: edited.new } : t;
           });
 
-          // 2️⃣ Call API to generate draft using latest translations
+          // 2️ Call API to generate draft using latest translations
           const draft = await generateDraftJson(projectId, selectedBook, mergedTokens);
 
-          // 3️⃣ Update state
+          // 3️ Update state
           setServerDraft(draft.content || "");
           setOriginalDraft(draft.content || ""); // NEW
           setDraftId(draft.draft_id);
 
-          // 4️⃣ Clear temporary edited tokens
+          // 4️ Clear temporary edited tokens
           setEditedTokens({});
           setEditedDraft(null);
 

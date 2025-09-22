@@ -49,7 +49,7 @@ const onMenuClick = ({ key }) => {
 <Menu
   theme="dark"
   mode="inline"
-  onClick={onMenuClick}   // 👈 attach the handler
+  onClick={onMenuClick}   //  attach the handler
   items={[
     { key: "/dashboard", label: "Dashboard" },
     { key: "/projects", label: "Projects" },
@@ -300,12 +300,12 @@ const userMenuItems = token
               />
             </Dropdown>
             <Text style={{ fontSize: "12px", marginTop: "4px", color: "rgb(0, 2, 0, 0.88)" }}>
-              {user.full_name || user.username || "User"}
+              {user.username || "User"}
             </Text> 
-
+{/* 
 <Text strong style={{ fontSize: "12px", marginTop: "4px", color: "#722ed1" }}>
     Welcome, {user.full_name || user.username || "User"}
-  </Text>
+  </Text> */}
           </div>
         </Header>
 
