@@ -374,9 +374,50 @@ notificationApi.error({
   };
 
   const handleCopyDraft = () => {
-    navigator.clipboard.writeText(draftContent);
-    messageApi.info("Draft copied to clipboard!");
+    if (!draftContent?.trim()) {
+      messageApi.warning("No draft content to copy");
+      console.log("No draft content to copy");
+      return;
+    }
+  
+    if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+      // Modern secure API
+      navigator.clipboard.writeText(draftContent)
+        .then(() => {
+          messageApi.success("Draft copied to clipboard!");
+          console.log("Draft copied:", draftContent.slice(0, 100));
+        })
+        .catch((err) => {
+          console.error("Clipboard copy failed:", err);
+          messageApi.error("Failed to copy draft: " + (err.message || err));
+        });
+    } else {
+      // Fallback for HTTP or older browsers
+      const textarea = document.createElement("textarea");
+      textarea.value = draftContent;
+      textarea.style.position = "fixed"; // avoid scrolling
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+  
+      try {
+        const success = document.execCommand("copy");
+        if (success) {
+          messageApi.success("Draft copied to clipboard!");
+          console.log("Draft copied (fallback):", draftContent.slice(0, 100));
+        } else {
+          throw new Error("execCommand returned false");
+        }
+      } catch (err) {
+        console.error("Fallback copy failed:", err);
+        messageApi.error("Failed to copy draft: " + (err.message || err));
+      }
+  
+      document.body.removeChild(textarea);
+    }
   };
+  
   const updateDraftFromEditor = (tokenId, newTranslation, oldTranslation, tokenText, isManual = false) => {
     try {
       const oldVal = String(oldTranslation || tokenText || "");

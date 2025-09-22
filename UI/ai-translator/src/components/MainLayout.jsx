@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation, Outlet, Link } from "react-router-dom";
 import { authAPI } from "../api";
 import {
@@ -35,6 +35,8 @@ export default function MainLayout() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const { notification } = App.useApp();
+  const [showWelcome, setShowWelcome] = useState(false);
+
   // inside MainLayout.jsx
 const token = localStorage.getItem("token");
 const protectedPaths = ["/dashboard", "/projects", "/sources"];
@@ -161,7 +163,21 @@ const userMenuItems = token
       navigate(key);
     };
 
-  const selectedKey = location.pathname;
+  const selectedKey = location.pathname; 
+  useEffect(() => {
+    // Show welcome notification only once after login
+    const justLoggedIn = localStorage.getItem("justLoggedIn");
+
+    if (justLoggedIn && !showWelcome) {
+      notification.success({
+        message: `Welcome, ${ user.username || "User"}!`,
+        description: "Glad to see you back.",
+        placement: "topRight",
+      });
+      setShowWelcome(true);
+      localStorage.removeItem("justLoggedIn"); // prevent showing again
+    }
+  }, [user, showWelcome, notification]);
 
   return location.pathname === "/" ? (
     <HomePage/> // render full-page gradient directly
@@ -300,12 +316,12 @@ const userMenuItems = token
               />
             </Dropdown>
             <Text style={{ fontSize: "12px", marginTop: "4px", color: "rgb(0, 2, 0, 0.88)" }}>
-              {user.full_name || user.username || "User"}
+              {user.username || "User"}
             </Text> 
 
-<Text strong style={{ fontSize: "12px", marginTop: "4px", color: "#722ed1" }}>
-    Welcome, {user.full_name || user.username || "User"}
-  </Text>
+{/* <Text strong style={{ fontSize: "12px", marginTop: "4px", color: "#722ed1" }}>
+    Welcome, {user.username || "User"}
+  </Text> */}
           </div>
         </Header>
 
