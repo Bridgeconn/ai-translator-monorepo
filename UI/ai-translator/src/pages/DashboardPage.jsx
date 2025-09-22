@@ -11,6 +11,8 @@ const Dashboard = () => {
   const [projects, setProjects] = useState([]);
   const [sources, setSources] = useState([]);
   const [loading, setLoading] = useState(true);
+  const token = localStorage.getItem("token"); // wherever you store it
+
 
   const fetchDashboardData = async () => {
     try {
@@ -19,7 +21,11 @@ const Dashboard = () => {
       const [normalResult, textDocResult, sourcesResponse] = await Promise.allSettled([
         projectsAPI.getAllProjects(),
         textDocumentAPI.getAllProjects(true),
-        fetch(import.meta.env.VITE_BACKEND_URL + "/sources/"),
+        fetch(import.meta.env.VITE_BACKEND_URL + "/sources/", {
+          headers: {
+            Authorization: `Bearer ${token}`,   //  add token here
+          },
+        }),       
       ]);
 
       // 🟦 Normal projects

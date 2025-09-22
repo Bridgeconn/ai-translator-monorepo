@@ -34,7 +34,7 @@ def create_source(source: SourceCreate,current_user: User = Depends(get_current_
     summary="Fetch a source by ID"
 )
 def read_source(source_id: UUID, db: Session = Depends(get_db),current_user: User = Depends(get_current_user)):
-    source = source_service.get_source_by_id(db, source_id, current_user)
+    source = source_service.get_source_by_id(db, source_id, current_user.user_id)
     return {
         "message": "Source fetched successfully.",
         "data": source
@@ -45,8 +45,8 @@ def read_source(source_id: UUID, db: Session = Depends(get_db),current_user: Use
     response_model=SuccessListResponse,
     summary="Fetch all sources"
 )
-def read_sources(db: Session = Depends(get_db),current_user: User = Depends(get_current_user)):
-    sources = source_service.get_all_sources(db, current_user)
+def read_sources(db: Session = Depends(get_db),current_user = Depends(get_current_user)):
+    sources = source_service.get_all_sources(db, current_user.user_id)
     source_responses = [SourceResponse.from_orm(src) for src in sources]
     msg = "Sources fetched successfully." if sources else "No sources found."
     return {

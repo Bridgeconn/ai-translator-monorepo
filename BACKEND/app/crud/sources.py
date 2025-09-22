@@ -56,8 +56,8 @@ class SourceService:
             raise HTTPException(status_code=404, detail="Source not found")
         return source
 
-    def get_all_sources(self, db: Session, current_user: User) -> list[Source]:
-        return db.query(Source).filter(Source.user_id == current_user.user_id).all()
+    def get_all_sources(self, db: Session, user_id: UUID) -> list[Source]:
+        return db.query(Source).filter(Source.user_id == user_id).all()
 
     def get_sources_by_version_name(self, db: Session, version_name: str) -> list[Source]:
         return db.query(Source).filter(Source.version_name == version_name).all()
