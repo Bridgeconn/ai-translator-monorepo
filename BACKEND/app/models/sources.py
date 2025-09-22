@@ -17,4 +17,7 @@ class Source(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     is_active = Column(Boolean, nullable=False, default=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
     projects = relationship("Project", back_populates="source", cascade="all, delete-orphan")
+    user = relationship("User", back_populates="sources")  # new
+    
