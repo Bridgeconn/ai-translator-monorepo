@@ -9,35 +9,42 @@ import {
   Input,
   Select,
   message,
+  Tooltip,
 } from "antd";
 import {
   FolderAddOutlined,
   FileTextFilled,
   ThunderboltOutlined,
   PlusCircleOutlined,
+  SearchOutlined,
+  InfoCircleOutlined,
 } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../api";
 import CreateProjectModal from "../components/CreateProject";
+import LanguageSelect from "./LanguageSelect";
 
 const { Text } = Typography;
 const { Option } = Select;
+const { Search } = Input;
 
 export default function QuickActions() {
   const [isProjectModalVisible, setIsProjectModalVisible] = useState(false);
   const [isSourceModalVisible, setIsSourceModalVisible] = useState(false);
 
-  // ✅ new: version modal state
+  //  new: version modal state
   const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
 
   const [projectForm] = Form.useForm();
   const [sourceForm] = Form.useForm();
-  const [versionForm] = Form.useForm(); // ✅ new form for version
+  const [versionForm] = Form.useForm(); //  new form for version
 
   const queryClient = useQueryClient();
 
-  // ✅ AntD v5 message hook
+  //  AntD v5 message hook
   const [msgApi, contextHolder] = message.useMessage();
+  const [searchText, setSearchText] = useState(""); // for Search bar
+
 
   /* -------- Queries -------- */
   const { data: languages = [] } = useQuery({
@@ -79,7 +86,7 @@ export default function QuickActions() {
     },
   });
 
-  // ✅ new mutation for versions
+  //  new mutation for versions
   const createVersionMutation = useMutation({
     mutationFn: (values) => api.post("/versions/", values),
     onSuccess: () => {
@@ -139,62 +146,68 @@ export default function QuickActions() {
       }}
       styles={{ body: { padding: 20 }, title: { fontSize: 18, fontWeight: 600 } }}
     >
-      {/* ✅ Message contextHolder */}
+      {/*  Message contextHolder */}
       {contextHolder}
-<Text
+      <Text
         style={{
           display: "block",
           marginBottom: 20,
           color: "#262626",
         }}
       >
-       Begin by adding a source file and creating a project. You can use Quick Translate for instant translations.
+        Begin by adding a source file and creating a project. You can use Quick Translate for instant translations.
       </Text>
 
       <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-        <Button
-          type="primary"
-          icon={<FileTextFilled />}
-          size="large"
-          block
-          style={{
-            borderRadius: 8,
-            backgroundColor: "#50C878",
-            borderColor: "#50C878",
-          }}
-          onClick={() => setIsSourceModalVisible(true)}
-        >
-          Add New Source
-        </Button>
+        <Tooltip title="A Source is folder that contains Bible books that you want to translate.">
+          <Button
+            type="primary"
+            icon={<FileTextFilled />}
+            size="large"
+            block
+            style={{
+              borderRadius: 8,
+              backgroundColor: "#50C878",
+              borderColor: "#50C878",
+            }}
+            onClick={() => setIsSourceModalVisible(true)}
+          >
+            Add New Source <InfoCircleOutlined style={{ marginLeft: 8 }} />
+          </Button>
+        </Tooltip>
 
-        <Button
-          type="primary"
-          icon={<FolderAddOutlined />}
-          size="large"
-          block
-          style={{
-            borderRadius: 8,
-            backgroundColor: "#4A90E2",
-            borderColor: "#4A90E2",
-          }}
-          onClick={() => setIsProjectModalVisible(true)}
-        >
-          Create Project
-        </Button>
+
+        <Tooltip title="A Project is where you link a source folder and target language to start translation of Bible books.">
+          <Button
+            type="primary"
+            icon={<FolderAddOutlined />}
+            size="large"
+            block
+            style={{
+              borderRadius: 8,
+              backgroundColor: "#4A90E2",
+              borderColor: "#4A90E2",
+            }}
+            onClick={() => setIsProjectModalVisible(true)}
+          >
+            Create Project <InfoCircleOutlined style={{ marginLeft: 8 }} />
+          </Button>
+        </Tooltip>
+
 
         <Button
           type="default"
           icon={<ThunderboltOutlined />}
           size="large"
           block
-          style={{ borderRadius: 8}}
+          style={{ borderRadius: 8 }}
           onClick={() => (window.location.href = "/quick-translation")}
         >
           Quick Translate
         </Button>
       </Space>
 
-      {/* ✅ Project Modal */}
+      {/* Project Modal */}
       <CreateProjectModal
         isVisible={isProjectModalVisible}
         onCancel={() => setIsProjectModalVisible(false)}
@@ -221,15 +234,19 @@ export default function QuickActions() {
             label="Language"
             name="language_id"
             rules={[{ required: true, message: "Please select a language" }]}
+            style={{ width: "100%" }}
           >
-            <Select placeholder="Select a language" showSearch>
-              {languages.map((lang) => (
-                <Option key={lang.language_id} value={lang.language_id}>
-                  {lang.name}
-                </Option>
-              ))}
-            </Select>
+            <div className="full-width-select">
+              <LanguageSelect
+                label=""
+                onChange={(langObj) => {
+                  sourceForm.setFieldsValue({ language_id: langObj.language_id });
+
+                }}
+              />
+            </div>
           </Form.Item>
+
 
           <Form.Item
             label={
@@ -237,7 +254,7 @@ export default function QuickActions() {
                 Version
                 <PlusCircleOutlined
                   style={{ color: "#1890ff", cursor: "pointer" }}
-                  onClick={() => setIsVersionModalOpen(true)} // ✅ open modal
+                  onClick={() => setIsVersionModalOpen(true)} // open modal
                 />
               </Space>
             }
@@ -268,7 +285,7 @@ export default function QuickActions() {
         </Form>
       </Modal>
 
-      {/* ✅ Version Modal */}
+      {/*  Version Modal */}
       <Modal
         title="Add New Version"
         open={isVersionModalOpen}
