@@ -691,8 +691,8 @@ const chapterStats = useMemo(() => {
           )}
         </Space>
  
-<Progress
-  percent={100} // always show full bar
+        <Progress
+  percent={100} // always full width
   success={{
     percent:
       chapterStats.total === 0
@@ -702,11 +702,7 @@ const chapterStats = useMemo(() => {
   format={() =>
     `${chapterStats.translated} / ${chapterStats.total} verses`
   }
-   strokeColor={
-    chapterStats.translated === 0
-      ? "#d9d9d9" // plain grey bar if nothing translated
-      : { from: "#108ee9", to: "#87d068" } // gradient once progress > 0
-  }
+  strokeColor="#d9d9d9" // always grey
   style={{ marginTop: 8, marginBottom: 8 }}
 />
  </Space>

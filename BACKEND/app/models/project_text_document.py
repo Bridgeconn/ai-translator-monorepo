@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, TIMESTAMP, func, Integer, UniqueConstraint
+from sqlalchemy import Column, String, TIMESTAMP, func, Integer, UniqueConstraint, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from app.database import Base
 import uuid
@@ -8,6 +8,7 @@ class ProjectTextDocument(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4) # Add unique primary key
     project_id = Column(UUID(as_uuid=True), nullable=False)  # Same for all files in project
+    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
     project_name = Column(String, nullable=False)  # Same for all files in project
     project_type = Column(String, nullable=False, default="text_document")  # Project type
     translation_type = Column(String, nullable=False, default="text_document")  # Translation type
