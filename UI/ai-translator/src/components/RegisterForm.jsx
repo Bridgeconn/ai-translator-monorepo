@@ -44,8 +44,9 @@ export default function RegisterForm() {
         description: "Please login to continue.",
         placement: "top",
       });
-      navigate("/login");
-    }
+      setTimeout(() => {
+        navigate("/login");
+      }, 1000);    }
 
     setLoading(false);
   };
@@ -121,7 +122,7 @@ export default function RegisterForm() {
           layout="vertical"
           style={{ marginTop: 20 }}
         >
-          {/* Full Name */}
+          {/* Full Name
           <Form.Item
             name="full_name"
             rules={[
@@ -132,7 +133,7 @@ export default function RegisterForm() {
             ]}
           >
             <Input prefix={<IdcardOutlined />} placeholder="Full Name (optional)" />
-          </Form.Item>
+          </Form.Item> */}
 
           {/* Username */}
           <Form.Item
@@ -178,7 +179,7 @@ export default function RegisterForm() {
           </Form.Item>
 
           {/* Confirm Password */}
-          <Form.Item
+          {/* <Form.Item
             name="confirmPassword"
             dependencies={["password"]}
             rules={[
@@ -199,7 +200,7 @@ export default function RegisterForm() {
               prefix={<LockOutlined />}
               placeholder="Confirm Password"
             />
-          </Form.Item>
+          </Form.Item> */}
 
           <Form.Item>
             <Button

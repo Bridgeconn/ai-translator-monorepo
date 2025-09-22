@@ -17,7 +17,7 @@ def create_project(
 ):
     if not project.name or not project.source_id or not project.target_language_id:
         raise HTTPException(status_code=400, detail="Name, source_id and target_language_id are required")
-    db_project = crud.create_project(db, project)
+    db_project = crud.create_project(db, project, current_user.user_id)
     project_data = ProjectResponse.from_orm(db_project)
     return {"message": "Project created successfully", "data": project_data}
  
@@ -38,9 +38,16 @@ def get_project_id(project_id: UUID, db: Session = Depends(get_db)):
  
  
 @router.get("/", response_model=SuccessResponse[list[ProjectResponse]])
-def list_projects(db: Session = Depends(get_db)):
-    projects = crud.get_projects(db)
-    return {"message": "Projects fetched successfully", "data": [ProjectResponse.from_orm(p) for p in projects]}
+def list_projects(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)   # 👈 now requires login
+):
+    projects = crud.get_projects(db, current_user.user_id)  # 👈 pass user_id
+    return {
+        "message": "Projects fetched successfully",
+        "data": [ProjectResponse.from_orm(p) for p in projects]
+    }
+
  
  
 @router.get("/by-source/{source_id}", response_model=SuccessResponse[list[ProjectResponse]])

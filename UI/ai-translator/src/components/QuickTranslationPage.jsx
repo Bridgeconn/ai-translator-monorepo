@@ -263,14 +263,32 @@ export default function QuickTranslationPage() {
 
   // ------------------ Copy & Paste Logic ------------------
   const handleCopy = (content) => {
-    try {
-      navigator.clipboard.writeText(content);
-      showNotification("success", "Copied", "Text copied to clipboard!");
-    } catch (err) {
-      console.error("Failed to copy: ", err);
-      showNotification("error", "Copy Failed", "Could not copy text.");
+    if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(content)
+        .then(() => {
+          showNotification("success", "Copied", "Text copied to clipboard!");
+        })
+        .catch((err) => {
+          console.error("Failed to copy: ", err);
+          showNotification("error", "Copy Failed", "Could not copy text.");
+        });
+    } else {
+      // Fallback for insecure contexts
+      const textarea = document.createElement("textarea");
+      textarea.value = content;
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand("copy");
+        showNotification("success", "Copied", "Text copied to clipboard!");
+      } catch (err) {
+        console.error("Fallback copy failed: ", err);
+        showNotification("error", "Copy Failed", "Could not copy text.");
+      }
+      document.body.removeChild(textarea);
     }
   };
+  
 
   const handlePaste = async (setContent) => {
     try {

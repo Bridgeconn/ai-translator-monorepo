@@ -7,7 +7,8 @@ from app.schemas.sources import (
     SuccessResponse,SuccessListResponse, ErrorResponse
 )
 from app.crud.sources import source_service
-
+from app.routes.auth import get_current_user
+from app.models.users import User
 router = APIRouter()
 
 @router.post(
@@ -17,10 +18,10 @@ router = APIRouter()
     status_code=status.HTTP_201_CREATED,
     summary="Create a new source"
 )
-def create_source(source: SourceCreate, db: Session = Depends(get_db)):
+def create_source(source: SourceCreate,current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not source.language_id or not source.version_id:
         raise HTTPException(status_code=400, detail="Language ID and Version ID are required")
-    created = source_service.create_source(db, source)
+    created = source_service.create_source(db, source, current_user.user_id)
     return {
         "message": "Source created successfully.",
         "data": created
@@ -32,8 +33,8 @@ def create_source(source: SourceCreate, db: Session = Depends(get_db)):
     responses={404: {"model": ErrorResponse}},
     summary="Fetch a source by ID"
 )
-def read_source(source_id: UUID, db: Session = Depends(get_db)):
-    source = source_service.get_source_by_id(db, source_id)
+def read_source(source_id: UUID, db: Session = Depends(get_db),current_user: User = Depends(get_current_user)):
+    source = source_service.get_source_by_id(db, source_id, current_user.user_id)
     return {
         "message": "Source fetched successfully.",
         "data": source
@@ -44,8 +45,8 @@ def read_source(source_id: UUID, db: Session = Depends(get_db)):
     response_model=SuccessListResponse,
     summary="Fetch all sources"
 )
-def read_sources(db: Session = Depends(get_db)):
-    sources = source_service.get_all_sources(db)
+def read_sources(db: Session = Depends(get_db),current_user = Depends(get_current_user)):
+    sources = source_service.get_all_sources(db, current_user.user_id)
     source_responses = [SourceResponse.from_orm(src) for src in sources]
     msg = "Sources fetched successfully." if sources else "No sources found."
     return {

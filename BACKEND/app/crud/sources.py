@@ -2,12 +2,13 @@ from sqlalchemy.orm import Session
 from app.models.sources import Source
 from app.models.languages import Language
 from app.models.versions import Version
+from app.models.users import User
 from app.schemas.sources import SourceCreate, SourceUpdate
 from fastapi import HTTPException, status
 from uuid import UUID
 
 class SourceService:
-    def create_source(self, db: Session, source_data: SourceCreate) -> Source:
+    def create_source(self, db: Session, source_data: SourceCreate, user_id: UUID) -> Source:
         existing_source = db.query(Source).filter(
             Source.language_id == source_data.language_id,
             Source.version_id == source_data.version_id
@@ -38,6 +39,7 @@ class SourceService:
         source = Source(
         language_id=source_data.language_id,
         language_name=language.name,
+        user_id=user_id,
         version_id=source_data.version_id,
         version_name=version.version_name,
         description=source_data.description,
@@ -48,14 +50,14 @@ class SourceService:
         db.refresh(source)
         return source
 
-    def get_source_by_id(self, db: Session, source_id: UUID) -> Source:
-        source = db.query(Source).filter(Source.source_id == source_id).first()
+    def get_source_by_id(self, db: Session, source_id: UUID, current_user: User) -> Source:
+        source = db.query(Source).filter(Source.source_id == source_id,Source.user_id == current_user.user_id).first()
         if not source:
             raise HTTPException(status_code=404, detail="Source not found")
         return source
 
-    def get_all_sources(self, db: Session) -> list[Source]:
-        return db.query(Source).all()
+    def get_all_sources(self, db: Session, user_id: UUID) -> list[Source]:
+        return db.query(Source).filter(Source.user_id == user_id).all()
 
     def get_sources_by_version_name(self, db: Session, version_name: str) -> list[Source]:
         return db.query(Source).filter(Source.version_name == version_name).all()

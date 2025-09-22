@@ -512,24 +512,52 @@ const chapterStats = useMemo(() => {
     ? tokens.filter((t) => t.verse_translated_text)
     : tokens;
  
-  const copyDraft = async () => {
-    try {
-      const contentToCopy = serverDraft?.trim();
- 
-      if (!contentToCopy) {
-        message.warning("No draft content to copy");
-        console.log(" No draft content to copy");
-        return;
+    const copyDraft = async () => {
+      try {
+        const contentToCopy = serverDraft?.trim();
+    
+        if (!contentToCopy) {
+          message.warning("No draft content to copy");
+          console.log("No draft content to copy");
+          return;
+        }
+    
+        if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+          // Modern API (secure contexts)
+          await navigator.clipboard.writeText(contentToCopy);
+          message.success("Draft copied to clipboard");
+          console.log("Draft copied:", contentToCopy.slice(0, 100));
+        } else {
+          // Fallback for insecure contexts or unsupported browsers
+          const textarea = document.createElement("textarea");
+          textarea.value = contentToCopy;
+          textarea.style.position = "fixed"; // avoid scrolling
+          textarea.style.opacity = "0";
+          document.body.appendChild(textarea);
+          textarea.focus();
+          textarea.select();
+    
+          try {
+            const success = document.execCommand("copy");
+            if (success) {
+              message.success("Draft copied to clipboard");
+              console.log("Draft copied (fallback):", contentToCopy.slice(0, 100));
+            } else {
+              throw new Error("execCommand returned false");
+            }
+          } catch (err) {
+            console.error("Fallback copy failed:", err);
+            message.error("Failed to copy draft: " + (err.message || err));
+          }
+    
+          document.body.removeChild(textarea);
+        }
+      } catch (err) {
+        console.error("Clipboard copy failed:", err);
+        message.error("Failed to copy draft: " + (err.message || err));
       }
- 
-      await navigator.clipboard.writeText(contentToCopy);
-      message.success("Draft copied to clipboard ");
-      console.log(" Draft copied:", contentToCopy.slice(0, 100)); // log first 100 chars
-    } catch (err) {
-      console.error(" Clipboard copy failed:", err);
-      message.error("Failed to copy draft: " + (err.message || err));
-    }
-  };
+    };
+    
  
   // ---------- Effects ----------
   useEffect(() => {
@@ -663,8 +691,8 @@ const chapterStats = useMemo(() => {
           )}
         </Space>
  
-<Progress
-  percent={100} // always show full bar
+        <Progress
+  percent={100} // always full width
   success={{
     percent:
       chapterStats.total === 0
@@ -674,14 +702,10 @@ const chapterStats = useMemo(() => {
   format={() =>
     `${chapterStats.translated} / ${chapterStats.total} verses`
   }
-   strokeColor={
-    chapterStats.translated === 0
-      ? "#d9d9d9" // plain grey bar if nothing translated
-      : { from: "#108ee9", to: "#87d068" } // gradient once progress > 0
-  }
+  strokeColor="#d9d9d9" // always grey
   style={{ marginTop: 8, marginBottom: 8 }}
 />
-      </Space>
+ </Space>
  
       <Tabs
         activeKey={activeTab}
@@ -947,7 +971,7 @@ const chapterStats = useMemo(() => {
                     <CopyOutlined
                       style={{
                         fontSize: 20,
-                        color: "#1677ff", // AntD primary blue, you can change
+                        color: "#black", // AntD primary blue, you can change
                         cursor: !(
                           serverDraft?.trim() ||
                           tokens.some((t) => t.verse_translated_text?.trim())
