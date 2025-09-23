@@ -56,11 +56,14 @@ app = FastAPI(
 )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # or ["http://localhost:5173"]
+    allow_origins=[
+        "https://mt.vachanengine.org",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 @app.get("/", summary="Root Endpoint")
 def read_root():
     return {"message": "Welcome to the AI Bible Translator backend!"}
