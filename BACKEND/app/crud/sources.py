@@ -11,7 +11,8 @@ class SourceService:
     def create_source(self, db: Session, source_data: SourceCreate, user_id: UUID) -> Source:
         existing_source = db.query(Source).filter(
             Source.language_id == source_data.language_id,
-            Source.version_id == source_data.version_id
+            Source.version_id == source_data.version_id,
+            Source.user_id == user_id
         ).first()
         if existing_source:
             raise HTTPException(
