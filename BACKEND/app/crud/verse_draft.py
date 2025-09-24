@@ -113,41 +113,54 @@ class TranslationService:
       # ----------------- improved text splitting -----------------
     def split_text_intelligently(self, text: str, num_parts: int) -> List[str]:
         """
-        Split text into num_parts segments without dropping content.
-        Handles punctuation first, then falls back to even splits.
+        Robust split that preserves all translated words:
+        - normalizes whitespace/newlines,
+        - if total words < num_parts, give one word to earliest parts,
+        - otherwise distribute proportionally (by original weights if provided elsewhere),
+        - never drop words; leftover appended to last part.
         """
         if num_parts <= 1:
             return [text]
- 
-        # Try punctuation splits
-        parts = re.split(r'(?<=[.;:])\s+', text)
-        if len(parts) >= num_parts:
-            return parts[:num_parts]
- 
-        parts = re.split(r'(?<=,)\s+', text)
-        if len(parts) >= num_parts:
-            return parts[:num_parts]
- 
-        # Fallback: even word split
-        words = text.split()
-        if len(words) <= num_parts:
-            return [text]
- 
-        avg = len(words) / float(num_parts)
-        result, last = [], 0.0
- 
-        while round(last) < len(words):
-            start = int(round(last))
-            last += avg
-            end = int(round(last))
-            result.append(' '.join(words[start:end]))
- 
-        while len(result) < num_parts:
-            result.append('')
-        if len(result) > num_parts:
-            result = result[:num_parts - 1] + [' '.join(result[num_parts - 1:])]
- 
-        return result
+
+        if not text:
+            return ['' for _ in range(num_parts)]
+
+        # Normalize whitespace/newlines (preserve unicode)
+        normalized = re.sub(r'\s+', ' ', text.strip(), flags=re.UNICODE)
+        trans_words = re.findall(r'\S+', normalized, flags=re.UNICODE)
+        total = len(trans_words)
+
+        # If there are no words
+        if total == 0:
+            return ['' for _ in range(num_parts)]
+
+        # If fewer words than parts: give one word to as many leading parts as possible
+        if total <= num_parts:
+            parts = []
+            for i in range(num_parts):
+                parts.append(trans_words[i] if i < total else '')
+            return parts
+
+        # Otherwise distribute words proportionally (even split baseline)
+        base = total // num_parts
+        remainder = total % num_parts
+
+        parts = []
+        pos = 0
+        for i in range(num_parts):
+            take = base + (1 if i < remainder else 0)
+            if take > 0:
+                slice_words = trans_words[pos: pos + take]
+                parts.append(' '.join(slice_words))
+                pos += take
+            else:
+                parts.append('')
+        # Append any leftover to the last part
+        if pos < total:
+            leftover = ' '.join(trans_words[pos:])
+            parts[-1] = (parts[-1] + ' ' + leftover).strip()
+
+        return parts
  
     def process_verse_block(self, lines: List[str], start_idx: int) -> Tuple[List[str], List[int], int]:
         verse_lines = []
@@ -193,60 +206,84 @@ class TranslationService:
         text_line_indices: List[int],
         translated_text: str
     ) -> List[str]:
+
         """
-        Rebuild verse lines with translated text distributed appropriately.
-        Uses apply_tags_to_translation() to re-insert inline tags.
-        Ensures full translated_text is preserved.
+        Rebuild the verse keeping all translated text.
+        Strategy:
+          - collect original segments for text_line_indices (for tag context)
+          - split translated_text robustly into parts (using split_text_intelligently)
+          - reapply tags to each part using original line's context
+          - insert parts back; if parts remain, append them to the last textual line
         """
         if not text_line_indices:
-            return verse_lines
- 
-        text_parts = self.split_text_intelligently(translated_text, len(text_line_indices))
-        result_lines = []
-        text_part_idx = 0
- 
+          return verse_lines
+    # Build original segments (used only for tag context; we may extend weighting later)
+        original_segments = []
+        for idx in text_line_indices:
+            original_segments.append(self.extract_text_from_line(verse_lines[idx]) if 0 <= idx < len(verse_lines) else '')
+        # Normalize translated text and split into parts
+        parts = self.split_text_intelligently(translated_text or "", len(original_segments))
+        result = []
+        part_idx = 0
         for i, line in enumerate(verse_lines):
-            if i in text_line_indices and text_part_idx < len(text_parts):
+            if i in text_line_indices and part_idx < len(parts):
+                part = parts[part_idx].strip()
                 if i == 0:
-                    verse_match = re.match(r'(\\v\s+\d+)\s*(.*)', line)
-                    if verse_match:
-                        verse_marker = verse_match.group(1)
-                        original_text = verse_match.group(2)
-                        translated_with_tags = self.apply_tags_to_translation(original_text, text_parts[text_part_idx])
-                        result_lines.append(f"{verse_marker} {translated_with_tags}")
+                    # verse line normally like: \v 1 text...
+                    m = re.match(r'(\\v\s+\d+)\s*(.*)', line)
+                    if m:
+                        marker = m.group(1)
+                        original_text = m.group(2)
+                        translated_with_tags = self.apply_tags_to_translation(original_text, part)
+                        if translated_with_tags:
+                            result.append(f"{marker} {translated_with_tags}")
+                        else:
+                            result.append(f"{marker}")
                     else:
-                        result_lines.append(f"{line} {text_parts[text_part_idx]}")
+                        result.append(f"{line} {part}" if part else line)
                 else:
-                    marker_match = re.match(r'(\\[a-z]+\d*\*?\s*)', line)
-                    if marker_match:
-                        marker = marker_match.group(1)
-                        translated_with_tags = self.apply_tags_to_translation(
-                            self.extract_text_from_line(line), text_parts[text_part_idx]
-                        )
-                        result_lines.append(f"{marker}{translated_with_tags}")
+                    # Other text-containing lines may have markers like \q, \s1, etc.
+                    marker_m = re.match(r'(\\[a-z]+\d*\*?\s*)', line)
+                    if marker_m:
+                        marker = marker_m.group(1)
+                        original_text = self.extract_text_from_line(line)
+                        translated_with_tags = self.apply_tags_to_translation(original_text, part)
+                        if translated_with_tags:
+                            result.append(f"{marker}{translated_with_tags}")
+                        else:
+                            # keep marker if no text
+                            result.append(marker.rstrip())
                     else:
-                        result_lines.append(text_parts[text_part_idx])
-                text_part_idx += 1
+                        result.append(part if part else "")
+                part_idx += 1
             else:
+                # preserve non-text or control lines
                 if self.line_contains_text(line):
-                    marker_match = re.match(r'(\\[a-z]+\d*\*?\s*)', line)
-                    if marker_match:
-                        result_lines.append(marker_match.group(1).rstrip())
+                    marker_m = re.match(r'(\\[a-z]+\d*\*?\s*)', line)
+                    if marker_m:
+                        result.append(marker_m.group(1).rstrip())
                     else:
-                        result_lines.append("")
+                        result.append("")
                 else:
-                    result_lines.append(line)
+                    result.append(line)
  
-        # ✅ append any leftover translation parts (don’t drop text!)
-        if text_part_idx < len(text_parts):
-            extra_text = ' '.join(text_parts[text_part_idx:]).strip()
-            if extra_text:
-                if result_lines and not result_lines[-1].startswith('\\'):
-                    result_lines[-1] += ' ' + extra_text
-                else:
-                    result_lines.append(extra_text)
+        # If there are leftover parts (shouldn't usually happen), append to last textual line
+        if part_idx < len(parts):
+            remaining = ' '.join(p for p in parts[part_idx:] if p).strip()
+            if remaining:
+                # find last index in result that contains text (prefer last non-control line)
+                appended = False
+                for j in range(len(result) - 1, -1, -1):
+                    if not result[j].startswith('\\'):
+                        result[j] = (result[j] + ' ' + remaining).strip()
+                        appended = True
+                        break
+                if not appended:
+                    # no suitable place found — append as a new line
+                    result.append(remaining)
  
-        return result_lines
+        return result
+ 
     # ----------------- your generate draft function (unchanged except it uses the above helpers) -----------------
     def generate_draft_from_verses(
         self,
