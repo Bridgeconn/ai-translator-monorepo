@@ -495,7 +495,7 @@ const VerseTranslationPage = () => {
       }
     } catch (err) {
       console.error(err);
-      message.error("Failed to fetch draft from server");
+      //message.error("Failed to fetch draft from server");
       setServerDraft("");
       setDraftId(null);
     } finally {
