@@ -104,7 +104,7 @@ const CreateProjectModal = ({
                   );
                   if (selectedSource && langObj) {
                     form.setFieldsValue({
-                      project_name: `${selectedSource.language_name} - ${langObj.name} Translation`,
+                      project_name: `${selectedSource.language_name} - ${langObj.name}`,
                     });
                   }
                 }}

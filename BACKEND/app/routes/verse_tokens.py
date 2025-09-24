@@ -69,14 +69,14 @@ def get_tokens_by_project(
 @router.get("/by-id/{verse_token_id}")
 def get_verse_token(
     verse_token_id: UUID,
+    project_id: UUID,                  # ✅ require project_id
     db: Session = Depends(get_db)
 ):
-    token = verse_token_crud.get_verse_token_by_id(db, verse_token_id)
+    token = verse_token_crud.get_verse_token_by_id(db, verse_token_id, project_id)
     return {
         "message": "Verse token retrieved successfully.",
         "data": token
     }
-
 
 # ------------------------------
 # Translation (Vachan AI)
@@ -99,17 +99,18 @@ def translate_single_token(
 # ------------------------------
 # Manual Translation Update
 # ------------------------------
+
 @router.patch("/manual-update/{verse_token_id}")
 def manual_update_translation_route(
     verse_token_id: UUID,
     update: ManualTranslationUpdate,
+    project_id: UUID,                 # ✅ require project_id
     db: Session = Depends(get_db)
 ):
     updated_token = verse_token_crud.manual_update_translation(
-        db, verse_token_id, update.translated_text
+        db, verse_token_id, project_id, update.translated_text
     )
     return {"message": "Translation updated successfully", "data": updated_token}
-
 # # Book
 
 @router.post(
