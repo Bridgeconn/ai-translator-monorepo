@@ -309,8 +309,9 @@ export const verseTokensAPI = {
     return res.data;
   },
 
-  manualUpdateVerseToken: async (verseTokenId, translatedText) => {
+  manualUpdateVerseToken: async (projectId, verseTokenId, translatedText) => {
     const res = await api.patch(`/verse-tokens/manual-update/${verseTokenId}`, {
+      project_id: projectId,               // 👈 add project scope
       translated_text: translatedText,
     });
     return res.data;
@@ -355,6 +356,15 @@ export const translateChapter = async (projectId, bookName, chapterNumber, verse
   );
   return res.data;
 };
+export const chaptersAPI = {
+  getTokensByChapter: async (projectId, chapterId) => {
+    const res = await api.get(`/api/chapters/${chapterId}/tokens`, {
+      params: { project_id: projectId },   // 👈 required now
+    });
+    return res.data;
+  },
+};
+
 
 // 1. Generate or fetch existing draft (JSON)
 export const generateDraftJson = async (projectId, bookName) => {

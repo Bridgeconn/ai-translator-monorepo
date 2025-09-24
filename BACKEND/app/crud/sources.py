@@ -51,8 +51,8 @@ class SourceService:
         db.refresh(source)
         return source
 
-    def get_source_by_id(self, db: Session, source_id: UUID, current_user: User) -> Source:
-        source = db.query(Source).filter(Source.source_id == source_id,Source.user_id == current_user.user_id).first()
+    def get_source_by_id(self, db: Session, source_id: UUID, user_id: UUID) -> Source:
+        source = db.query(Source).filter(Source.source_id == source_id,Source.user_id == user_id).first()
         if not source:
             raise HTTPException(status_code=404, detail="Source not found")
         return source

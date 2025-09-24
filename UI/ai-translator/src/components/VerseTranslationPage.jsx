@@ -195,18 +195,24 @@ const VerseTranslationPage = () => {
         }
   
         try {
-          const res = await api.get(`/api/chapters/${chapterObj.chapter_id}/tokens`);
+          const res = await api.get(`/api/chapters/${chapterObj.chapter_id}/tokens`, {
+            params: { project_id: projectId },
+          });
           data = Array.isArray(res.data) ? res.data : [];
   
           if (data.length === 0) {
             await ensureBookTokens(bookName);
-            const res2 = await api.get(`/api/chapters/${chapterObj.chapter_id}/tokens`);
+            const res2 = await api.get(`/api/chapters/${chapterObj.chapter_id}/tokens`, {
+              params: { project_id: projectId },
+            });
             data = Array.isArray(res2.data) ? res2.data : [];
           }
         } catch (err) {
           if (err.response?.status === 404) {
             await ensureBookTokens(bookName);
-            const res2 = await api.get(`/api/chapters/${chapterObj.chapter_id}/tokens`);
+            const res2 = await api.get(`/api/chapters/${chapterObj.chapter_id}/tokens`, {
+              params: { project_id: projectId },
+            });
             data = Array.isArray(res2.data) ? res2.data : [];
           } else {
             throw err;
@@ -268,9 +274,14 @@ const VerseTranslationPage = () => {
   const handleManualUpdate = async (tokenId, newText) => {
     try {
       // 1. Update verse token in DB
-      const res = await api.patch(`/verse_tokens/manual-update/${tokenId}`, {
-        translated_text: newText,
-      });
+      const res = await api.patch(
+        `/verse_tokens/manual-update/${tokenId}?project_id=${projectId}`,
+        {
+          translated_text: newText,   // body
+        }
+      );
+      
+      
  
       // 2. Update local tokens state
       setTokens((prev) =>
@@ -625,13 +636,15 @@ const chapterStats = useMemo(() => {
       </Breadcrumb>
  
       <Space direction="vertical" style={{ width: "100%" }} size="small">
-        <Title level={3}>Verse Translation</Title>
-        {project && (
+      <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: '#1f2937' }}>
+       Verse Translation ({project?.name})
+        </h2>        
+        {/* {project && (
           <Text>
             Source: {project.source_language_name} | Target:{" "}
             {project.target_language_name}
           </Text>
-        )}
+        )} */}
  
         {/* Book + Chapter Selectors */}
         <Space>
