@@ -141,12 +141,13 @@ def get_verse_tokens_by_project(db: Session, project_id: UUID, book_name: Option
 
 
 
-def get_verse_token_by_id(db: Session, verse_token_id: UUID):
+def get_verse_token_by_id(db: Session, verse_token_id: UUID, project_id: UUID):
     token_obj = db.query(VerseTokenTranslation).filter(
-        VerseTokenTranslation.verse_token_id == verse_token_id
+        VerseTokenTranslation.verse_token_id == verse_token_id,
+        VerseTokenTranslation.project_id == project_id   # ✅ enforce project
     ).first()
     if not token_obj:
-        raise HTTPException(status_code=404, detail="Verse token not found")
+        raise HTTPException(status_code=404, detail="Verse token not found for this project")
     return token_obj
 
 
@@ -222,12 +223,13 @@ def translate_verse_token(db: Session, verse_token_id: UUID):
     raise HTTPException(status_code=504, detail="Timeout waiting for Vachan AI translation.")
 
 
-def manual_update_translation(db: Session, verse_token_id: UUID, new_translation: str):
+def manual_update_translation(db: Session, verse_token_id: UUID, project_id: UUID, new_translation: str):
     token_obj = db.query(VerseTokenTranslation).filter(
-        VerseTokenTranslation.verse_token_id == verse_token_id
+        VerseTokenTranslation.verse_token_id == verse_token_id,
+        VerseTokenTranslation.project_id == project_id   # ✅ enforce project
     ).first()
     if not token_obj:
-        raise HTTPException(status_code=404, detail="Verse token not found")
+        raise HTTPException(status_code=404, detail="Verse token not found for this project")
 
     token_obj.verse_translated_text = new_translation
     token_obj.is_reviewed = True

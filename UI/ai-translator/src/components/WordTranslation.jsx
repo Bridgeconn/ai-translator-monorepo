@@ -195,7 +195,7 @@ notificationApi.error({
     }
     try {
       const eventSource = new EventSource(
-        `http://localhost:8000/api/generate_batch_stream/${projectId}?book_id=${encodeURIComponent(selectedBook.book_id)}`
+        import.meta.env.VITE_BACKEND_URL + `/api/generate_batch_stream/${projectId}?book_id=${encodeURIComponent(selectedBook.book_id)}`
       );
       let hasError = false;
       eventSource.onmessage = (event) => {
@@ -679,13 +679,13 @@ notificationApi.error({
 
         {/* Project Name */}
         <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: '#1f2937' }}>
-          {project?.name} - Word Translation
+         Word Translation ({project?.name})
         </h2>
 
         {/* Languages */}
-        <p style={{ marginTop: 16, fontSize: 16, color: '#555' }}>
+        {/* <p style={{ marginTop: 16, fontSize: 16, color: '#555' }}>
           <span style={{ fontWeight: 500 }}>Source:</span> {sourceLang} | <span style={{ fontWeight: 500 }}>Target:</span> {targetLang}
-        </p>
+        </p> */}
       </div>
 
       {/* Book Selector */}

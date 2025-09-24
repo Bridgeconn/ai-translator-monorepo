@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.crud import chapter_tokens as crud
+from uuid import UUID
 
 router = APIRouter(prefix="/api", tags=["Chapters & Tokens"])
 
@@ -14,10 +15,14 @@ def fetch_chapters_by_book(book_id: str, db: Session = Depends(get_db)):
     ]
 
 @router.get("/chapters/{chapter_id}/tokens")
-def fetch_tokens_by_chapter(chapter_id: str, db: Session = Depends(get_db)):
-    tokens = crud.get_tokens_by_chapter(db, chapter_id)
+def fetch_tokens_by_chapter(
+    chapter_id: str,
+    project_id: UUID,                    # ✅ require project_id
+    db: Session = Depends(get_db)
+):
+    tokens = crud.get_tokens_by_chapter(db, chapter_id, project_id)
     if not tokens:
-        return {"status": "empty", "message": "No tokens generated for this chapter"}
+        return {"status": "empty", "message": "No tokens generated for this chapter in this project"}
     return [
         {
             "token_id": str(t.verse_token_id),
@@ -27,3 +32,4 @@ def fetch_tokens_by_chapter(chapter_id: str, db: Session = Depends(get_db)):
         }
         for t in tokens
     ]
+
