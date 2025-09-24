@@ -64,7 +64,7 @@ def create_project(db: Session, project: schemas.ProjectCreate, user_id: UUID):
     db.add(db_project)
     db.commit()
     db.refresh(db_project)
-    return db_project
+    return get_project_by_id(db, db_project.project_id)
  
 def get_project_by_id(db: Session, project_id: UUID):
     db_project = (
