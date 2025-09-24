@@ -12,7 +12,6 @@ import {
   UserOutlined,
   LockOutlined,
   MailOutlined,
-  IdcardOutlined,
 } from "@ant-design/icons";
 import { Link, useNavigate } from "react-router-dom";
 import { authAPI } from "./api";
@@ -23,7 +22,7 @@ export default function RegisterForm() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // ✅ Add this line to create a context-aware message
+  // context-aware notification
   const [notificationApi, contextHolder] = notification.useNotification();
 
   const onFinish = async (values) => {
@@ -32,7 +31,6 @@ export default function RegisterForm() {
     const result = await authAPI.register(values);
 
     if (result?.error) {
-      // ✅ Use context-bound message
       notificationApi.error({
         message: "Registration Failed",
         description: result.error,
@@ -46,73 +44,69 @@ export default function RegisterForm() {
       });
       setTimeout(() => {
         navigate("/login");
-      }, 1000);    }
+      }, 1000);
+    }
 
     setLoading(false);
   };
+
+  const styles = {
+    page: {
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      minHeight: "100vh",
+      padding: "20px",
+      background: "#f6f8fb", // same as homepage/login
+    },
+    card: {
+      width: "100%",
+      maxWidth: 420,
+      // padding: 20,
+      borderRadius: 16,
+      boxShadow: "0 8px 24px rgba(17,24,39,0.06)",
+      border: "1px solid #eef2fb",
+    },
+    badge: {
+      background: "linear-gradient(135deg,#2C8DFB,#6C63FF)",
+      width: 56,
+      height: 56,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: 12,
+      color: "white",
+      fontSize: 20,
+      fontWeight: 800,
+      boxShadow: "0 8px 30px rgba(99,66,255,0.12)",
+      cursor: "pointer",
+      transition: "transform 0.18s ease",
+    },
+    submitBtn: {
+      background: "linear-gradient(135deg,#2C8DFB,#6C63FF)",
+      border: "none",
+      borderRadius: 10,
+    },
+  };
+
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        minHeight: "100vh",
-        position: "relative",               // allows layering
-        // overflow: "hidden",                 // hides any overflowing shapes
-        background: `
-        radial-gradient(circle at top left, rgba(114,46,209,0.14) 0%, transparent 70%),
-        radial-gradient(circle at bottom right, rgba(79,70,229,0.14) 0%, transparent 70%),
-        repeating-linear-gradient(45deg, rgba(255,255,255,0.02), rgba(255,255,255,0.02) 10px, transparent 10px, transparent 20px),
-
-        #f5f6fa
-        `,
-
-        padding: "20px",
-      }}
-    >
+    <div style={styles.page}>
       {contextHolder}
-      <Card
-        style={{
-          width: 400,
-          padding: 20,
-          boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-          borderRadius: "12px",
-        }}
-      >
+
+      <Card style={styles.card}>
         <Space direction="vertical" style={{ width: "100%" }} align="center">
           <Link to="/" style={{ display: "inline-block" }}>
             <div
-              style={{
-                backgroundColor: "rgb(44, 141, 251)",
-                backdropFilter: "blur(8px)",
-                borderRadius: "12px",
-                width: "50px",
-                height: "50px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "white",
-                fontSize: "24px",
-                fontWeight: "bold",
-                boxShadow: "0 2px 8px rgba(114, 46, 209, 0.25)",
-                cursor: "pointer",
-                transition: "transform 0.2s ease, background-color 0.2s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "scale(1.1)";
-                e.currentTarget.style.backgroundColor = "rgb(44, 141, 251)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "scale(1)";
-                e.currentTarget.style.backgroundColor = "rgb(44, 141, 251)";
-              }}
+              style={styles.badge}
+              onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.06)")}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
             >
               文A
             </div>
-
           </Link>
-          <Title level={3} style={{ marginBottom: 0, color: "rgb(0, 0, 0, 0.85)" }}>
-            Create Account
+
+          <Title level={3} style={{ marginBottom: 0, color: "rgba(6,18,40,0.9)" }}>
+            Register
           </Title>
         </Space>
 
@@ -120,22 +114,9 @@ export default function RegisterForm() {
           name="register"
           onFinish={onFinish}
           layout="vertical"
+          size="large"
           style={{ marginTop: 20 }}
         >
-          {/* Full Name
-          <Form.Item
-            name="full_name"
-            rules={[
-              {
-                pattern: /^[A-Za-z ]+$/,
-                message: "Full name can only contain letters and spaces!",
-              },
-            ]}
-          >
-            <Input prefix={<IdcardOutlined />} placeholder="Full Name (optional)" />
-          </Form.Item> */}
-
-          {/* Username */}
           <Form.Item
             name="username"
             rules={[
@@ -147,10 +128,13 @@ export default function RegisterForm() {
               },
             ]}
           >
-            <Input prefix={<UserOutlined />} placeholder="Username" />
+            <Input
+              size="large"
+              prefix={<UserOutlined />}
+              placeholder="Username"
+            />
           </Form.Item>
 
-          {/* Email */}
           <Form.Item
             name="email"
             rules={[
@@ -158,10 +142,13 @@ export default function RegisterForm() {
               { type: "email", message: "Please enter a valid email!" },
             ]}
           >
-            <Input prefix={<MailOutlined />} placeholder="Email" />
+            <Input
+              size="large"
+              prefix={<MailOutlined />}
+              placeholder="Email"
+            />
           </Form.Item>
 
-          {/* Password */}
           <Form.Item
             name="password"
             rules={[
@@ -173,34 +160,11 @@ export default function RegisterForm() {
             ]}
           >
             <Input.Password
+              size="large"
               prefix={<LockOutlined />}
               placeholder="Password"
             />
           </Form.Item>
-
-          {/* Confirm Password */}
-          {/* <Form.Item
-            name="confirmPassword"
-            dependencies={["password"]}
-            rules={[
-              { required: true, message: "Please confirm your password!" },
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  if (!value || getFieldValue("password") === value) {
-                    return Promise.resolve();
-                  }
-                  return Promise.reject(
-                    new Error("Passwords do not match!")
-                  );
-                },
-              }),
-            ]}
-          >
-            <Input.Password
-              prefix={<LockOutlined />}
-              placeholder="Confirm Password"
-            />
-          </Form.Item> */}
 
           <Form.Item>
             <Button
@@ -208,24 +172,24 @@ export default function RegisterForm() {
               htmlType="submit"
               loading={loading}
               block
-              style={{
-                background: "rgb(44, 141, 251)",
-                border: "none",
-              }}
+              style={styles.submitBtn}
+              onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(1.04)")}
+              onMouseLeave={(e) => (e.currentTarget.style.filter = "brightness(1)")}
             >
-              Create Account
+              Register
             </Button>
           </Form.Item>
+
           <div
             style={{
               display: "flex",
               justifyContent: "center",
               alignItems: "center",
-              gap: "6px",   // keeps a nice space between text and link
-              marginTop: "8px", // optional, adds breathing room
+              gap: 6,
+              marginTop: 8,
             }}
           >
-            <Text style={{ color: 'rgba(0, 0, 0, 0.70)' }}>Already have an account?</Text>
+            <Text style={{ color: "rgba(6,18,40,0.65)" }}>Already have an account?</Text>
             <Link
               to="/login"
               style={{
@@ -233,19 +197,12 @@ export default function RegisterForm() {
                 fontWeight: 500,
                 transition: "all 0.2s ease",
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = "rgb(244, 67, 54)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = "rgb(44, 141, 251)";
-                e.currentTarget.style.textDecoration = "none";
-              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "rgb(244, 67, 54)")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "rgb(44, 141, 251)")}
             >
               Sign In
             </Link>
           </div>
-
-
         </Form>
       </Card>
     </div>
