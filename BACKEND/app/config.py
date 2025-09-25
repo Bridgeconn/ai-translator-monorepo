@@ -1,7 +1,7 @@
 import os
 
 class Settings:
-    RESET_TOKEN_TTL_MINUTES = '30'
+    RESET_TOKEN_TTL_MINUTES = 30
     FRONTEND_BASE_URL = "https://mt.vachanengine.org"
     EMAIL_FROM = os.getenv("EMAIL_FROM", "no-reply@example.com")
 
