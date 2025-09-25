@@ -299,7 +299,7 @@ const userMenuItems = token
         >
           <div style={{ display: "flex", alignItems: "center" }}>
             <Text strong style={{ fontSize: "18px", color: "#262626" }}>
-              ScriptureMT
+              Text Translator
             </Text>
           </div>
 
