@@ -78,11 +78,11 @@ export default function QuickActions() {
       queryClient.invalidateQueries(["sources"]);
       setIsSourceModalVisible(false);
       sourceForm.resetFields();
-      msgApi.success("✅ Source created successfully!");
+      msgApi.success("Source created successfully!");
     },
     onError: (err) => {
-      console.error("Source creation failed:", err);
-      msgApi.error("❌ Source creation failed!");
+      console.error("Source creation failed:", err.response.data.detail);
+      msgApi.error(err.response.data.detail);
     },
   });
 
@@ -97,7 +97,7 @@ export default function QuickActions() {
     },
     onError: (err) => {
       console.error("Version creation failed:", err);
-      msgApi.error("❌ Version creation failed!");
+      msgApi.error(" Version creation failed!");
     },
   });
 
@@ -131,7 +131,7 @@ export default function QuickActions() {
       msgApi.success("✅ Project created successfully!");
     } catch (err) {
       console.error("Project create failed:", err);
-      msgApi.error("❌ Project creation failed!");
+      msgApi.error(" Project already exist with same source and target language!");
     }
   };
 

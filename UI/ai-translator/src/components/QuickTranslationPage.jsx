@@ -88,7 +88,7 @@ async function pollJobStatus({
   jobId,
   onStatusUpdate,
   notification,
-  maxAttempts = 40,
+  maxAttempts = 80,
   interval = 3000,
   signal,
 }) {
@@ -138,7 +138,7 @@ async function pollJobStatus({
     message: "Translation Timeout",
     description: "The translation service did not respond in time.",
   });
-  throw new Error("Polling timed out after waiting too long");
+  //throw new Error("Polling timed out after waiting too long");
 }
 
 async function fetchAssets(token, jobId) {
@@ -213,7 +213,7 @@ export default function QuickTranslationPage() {
         const resp = await fetch(
           import.meta.env.VITE_BACKEND_URL + "/api/project-text-documents/",
           {
-            method: "GET", // ✅ explicitly tell it to use GET
+            method: "GET", // explicitly tell it to use GET
             headers: {
               Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
@@ -244,10 +244,10 @@ export default function QuickTranslationPage() {
         duration: duration,
         placement: "top", // appears top-center
         style: {
-          fontSize: "13px",       // smaller than 14px
-          padding: "6px 12px",    // tighter padding
-          borderRadius: "4px",    // subtle rounded corners
-          maxWidth: "350px",      // restrict width
+          fontSize: "13px", // smaller than 14px
+          padding: "6px 12px", // tighter padding
+          borderRadius: "4px", // subtle rounded corners
+          maxWidth: "350px", // restrict width
           boxShadow: "0 2px 6px rgba(0,0,0,0.15)", // subtle shadow
         },
       });
@@ -264,7 +264,8 @@ export default function QuickTranslationPage() {
   // ------------------ Copy & Paste Logic ------------------
   const handleCopy = (content) => {
     if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(content)
+      navigator.clipboard
+        .writeText(content)
         .then(() => {
           showNotification("success", "Copied", "Text copied to clipboard!");
         })
@@ -288,7 +289,6 @@ export default function QuickTranslationPage() {
       document.body.removeChild(textarea);
     }
   };
-  
 
   const handlePaste = async (setContent) => {
     try {
@@ -306,6 +306,7 @@ export default function QuickTranslationPage() {
     setTargetText("");
     setUploadedFile(null); // <--- clear uploaded file
     setIsTargetEdited(false);
+    setStatusMsg("");
     showNotification("info", "Cleared", "All text cleared successfully.");
   };
 
@@ -315,7 +316,11 @@ export default function QuickTranslationPage() {
     const sizeInMB = new Blob([newText]).size / 1024 / 1024;
 
     if (sizeInMB > 2) {
-      showNotification("error", "Too Large", "Text input must be smaller than 2MB!");
+      showNotification(
+        "error",
+        "Too Large",
+        "Text input must be smaller than 2MB!"
+      );
       return; // don’t update state
     }
     setSourceText(newText);
@@ -336,12 +341,15 @@ export default function QuickTranslationPage() {
     setStatusMsg("Translation cancelled.");
   };
 
-
   // ------------------ File Upload Handler ------------------
   const handleFileUpload = async (file) => {
     const isLt2M = file.size / 1024 / 1024 < 2;
     if (!isLt2M) {
-      showNotification("error", "File Too Large", "File must be smaller than 2MB!");
+      showNotification(
+        "error",
+        "File is too large",
+        "File must be smaller than 2MB!"
+      );
       return Upload.LIST_IGNORE; // block upload
     }
     setUploadedFile(file);
@@ -349,7 +357,11 @@ export default function QuickTranslationPage() {
     setNewProjectFilename(file.name);
 
     if (file.name.endsWith(".doc")) {
-      showNotification("error", "Unsupported File", "Old Word (.doc) files are not supported. Use .docx, .txt, or .pdf.");
+      showNotification(
+        "error",
+        "Unsupported File",
+        "Old Word (.doc) files are not supported. Use .docx, .txt, or .pdf."
+      );
 
       return false;
     }
@@ -397,12 +409,20 @@ export default function QuickTranslationPage() {
   // ------------------ USFM-Aware Translation Handler ------------------
   const handleTranslate = async () => {
     if (!sourceLang || !targetLang) {
-      showNotification("error", "Missing Languages", "Please select both source and target languages before translating.");
+      showNotification(
+        "error",
+        "Missing Languages",
+        "Please select both source and target languages before translating."
+      );
       return;
     }
 
     if (!sourceText.trim() && !uploadedFile) {
-      showNotification("warning", "Missing Input", "Please enter or upload some source text first.");
+      showNotification(
+        "warning",
+        "Missing Input",
+        "Please enter or upload some source text first."
+      );
       return;
     }
 
@@ -508,10 +528,13 @@ export default function QuickTranslationPage() {
         type: "text/plain",
       });
 
-      console.log("📤 Sending clean text to API:", textToTranslate.substring(0, 200) + "...");
+      console.log(
+        "📤 Sending clean text to API:",
+        textToTranslate.substring(0, 200) + "..."
+      );
 
       // --- 4️⃣ Request translation job ---
-      setStatusMsg("⏳ Requesting translation job...");
+      setStatusMsg("preparing translation...");
       const jobId = await requestDocTranslation(
         token,
         fileToSend,
@@ -526,7 +549,8 @@ export default function QuickTranslationPage() {
       const finishedJobId = await pollJobStatus({
         token,
         jobId,
-        onStatusUpdate: (status) => setStatusMsg(`⏳ Job ${jobId} status: ${status}`),
+        onStatusUpdate: (status) =>
+          setStatusMsg(`Translation in progress...`),
         notification,
         signal, // ✅ pass controller signal here
       });
@@ -557,11 +581,19 @@ export default function QuickTranslationPage() {
       setTargetText(normalizeTranslation(translatedText));
       setIsTargetEdited(false);
       setIsTranslated(true);
-      showNotification("success", "Translation Complete", "Your translation is ready.");
+      showNotification(
+        "success",
+        "Translation Complete",
+        "Your translation is ready."
+      );
       setStatusMsg("");
     } catch (err) {
       if (err.message === "Translation cancelled") {
-        showNotification("warning", "Translation Cancelled", "Translation cancelled by user.");
+        showNotification(
+          "warning",
+          "Translation Cancelled",
+          "Translation cancelled by user."
+        );
         setStatusMsg("Translation cancelled.");
       } else {
         console.error("Translation error:", err);
@@ -916,8 +948,7 @@ export default function QuickTranslationPage() {
       const projectName = newProjectName || selectedProjectData?.project_name;
 
       if (!projectName) {
-        const errorMsg =
-          "Please select a project or enter a new project name.";
+        const errorMsg = "Please select a project or enter a new project name.";
         setSaveError(errorMsg);
         showNotification("error", "Missing Project", errorMsg);
         setSaving(false);
@@ -949,8 +980,7 @@ export default function QuickTranslationPage() {
 
       const token = localStorage.getItem("token");
       if (!token) {
-        const errorMsg =
-          "Authentication token not found. Please log in again.";
+        const errorMsg = "Authentication token not found. Please log in again.";
         setSaveError(errorMsg);
         showNotification("error", "Authentication Error", errorMsg);
         setSaving(false);
@@ -973,7 +1003,8 @@ export default function QuickTranslationPage() {
               "This file with the same content is already saved. Do you want to save it again?",
             okText: "Save Again",
             cancelText: "Cancel",
-            onOk: () => performSave(payload, token, selectedProject, projectName),
+            onOk: () =>
+              performSave(payload, token, selectedProject, projectName),
             onCancel: () => setSaving(false),
           });
           return;
@@ -1004,8 +1035,7 @@ export default function QuickTranslationPage() {
         `/api/project-text-documents/${selectedProject}/add-files`;
     } else {
       // new project → create
-      url =
-        import.meta.env.VITE_BACKEND_URL + "/api/project-text-documents/";
+      url = import.meta.env.VITE_BACKEND_URL + "/api/project-text-documents/";
     }
 
     const response = await fetch(url, {
@@ -1050,7 +1080,6 @@ export default function QuickTranslationPage() {
     }, 2000);
   };
 
-
   return (
     <div style={{ padding: 24, marginBottom: 0 }}>
       <Title level={2} style={{ marginBottom: 0 }}>
@@ -1071,8 +1100,9 @@ export default function QuickTranslationPage() {
           <Card
             style={{
               boxShadow: "0 4px 10px rgba(0,0,0,0.15)", // ✅ shadow effect
-              borderRadius: "10px",                     // rounded corners
-            }}>
+              borderRadius: "10px", // rounded corners
+            }}
+          >
             <Title level={4}>🌐 Language Settings</Title>
             <Row gutter={16} align="middle" justify="center">
               <Col xs={24} md={10}>
@@ -1081,7 +1111,6 @@ export default function QuickTranslationPage() {
                   onChange={setSourceLang}
                   disabled={loading}
                   placeholder="Select source language"
-
                 />
               </Col>
               <Col xs={24} md={4} style={{ textAlign: "center" }}>
@@ -1104,7 +1133,6 @@ export default function QuickTranslationPage() {
                   onChange={setTargetLang}
                   disabled={loading}
                   placeholder="Select target language"
-
                 />
               </Col>
             </Row>
@@ -1117,10 +1145,13 @@ export default function QuickTranslationPage() {
             title={<span>Source Text</span>}
             extra={<span style={{ fontWeight: 500 }}>{sourceLang?.label}</span>}
             style={{
-              height: '100%', display: 'flex', flexDirection: 'column', boxShadow: "0 4px 10px rgba(0,0,0,0.15)", // ✅ shadow effect
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              boxShadow: "0 4px 10px rgba(0,0,0,0.15)", // ✅ shadow effect
               borderRadius: "10px",
             }}
-            bodyStyle={{ flex: 1, display: 'flex', flexDirection: 'column' }}
+            bodyStyle={{ flex: 1, display: "flex", flexDirection: "column" }}
           >
             <TextArea
               rows={10}
@@ -1130,42 +1161,48 @@ export default function QuickTranslationPage() {
               disabled={loading}
               style={{
                 flex: 1,
-                resize: 'none',
-                color: "#000",            // text color
-                '::placeholder': {        // placeholder styling
-                  color: "#888",          // slightly darker grey
-                  opacity: 1,             // ensure it shows properly
+                resize: "none",
+                color: "#000", // text color
+                "::placeholder": {
+                  // placeholder styling
+                  color: "#888", // slightly darker grey
+                  opacity: 1, // ensure it shows properly
                 },
               }}
             />
             {/* Container for buttons with flexbox layout */}
-            <div style={{
-              marginTop: 12,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-end"
-            }}>
+            <div
+              style={{
+                marginTop: 12,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center", // Changed from "flex-end" to "center"
+                minHeight: "32px", // Add consistent height
+              }}
+            >
               {/* Left side - Upload section */}
-              <div style={{display: "flex", justifyContent: "space-between", marginTop: 16 }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                }}
+              >
                 <Upload
                   beforeUpload={handleFileUpload}
                   showUploadList={false}
                   accept=".txt,.usfm,.docx,.pdf"
                   disabled={loading}
                 >
-
-                <Typography.Text
-                  type="secondary"
-                  style={{ fontSize: "12px", marginTop: "7px", display: "block" }}
-                >
-                  <strong>Drop .txt, .usfm, .docx, .pdf up to 2 MB</strong>
-                </Typography.Text>
-                  <Tooltip title="Upload upto 2 MB(.txt, .usfm, .docx, .pdf )" color="#fff">
+                  <Tooltip
+                    title="Upload upto 2 MB(.txt, .usfm, .docx, .pdf )"
+                    color="#fff"
+                  >
                     <Button
                       icon={<UploadOutlined />}
                       disabled={loading}
                       style={{
-                        background: "rgb(44 151 222 / 85%)",   // matches your .btn
+                        background: "rgb(44 151 222 / 85%)",
                         border: "1px solid #e5e7eb",
                         borderRadius: "6px",
                         color: "#000",
@@ -1175,7 +1212,18 @@ export default function QuickTranslationPage() {
                     />
                   </Tooltip>
                 </Upload>
+                <Typography.Text
+                  type="secondary"
+                  style={{
+                    fontSize: "12px",
+                    marginTop: "4px",
+                    display: "block",
+                  }}
+                >
+                  <strong>Drop .txt, .usfm, .docx, .pdf up to 2 MB</strong>
+                </Typography.Text>
               </div>
+
               {/* Right side - Clear button */}
               <div>
                 <Tooltip
@@ -1189,12 +1237,11 @@ export default function QuickTranslationPage() {
                       color: "white",
                       boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
                       border: "none",
-                    }} onClick={handleClearAll}
+                    }}
+                    onClick={handleClearAll}
                     icon={<CloseOutlined />}
                     disabled={loading}
-                  >
-                    {/* Clear */}
-                  </Button>
+                  />
                 </Tooltip>
               </div>
             </div>
@@ -1207,12 +1254,19 @@ export default function QuickTranslationPage() {
             title={<span>Translation</span>}
             extra={<span style={{ fontWeight: 500 }}>{targetLang?.label}</span>}
             style={{
-              height: '100%', display: 'flex', flexDirection: 'column', boxShadow: "0 4px 10px rgba(0,0,0,0.15)", // ✅ shadow effect
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              boxShadow: "0 4px 10px rgba(0,0,0,0.15)", // ✅ shadow effect
               borderRadius: "10px",
             }}
-            bodyStyle={{ flex: 1, display: 'flex', flexDirection: 'column' }}
+            bodyStyle={{ flex: 1, display: "flex", flexDirection: "column" }}
           >
-            <Spin spinning={loading} tip="Translating..." style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <Spin
+              spinning={loading}
+              tip="Translating..."
+              style={{ flex: 1, display: "flex", flexDirection: "column" }}
+            >
               <TextArea
                 rows={10}
                 value={targetText}
@@ -1221,16 +1275,21 @@ export default function QuickTranslationPage() {
                 disabled={loading}
                 style={{
                   flex: 1,
-                  resize: 'none',
+                  resize: "none",
                   color: "#000",
-                  '::placeholder': {
+                  "::placeholder": {
                     color: "#888",
                     opacity: 1,
                   },
                 }}
               />
             </Spin>
-            <div style={{ marginTop: 12 }}>
+            <div
+              style={{
+                marginTop: 12,
+                minHeight: "32px", // Add consistent height to match source card
+              }}
+            >
               <Row justify="space-between" align="middle">
                 <Col>
                   <Space>
@@ -1262,9 +1321,11 @@ export default function QuickTranslationPage() {
                     <DownloadDraftButton
                       content={targetText}
                       disabled={loading || !targetText}
+                      targetLanguage={targetLang?.name}
                     />
                   </Space>
                 </Col>
+                <Col>{/* Add empty column for consistent spacing */}</Col>
               </Row>
             </div>
           </Card>
@@ -1293,7 +1354,6 @@ export default function QuickTranslationPage() {
               borderColor: loading ? "#ff4d4f" : "rgb(44,141,251)",
               color: "#fff",
             }}
-            
           >
             {loading ? "Cancel Translation" : "Translate"}
           </Button>
