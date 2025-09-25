@@ -122,7 +122,7 @@ export default function HomePage() {
               fontWeight: 800,
             }}
           >
-            ScriptureMT
+            Text Translator
           </Title>
 
           <Paragraph
