@@ -4,11 +4,13 @@ import QuickActions from "../components/QuickActions";
 import { FileTextOutlined, FolderOpenOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import api from "../components/api";
+import { useNavigate } from "react-router-dom";
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const token = localStorage.getItem("token");
 
   /* ---------------- Queries ---------------- */
@@ -80,34 +82,40 @@ const Dashboard = () => {
   const totalProjects = combinedProjects.length;
   const totalSources = sources.length;
 
-  // ✅ Combine recent activity: projects + sources
+  // Combine recent activity: projects + sources (most recent first)
   const recentActivities = [...combinedProjects, ...sources]
     .filter((item) => item.created_at)
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    .slice(0, 4);
+    .slice(0, 6);
 
   /* ---------------- Styles ---------------- */
   const cardStyle = {
     borderRadius: 16,
     textAlign: "center",
-    padding: "30px 20px",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
-    transition: "transform 0.3s, box-shadow 0.3s",
+    padding: "26px 20px",
+    boxShadow: "0 10px 25px rgba(0,0,0,0.06)",
+    transition: "transform 0.18s, box-shadow 0.18s",
     cursor: "pointer",
     background: "#fff",
   };
 
   const iconStyle = (color) => ({
-    fontSize: 48,
-    background: `linear-gradient(135deg, ${color} 0%, rgba(255,255,255,0.2) 100%)`,
+    fontSize: 40,
+    background: `linear-gradient(135deg, ${color} 0%, rgba(255,255,255,0.14) 100%)`,
     borderRadius: "50%",
-    padding: 20,
+    padding: 18,
     color: "#fff",
     marginBottom: 16,
     display: "inline-block",
   });
 
-  /* ---------------- Render ---------------- */
+  const handleKeyNav = (path) => (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      navigate(path);
+    }
+  };
+
   return (
     <Content
       style={{
@@ -124,7 +132,16 @@ const Dashboard = () => {
       {/* Stats Row */}
       <Row gutter={[24, 24]} style={{ marginBottom: 32 }}>
         <Col xs={24} sm={12}>
-          <Card hoverable style={cardStyle} styles={{ body: { padding: 0 } }}>
+          <Card
+            hoverable
+            onClick={() => navigate("/projects")}
+            onKeyDown={handleKeyNav("/projects")}
+            role="button"
+            tabIndex={0}
+            aria-label="View projects"
+            style={cardStyle}
+            bodyStyle={{ padding: 0 }}
+          >
             <FolderOpenOutlined style={iconStyle("#1890ff")} />
             <Text strong style={{ fontSize: 20, display: "block", marginBottom: 8 }}>
               Projects
@@ -134,7 +151,16 @@ const Dashboard = () => {
         </Col>
 
         <Col xs={24} sm={12}>
-          <Card hoverable style={cardStyle} styles={{ body: { padding: 0 } }}>
+          <Card
+            hoverable
+            onClick={() => navigate("/sources")}
+            onKeyDown={handleKeyNav("/sources")}
+            role="button"
+            tabIndex={0}
+            aria-label="View sources"
+            style={cardStyle}
+            bodyStyle={{ padding: 0 }}
+          >
             <FileTextOutlined style={iconStyle("#52c41a")} />
             <Text strong style={{ fontSize: 20, display: "block", marginBottom: 8 }}>
               Sources
@@ -155,20 +181,17 @@ const Dashboard = () => {
         <Col xs={24} md={12}>
           <Card
             title={<span style={{ fontWeight: 600 }}>🕑 Recent Activity</span>}
-            variant="outlined"
             style={{
               borderRadius: 20,
               background: "linear-gradient(145deg, #ffffff, #f9fafc)",
-              boxShadow: "0 8px 20px rgba(0,0,0,0.08)",
+              boxShadow: "0 8px 20px rgba(0,0,0,0.06)",
               height: "100%",
               overflow: "hidden",
             }}
-            styles={{
-              body: {
-                padding: "16px 20px",
-                height: "calc(100% - 60px)",
-                overflow: "hidden",
-              },
+            bodyStyle={{
+              padding: "12px 20px",
+              height: "calc(100% - 60px)",
+              overflow: "auto",
             }}
           >
             <List
@@ -178,7 +201,8 @@ const Dashboard = () => {
                 <List.Item
                   style={{
                     borderBottom: "1px dashed #eaeaea",
-                    padding: "14px 0",
+                    padding: "12px 0",
+                    cursor: "default",
                   }}
                 >
                   <List.Item.Meta
@@ -207,7 +231,7 @@ const Dashboard = () => {
                     }
                     title={
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <Text strong style={{ fontSize: 16 }}>{item.name}</Text>
+                        <Text strong style={{ fontSize: 15 }}>{item.name}</Text>
                         {item.type === "project" ? (
                           <Tag color="blue" style={{ borderRadius: 12 }}>
                             Project
