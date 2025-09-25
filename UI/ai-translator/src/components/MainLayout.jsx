@@ -206,7 +206,7 @@ const userMenuItems = token
     borderBottom: "1px solid #f0f0f0",
   }}
 >
-  <Link to="/dashboard" style={{ display: "inline-block" }}>
+  {/* <Link to="/dashboard" style={{ display: "inline-block" }}> */}
     <div
       style={{
         width: "40px",
@@ -219,21 +219,13 @@ const userMenuItems = token
         color: "white",
         fontWeight: "bold",
         fontSize: "14px",
-        cursor: "pointer", // show clickable
+        // cursor: "pointer", // show clickable
         transition: "transform 0.2s ease, background-color 0.2s ease",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = "scale(1.1)";
-        e.currentTarget.style.backgroundColor = "rgb(44, 141, 251)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = "scale(1)";
-        e.currentTarget.style.backgroundColor = "rgb(44, 141, 251)";
       }}
     >
       文A
     </div>
-  </Link>
+  {/* </Link> */}
         </div>
 
         {/* Nav icons */}
