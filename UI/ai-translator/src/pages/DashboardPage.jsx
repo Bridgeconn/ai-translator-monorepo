@@ -1,90 +1,92 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Layout, Card, Row, Col, Typography, Spin, List, Tag } from "antd";
 import QuickActions from "../components/QuickActions";
-import { projectsAPI, textDocumentAPI } from "../components/api";
 import { FileTextOutlined, FolderOpenOutlined } from "@ant-design/icons";
+import { useQuery } from "@tanstack/react-query";
+import api from "../components/api";
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
 
 const Dashboard = () => {
-  const [projects, setProjects] = useState([]);
-  const [sources, setSources] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const token = localStorage.getItem("token"); // wherever you store it
+  const token = localStorage.getItem("token");
 
+  /* ---------------- Queries ---------------- */
+  const {
+    data: projects = [],
+    isLoading: loadingProjects,
+  } = useQuery({
+    queryKey: ["projects"],
+    queryFn: async () => {
+      const res = await api.get("/projects/", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return res.data.data || res.data;
+    },
+  });
 
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
+  const {
+    data: textDocProjects = [],
+    isLoading: loadingTextDocs,
+  } = useQuery({
+    queryKey: ["text-doc-projects"],
+    queryFn: async () => {
+      const res = await api.get("/text-doc-projects/", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return res.data.data || res.data;
+    },
+  });
 
-      const [normalResult, textDocResult, sourcesResponse] = await Promise.allSettled([
-        projectsAPI.getAllProjects(),
-        textDocumentAPI.getAllProjects(true),
-        fetch(import.meta.env.VITE_BACKEND_URL + "/sources/", {
-          headers: {
-            Authorization: `Bearer ${token}`,   //  add token here
-          },
-        }),       
-      ]);
+  const {
+    data: sources = [],
+    isLoading: loadingSources,
+  } = useQuery({
+    queryKey: ["sources"],
+    queryFn: async () => {
+      const res = await api.get("/sources/", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const srcs = res.data.data || res.data;
+      return srcs.map((s) => ({
+        id: s.source_id,
+        name: s.language_name + " " + s.version_name,
+        type: "source",
+        created_at: s.created_at,
+      }));
+    },
+  });
 
-      // 🟦 Normal projects
-      const normalProjects =
-        normalResult.status === "fulfilled"
-          ? normalResult.value.map((p) => ({
-              id: p.project_id,
-              name: p.name,
-              type: "project",
-              translation_type: p.translation_type || "normal",
-              created_at: p.created_at,
-            }))
-          : [];
+  /* ---------------- Derived Data ---------------- */
+  const normalProjects = projects.map((p) => ({
+    id: p.project_id,
+    name: p.name,
+    type: "project",
+    translation_type: p.translation_type || "normal",
+    created_at: p.created_at,
+  }));
 
-      // 🟩 Text doc projects
-      const textDocProjects =
-        textDocResult.status === "fulfilled"
-          ? textDocResult.value.map((p) => ({
-              id: p.project_id,
-              name: p.project_name,
-              type: "project",
-              translation_type: "text_document",
-              created_at: p.created_at,
-            }))
-          : [];
+  const textProjects = textDocProjects.map((p) => ({
+    id: p.project_id,
+    name: p.project_name,
+    type: "project",
+    translation_type: "text_document",
+    created_at: p.created_at,
+  }));
 
-      //  Combine projects
-      const combinedProjects = [...normalProjects, ...textDocProjects];
-      setProjects(combinedProjects);
+  const combinedProjects = [...normalProjects, ...textProjects];
 
-      //  Sources
-      if (sourcesResponse.status === "fulfilled" && sourcesResponse.value.ok) {
-        const sourcesData = await sourcesResponse.value.json();
-        const formattedSources = (sourcesData.data || sourcesData).map((s) => ({
-          id: s.source_id,
-          name: s.language_name + " " + s.version_name,
-          type: "source",
-          created_at: s.created_at,
-        }));
-        setSources(formattedSources);
-      } else {
-        setSources([]);
-      }
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error);
-      setProjects([]);
-      setSources([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const totalProjects = projects.length;
+  const loading = loadingProjects || loadingTextDocs || loadingSources;
+  const totalProjects = combinedProjects.length;
   const totalSources = sources.length;
 
+  // ✅ Combine recent activity: projects + sources
+  const recentActivities = [...combinedProjects, ...sources]
+    .filter((item) => item.created_at)
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .slice(0, 4);
+
+  /* ---------------- Styles ---------------- */
   const cardStyle = {
     borderRadius: 16,
     textAlign: "center",
@@ -105,29 +107,24 @@ const Dashboard = () => {
     display: "inline-block",
   });
 
-  // ✅ Combine recent activity: projects + sources
-  const recentActivities = [...projects, ...sources]
-    .filter((item) => item.created_at)
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    .slice(0, 4);
-
+  /* ---------------- Render ---------------- */
   return (
     <Content
       style={{
         padding: "24px 36px",
-        minheight: "calc(100vh - 64px)", //  adjust based on Header height
+        minHeight: "calc(100vh - 64px)",
         background: "#f0f2f5",
-        overflow: "hidden", // Enable scrollbars
+        overflow: "hidden",
       }}
     >
       <Title level={2} style={{ marginBottom: 24 }}>
-         Dashboard
+        Dashboard
       </Title>
 
       {/* Stats Row */}
       <Row gutter={[24, 24]} style={{ marginBottom: 32 }}>
         <Col xs={24} sm={12}>
-          <Card hoverable style={cardStyle} styles={{ body : {padding: 0 }}}>
+          <Card hoverable style={cardStyle} styles={{ body: { padding: 0 } }}>
             <FolderOpenOutlined style={iconStyle("#1890ff")} />
             <Text strong style={{ fontSize: 20, display: "block", marginBottom: 8 }}>
               Projects
@@ -137,7 +134,7 @@ const Dashboard = () => {
         </Col>
 
         <Col xs={24} sm={12}>
-          <Card hoverable style={cardStyle} styles={{ body : { padding: 0 }}}>
+          <Card hoverable style={cardStyle} styles={{ body: { padding: 0 } }}>
             <FileTextOutlined style={iconStyle("#52c41a")} />
             <Text strong style={{ fontSize: 20, display: "block", marginBottom: 8 }}>
               Sources
@@ -166,7 +163,13 @@ const Dashboard = () => {
               height: "100%",
               overflow: "hidden",
             }}
-            styles={{ body: { padding: "16px 20px", height: "calc(100% - 60px)", overflow: "hidden" } }}
+            styles={{
+              body: {
+                padding: "16px 20px",
+                height: "calc(100% - 60px)",
+                overflow: "hidden",
+              },
+            }}
           >
             <List
               itemLayout="horizontal"
@@ -204,9 +207,7 @@ const Dashboard = () => {
                     }
                     title={
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <Text strong style={{ fontSize: 16 }}>
-                          {item.name}
-                        </Text>
+                        <Text strong style={{ fontSize: 16 }}>{item.name}</Text>
                         {item.type === "project" ? (
                           <Tag color="blue" style={{ borderRadius: 12 }}>
                             Project
