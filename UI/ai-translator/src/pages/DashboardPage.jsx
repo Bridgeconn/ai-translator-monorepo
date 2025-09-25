@@ -86,7 +86,7 @@ const Dashboard = () => {
   const recentActivities = [...combinedProjects, ...sources]
     .filter((item) => item.created_at)
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    .slice(0, 6);
+    .slice(0, 3);
 
   /* ---------------- Styles ---------------- */
   const cardStyle = {
