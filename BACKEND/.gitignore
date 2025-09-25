@@ -10,10 +10,10 @@ BACKEND/Miniconda3-latest-Linux-x86_64.sh/
 venv/
 .venv/
 
-# Environment variable files
-.env
-*.env
-.env.*
+# # Environment variable files
+# .env
+# *.env
+# .env.*
 
 # ================
 # PYTHON
