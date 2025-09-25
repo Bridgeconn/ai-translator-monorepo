@@ -65,7 +65,7 @@ const onMenuClick = ({ key }) => {
       notification.success({
         message: "Success",
         description: "Logged out successfully",
-      });      navigate("/login");
+      });      navigate("/");
     } catch (error) {
       notification.error({
         message: "Error",

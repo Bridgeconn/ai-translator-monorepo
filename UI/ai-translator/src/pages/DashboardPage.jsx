@@ -84,17 +84,19 @@ const Dashboard = () => {
   const recentActivities = [...combinedProjects, ...sources]
     .filter((item) => item.created_at)
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    .slice(0, 4);
+    .slice(0, 3);
 
   /* ---------------- Styles ---------------- */
   const cardStyle = {
     borderRadius: 16,
     textAlign: "center",
     padding: "30px 20px",
+
     boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
     transition: "transform 0.3s, box-shadow 0.3s",
     cursor: "pointer",
     background: "#fff",
+   
   };
 
   const iconStyle = (color) => ({
