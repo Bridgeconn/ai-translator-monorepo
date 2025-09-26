@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   Button,
@@ -16,11 +16,19 @@ import {
   Select,
   Breadcrumb,
   Progress,
+  Modal,
+  Tag,
+  Divider,
 } from "antd";
 import {
   ThunderboltOutlined,
   SaveOutlined,
   CopyOutlined,
+  PlusOutlined,
+  UploadOutlined,
+  CloseOutlined,
+  PlusCircleOutlined,
+  
 } from "@ant-design/icons";
 import api, { translateChapter } from "./api";
 import { generateDraftJson, saveDraft, fetchLatestDraft } from "./api";
@@ -29,6 +37,87 @@ import DownloadDraftButton from "../components/DownloadDraftButton";
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 const { Option } = Select;
+
+
+/* ---------------- Upload Summary Component (from SourcesListPage) ---------------- */
+function UploadSummaryToast({ visible, uploaded = [], skipped = [], onClose }) {
+  if (!visible) return null;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        right: 20,
+        top: 20,
+        zIndex: 9999,
+        maxWidth: 420,
+      }}
+    >
+      <Card
+        size="small"
+        title={
+          <Space>
+            <span role="img" aria-label="sparkles"></span>
+            <span>Upload Summary</span>
+          </Space>
+        }
+        extra={
+          <Button
+            type="text"
+            size="small"
+            icon={<CloseOutlined />}
+            onClick={onClose}
+          />
+        }
+        style={{
+          borderRadius: 12,
+          boxShadow: "0 8px 20px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.08)",
+        }}
+      >
+        {uploaded.length > 0 && (
+          <>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>
+              ✅ Uploaded ({uploaded.length})
+            </div>
+            <div style={{ marginBottom: 8 }}>
+              {uploaded.map((c) => (
+                <Tag color="green" key={`u-${c}`} style={{ marginBottom: 6 }}>
+                  {c}
+                </Tag>
+              ))}
+            </div>
+          </>
+        )}
+
+        {skipped.length > 0 && (
+          <>
+            {uploaded.length > 0 && <Divider style={{ margin: "8px 0" }} />}
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>
+              ⚠️ Skipped (already exists) ({skipped.length})
+            </div>
+            <div>
+              {skipped.map((c) => (
+                <Tag color="gold" key={`s-${c}`} style={{ marginBottom: 6 }}>
+                  {c}
+                </Tag>
+              ))}
+            </div>
+          </>
+        )}
+
+        {!uploaded.length && !skipped.length && (
+          <Text type="secondary">No files processed.</Text>
+        )}
+
+        <div style={{ textAlign: "right", marginTop: 8 }}>
+          <Button type="primary" onClick={onClose} size="small">
+            Close
+          </Button>
+        </div>
+      </Card>
+    </div>
+  );
+}
  
 const VerseTranslationPage = () => {
   const { projectId } = useParams();
@@ -62,7 +151,102 @@ const VerseTranslationPage = () => {
 
  
   const { message } = App.useApp(); //get message instance
- 
+    // Book upload state
+    const [isBookUploadModalOpen, setIsBookUploadModalOpen] = useState(false);
+    const [summaryOpen, setSummaryOpen] = useState(false);
+    const [summaryData, setSummaryData] = useState({ uploaded: [], skipped: [] });
+    const hiddenUploadInputRef = useRef(null);
+
+     // ---------- Book Upload Utils (from SourcesListPage) ----------
+  const getExistingBooks = async (sourceId) => {
+    try {
+      const res = await api.get(`/books/by_source/${sourceId}`);
+      return Array.isArray(res.data?.data) ? res.data.data : res.data || [];
+    } catch (err) {
+      if (err?.response?.status === 404) return [];
+      throw err;
+    }
+  };
+
+  const guessUSFMCode = (file) =>
+    new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const txt = String(reader.result || "");
+          const m = txt.match(/\\id\s+([^\s]+)/i);
+          if (m && m[1]) {
+            return resolve(m[1].replace(/[^0-9A-Za-z]/g, "").toUpperCase());
+          }
+        } catch {}
+        const name = file.name.split(".")[0] || file.name;
+        resolve(name.replace(/[^0-9A-Za-z]/g, "").toUpperCase());
+      };
+      reader.readAsText(file);
+    });
+
+  const showUploadSummary = (uploaded = [], skipped = []) => {
+    setSummaryData({ uploaded, skipped });
+    setSummaryOpen(true);
+  };
+
+  const uploadBooksForSource = async (sourceId, files) => {
+    if (!sourceId || !files?.length) return { uploaded: [], skipped: [] };
+
+    const existing = await getExistingBooks(sourceId);
+    const existingCodes = new Set((existing || []).map((b) => b.book_code));
+    const uploaded = [];
+    const skipped = [];
+
+    for (const file of files) {
+      const code = await guessUSFMCode(file);
+
+      if (existingCodes.has(code)) {
+        skipped.push(code);
+        continue;
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+      try {
+        await api.post(`/books/upload_books/?source_id=${sourceId}`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        uploaded.push(code);
+        existingCodes.add(code);
+      } catch {
+        message.error(`Failed to upload ${code}`);
+      }
+    }
+
+    return { uploaded, skipped };
+  };
+
+  const handleBookUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length || !project?.source_id) return;
+
+    const { uploaded, skipped } = await uploadBooksForSource(project.source_id, files);
+    
+    // Refresh books list
+    await fetchAvailableBooks(project.source_id);
+    
+    showUploadSummary(uploaded, skipped);
+    setIsBookUploadModalOpen(false);
+    
+    // Reset file input
+    e.target.value = "";
+  };
+
+  const openBookUploadModal = () => {
+    setIsBookUploadModalOpen(true);
+  };
+
+  const openFileDialog = () => {
+    if (hiddenUploadInputRef.current) {
+      hiddenUploadInputRef.current.click();
+    }
+  };
   // ---------- Project / Books / Chapters ----------
   const fetchProjectDetails = async () => {
     try {
@@ -622,6 +806,23 @@ const chapterStats = useMemo(() => {
         paddingLeft: 20,
       }}
     >
+          {/* Upload Summary Toast */}
+          <UploadSummaryToast
+        visible={summaryOpen}
+        uploaded={summaryData.uploaded}
+        skipped={summaryData.skipped}
+        onClose={() => setSummaryOpen(false)}
+      />
+         {/* Hidden file input for book upload */}
+         <input
+        type="file"
+        ref={hiddenUploadInputRef}
+        style={{ display: "none" }}
+        multiple
+        accept=".usfm"
+        onChange={handleBookUpload}
+      />
+
       <Breadcrumb style={{ marginBottom: 16 }}>
         <Breadcrumb.Item>
           <Link to="/projects">Projects</Link>
@@ -646,20 +847,38 @@ const chapterStats = useMemo(() => {
           </Text>
         )} */}
  
-        {/* Book + Chapter Selectors */}
-        <Space>
-          <Select
-            value={selectedBook}
-            onChange={(val) => setSelectedBook(val)}
-            style={{ minWidth: 200 }}
-          >
-            <Option value="all">All Books</Option>
-            {books.map((b) => (
-              <Option key={b.book_id} value={b.book_name}>
-                {b.book_name}
-              </Option>
-            ))}
-          </Select>
+   {/* Book + Chapter Selectors with Upload Plus Icon */}
+   <Space>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <Select
+              value={selectedBook}
+              onChange={(val) => setSelectedBook(val)}
+              style={{ minWidth: 200 }}
+            >
+              <Option value="all">All Books</Option>
+              {books.map((b) => (
+                <Option key={b.book_id} value={b.book_name}>
+                  {b.book_name}
+                </Option>
+              ))}
+            </Select>
+            
+            {/* Plus icon for book upload - only show when "All Books" is selected */}
+            {selectedBook === "all" && (
+              <Button
+                type="text"
+                //shape="circle"
+                icon={<PlusCircleOutlined />}
+                onClick={openFileDialog}
+                title="Upload Books"
+                style={{ 
+                  marginLeft: 8,
+                //backgroundColor: 'rgb(44, 141, 251)',
+               // borderColor: 'rgb(44, 141, 251)',
+                }}
+              />
+            )}
+          </div>
  
           {selectedBook !== "all" && chapters.length > 0 && (
             <Space>

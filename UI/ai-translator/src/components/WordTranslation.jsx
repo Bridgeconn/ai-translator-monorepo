@@ -1,12 +1,90 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Row, Col, Select, Card, Input, Typography, Button, message, Breadcrumb, Popconfirm, Modal,notification } from 'antd';
-import { CopyOutlined, DownloadOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { Row, Col, Select, Card, Input, Typography, Button, message, Breadcrumb, Popconfirm, Modal,notification,App,Tag,Divider } from 'antd';
+import { CopyOutlined, DownloadOutlined, ExclamationCircleOutlined,PlusOutlined ,CloseOutlined, PlusCircleOutlined} from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { projectsAPI, wordTokenAPI, booksAPI, languagesAPI, sourcesAPI, draftAPI } from './api.js';
 import { useParams, Link } from 'react-router-dom';
+import api from '../api';
 const { Option } = Select;
 const { Text } = Typography;
 const { TextArea } = Input;
+
+// Upload Summary Toast Component (copied from SourcesListPage)
+function UploadSummaryToast({ visible, uploaded = [], skipped = [], onClose }) {
+  if (!visible) return null;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        right: 20,
+        top: 20,
+        zIndex: 9999,
+        maxWidth: 420,
+      }}
+    >
+      <Card
+        size="small"
+        title={
+          <span>Upload Summary</span>
+        }
+        extra={
+          <Button
+            type="text"
+            size="small"
+            icon={<CloseOutlined />}
+            onClick={onClose}
+          />
+        }
+        style={{
+          borderRadius: 12,
+          boxShadow: "0 8px 20px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.08)",
+        }}
+      >
+        {uploaded.length > 0 && (
+          <>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>
+              Uploaded ({uploaded.length})
+            </div>
+            <div style={{ marginBottom: 8 }}>
+              {uploaded.map((c) => (
+                <Tag color="green" key={`u-${c}`} style={{ marginBottom: 6 }}>
+                  {c}
+                </Tag>
+              ))}
+            </div>
+          </>
+        )}
+
+        {skipped.length > 0 && (
+          <>
+            {uploaded.length > 0 && <Divider style={{ margin: "8px 0" }} />}
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>
+              Skipped (already exists) ({skipped.length})
+            </div>
+            <div>
+              {skipped.map((c) => (
+                <Tag color="gold" key={`s-${c}`} style={{ marginBottom: 6 }}>
+                  {c}
+                </Tag>
+              ))}
+            </div>
+          </>
+        )}
+
+        {!uploaded.length && !skipped.length && (
+          <Text type="secondary">No files processed.</Text>
+        )}
+
+        <div style={{ textAlign: "right", marginTop: 8 }}>
+          <Button type="primary" onClick={onClose} size="small">
+            Close
+          </Button>
+        </div>
+      </Card>
+    </div>
+  );
+}
 
 export default function WordTranslation() {
   const { projectId } = useParams();
@@ -31,6 +109,12 @@ export default function WordTranslation() {
   const [messageApi, messageContextHolder] = message.useMessage();
   const [notificationApi, notificationContextHolder] = notification.useNotification();
   const editedTokensRef = useRef(editedTokens);
+  const { message: appMessage } = App.useApp();
+
+    // Book upload states
+    const [uploadSummaryOpen, setUploadSummaryOpen] = useState(false);
+    const [uploadSummaryData, setUploadSummaryData] = useState({ uploaded: [], skipped: [] });
+    const hiddenUploadInputRef = useRef(null);
   // Derived helpers
   const hasTokenEdits = Object.entries(editedTokens).some(([k, v]) => k !== 'draft_edited' && !!v);
   const showEditorUnsaved = hasTokenEdits;           // show save/discard in editor
@@ -55,6 +139,106 @@ export default function WordTranslation() {
     enabled: !!projectId,
   });
 
+    // Book upload utility functions (adapted from SourcesListPage)
+    const getExistingBooks = async (sourceId) => {
+      try {
+        const res = await api.get(`/books/by_source/${sourceId}`);
+        return Array.isArray(res.data?.data) ? res.data.data : res.data || [];
+      } catch (err) {
+        if (err?.response?.status === 404) return [];
+        throw err;
+      }
+    };
+  
+    const guessUSFMCode = (file) =>
+      new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const txt = String(reader.result || "");
+            const m = txt.match(/\\id\s+([^\s]+)/i);
+            if (m && m[1]) {
+              return resolve(m[1].replace(/[^0-9A-Za-z]/g, "").toUpperCase());
+            }
+          } catch {}
+          const name = file.name.split(".")[0] || file.name;
+          resolve(name.replace(/[^0-9A-Za-z]/g, "").toUpperCase());
+        };
+        reader.readAsText(file);
+      });
+  
+    const uploadBooksForSource = async (sourceId, files) => {
+      if (!sourceId || !files?.length) return { uploaded: [], skipped: [] };
+  
+      const existing = await getExistingBooks(sourceId);
+      const existingCodes = new Set((existing || []).map((b) => b.book_code));
+      const uploaded = [];
+      const skipped = [];
+  
+      for (const file of files) {
+        const code = await guessUSFMCode(file);
+  
+        if (existingCodes.has(code)) {
+          skipped.push(code);
+          continue;
+        }
+  
+        const formData = new FormData();
+        formData.append("file", file);
+        try {
+          await api.post(`/books/upload_books/?source_id=${sourceId}`, formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+          uploaded.push(code);
+          existingCodes.add(code);
+        } catch {
+          appMessage.error(`Failed to upload ${code}`);
+        }
+      }
+  
+      return { uploaded, skipped };
+    };
+  
+    const showUploadSummary = (uploaded = [], skipped = []) => {
+      setUploadSummaryData({ uploaded, skipped });
+      setUploadSummaryOpen(true);
+    };
+  
+    // Handle book upload
+    const handleUploadBooks = () => {
+      if (!project?.source_id) {
+        appMessage.error('No source found for this project');
+        return;
+      }
+      
+      if (hiddenUploadInputRef.current) {
+        hiddenUploadInputRef.current.value = "";
+        hiddenUploadInputRef.current.click();
+      }
+    };
+  
+    const onUploadFilesChosen = async (e) => {
+      const files = Array.from(e.target.files || []);
+      if (!files.length || !project?.source_id) return;
+  
+      try {
+        const { uploaded, skipped } = await uploadBooksForSource(project.source_id, files);
+        
+        if (uploaded.length > 0 || skipped.length > 0) {
+          showUploadSummary(uploaded, skipped);
+          
+          // Refresh the books list
+          const books = await booksAPI.getBooksBySourceId(project.source_id);
+          setProjectBooks(books);
+        }
+      } catch (error) {
+        console.error('Upload failed:', error);
+        appMessage.error('Failed to upload books');
+      }
+  
+      // Clear the input
+      e.target.value = "";
+    };
   // Fetch books for the project
   useEffect(() => {
     const fetchBooks = async () => {
@@ -665,6 +849,22 @@ notificationApi.error({
       {/* {contextHolder} */}
       {messageContextHolder}
   {notificationContextHolder}
+    {/* Upload Summary Toast */}
+    <UploadSummaryToast
+        visible={uploadSummaryOpen}
+        uploaded={uploadSummaryData.uploaded}
+        skipped={uploadSummaryData.skipped}
+        onClose={() => setUploadSummaryOpen(false)}
+      />
+        {/* Hidden file input for book upload */}
+        <input
+        type="file"
+        ref={hiddenUploadInputRef}
+        style={{ display: "none" }}
+        multiple
+        accept=".usfm"
+        onChange={onUploadFilesChosen}
+      />
       <div style={{
         marginBottom: 24,
       }}>
@@ -688,24 +888,39 @@ notificationApi.error({
         </p> */}
       </div>
 
-      {/* Book Selector */}
-      <div style={{ marginBottom: 12 }}>
-        <Text strong style={{ display: 'block', marginBottom: 4, fontSize: 14 }}>
-          Select Book
-        </Text>
-        <Select
-          className="custom-book-dropdown"
-          placeholder="Select a book"
-          style={{ width: 150, borderRadius: 8, fontSize: 16 }}
-          onChange={handleBookChange}
-          value={selectedBook?.book_id}
-        >
-          {projectBooks.map((book) => (
-            <Option key={book.book_id} value={book.book_id}>
-              {book.book_name}
-            </Option>
-          ))}
-        </Select>
+     {/* Book Selector with Upload Button */}
+     <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div>
+          <Text strong style={{ display: 'block', marginBottom: 4, fontSize: 14 }}>
+            Select Book
+          </Text>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Select
+              className="custom-book-dropdown"
+              placeholder="Select a book"
+              style={{ width: 150, borderRadius: 8, fontSize: 16 }}
+              onChange={handleBookChange}
+              value={selectedBook?.book_id}
+            >
+              {projectBooks.map((book) => (
+                <Option key={book.book_id} value={book.book_id}>
+                  {book.book_name}
+                </Option>
+              ))}
+            </Select>
+            <Button
+              type="text"
+              //shape="circle"
+              icon={<PlusCircleOutlined />}
+              onClick={handleUploadBooks} 
+              title="Upload Books"
+              style={{
+                //backgroundColor: 'rgb(44, 141, 251)',
+                //borderColor: 'rgb(44, 141, 251)',
+              }}
+            />
+          </div>
+        </div>
       </div>
 
       {selectedBook && (
