@@ -25,7 +25,9 @@ import {
 import api, { translateChapter } from "./api";
 import { generateDraftJson, saveDraft, fetchLatestDraft } from "./api";
 import DownloadDraftButton from "../components/DownloadDraftButton";
- 
+import { Tooltip } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
+
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 const { Option } = Select;
@@ -59,10 +61,29 @@ const VerseTranslationPage = () => {
   const [editedTokens, setEditedTokens] = useState({});
   const [activeTab, setActiveTab] = useState("editor");
   const [originalDraft, setOriginalDraft] = useState(""); // NEW
+  const [selectedModel, setSelectedModel] = useState(null);
 
  
   const { message } = App.useApp(); //get message instance
- 
+  const MODEL_INFO = {
+    "nllb-600M": {
+      Model: "nllb-600M",
+      Tasks: "mt, text translation",
+      "Language Code Type": "BCP-47",
+      DevelopedBy: "Meta",
+      License: "CC-BY-NC 4.0",
+      Languages: "200 languages",
+    },
+    "nllb_finetuned_eng_nzm": {
+      Model: "nllb_finetuned_eng_nzm",
+      Tasks: "mt, text translation",
+      "Language Code Type": "BCP-47",
+      DevelopedBy: "Meta",
+      License: "CC-BY-NC 4.0",
+      Languages: "Zeme Naga, English",
+    },
+  };
+  
   // ---------- Project / Books / Chapters ----------
   const fetchProjectDetails = async () => {
     try {
@@ -289,17 +310,6 @@ const VerseTranslationPage = () => {
           t.verse_token_id === tokenId ? { ...t, ...res.data.data } : t
         )
       );
- 
-    
- 
-    //   // 4. Save draft in DB (if draftId available)
-    //   if (draftId) {
-    //     await saveDraft(draftId, newText);
-    //  }
- 
-      // 5. Refresh draft content so Draft View updates immediately
-      // await updateServerDraft();
-         // Instead, keep local draft state updated
     setServerDraft(prev => {
       if (!prev) return prev;
       // Optional: update the verse in the draft content if needed
@@ -413,7 +423,8 @@ const VerseTranslationPage = () => {
           projectId,
           selectedBook,
           selectedChapter,
-          batch
+          batch,
+          selectedModel
         );
   
         if (newTokens?.length > 0) {
@@ -639,14 +650,6 @@ const chapterStats = useMemo(() => {
       <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: '#1f2937' }}>
        Verse Translation ({project?.name})
         </h2>        
-        {/* {project && (
-          <Text>
-            Source: {project.source_language_name} | Target:{" "}
-            {project.target_language_name}
-          </Text>
-        )} */}
- 
-        {/* Book + Chapter Selectors */}
         <Space>
           <Select
             value={selectedBook}
@@ -728,8 +731,46 @@ const chapterStats = useMemo(() => {
         {/* Editor */}
         
         <TabPane tab="Translation Editor" key="editor"> 
-        <Row justify="end" style={{ marginBottom: 12 }}>
-            <Button
+        <Row justify="end"  align="middle" gutter={12}style={{ marginBottom: 12 }}>
+        <Col>
+  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+  <Tooltip
+    title={
+      selectedModel ? (
+        <div style={{ textAlign: "left", fontSize: 12 }}>
+          {Object.entries(MODEL_INFO[selectedModel]).map(([key, val]) => (
+            <div key={key}>
+              <b>{key}:</b> {val}
+            </div>
+          ))}
+        </div>
+      ) : null
+    }
+    placement="right"
+    color="#f0f0f0"
+  >
+    <Button
+      type="text"
+      icon={<InfoCircleOutlined style={{ fontSize: 18, color: "#2c8dfb" }} />}
+      disabled={!selectedModel} // disabled until a model is selected
+    />
+  </Tooltip>
+    <Select
+      // value={selectedModel}
+      placeholder="Select model"
+      style={{ width: 220 }}
+      value={selectedModel || undefined} // placeholder shows if null
+      onChange={(val) => setSelectedModel(val)}
+    >
+      <Option value="nllb-600M">nllb-600M</Option>
+      <Option value="nllb_finetuned_eng_nzm">nllb_finetuned_eng_nzm</Option>
+    </Select>
+  </div>
+</Col>
+
+      
+  <Col>
+  <Button
               type="dashed"
               icon={<ThunderboltOutlined />}
               onClick={selectedChapter ? handleTranslateChapter : handleTranslateAllChunks}
@@ -737,6 +778,8 @@ const chapterStats = useMemo(() => {
             >
               Translate
             </Button>
+            </Col>
+            
           </Row>
           
           <Row gutter={16}>

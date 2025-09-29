@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Row, Col, Select, Card, Input, Typography, Button, message, Breadcrumb, Popconfirm, Modal,notification } from 'antd';
+import { Row, Col, Select, Card, Input, Typography, Button, message, Breadcrumb, Popconfirm, Modal, notification } from 'antd';
 import { CopyOutlined, DownloadOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { projectsAPI, wordTokenAPI, booksAPI, languagesAPI, sourcesAPI, draftAPI } from './api.js';
 import { useParams, Link } from 'react-router-dom';
+import { Tooltip } from 'antd';
+import { InfoCircleOutlined } from '@ant-design/icons';
+import { Progress } from 'antd';
+
 const { Option } = Select;
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -31,11 +35,36 @@ export default function WordTranslation() {
   const [messageApi, messageContextHolder] = message.useMessage();
   const [notificationApi, notificationContextHolder] = notification.useNotification();
   const editedTokensRef = useRef(editedTokens);
+  const [selectedModel, setSelectedModel] = useState(null);
+
+  const MODEL_INFO = {
+    "nllb-600M": {
+      Model: "nllb-600M",
+      Tasks: "mt, text translation",
+      "Language Code Type": "BCP-47",
+      DevelopedBy: "Meta",
+      License: "CC-BY-NC 4.0",
+      Languages: "200 languages"
+    },
+    "nllb_finetuned_eng_nzm": {
+      Model: "nllb_finetuned_eng_nzm",
+      Tasks: "mt, text translation",
+      "Language Code Type": "BCP-47",
+      DevelopedBy: "Meta",
+      License: "CC-BY-NC 4.0",
+      Languages: "Zeme Naga, English"
+    }
+  };
+
   // Derived helpers
   const hasTokenEdits = Object.entries(editedTokens).some(([k, v]) => k !== 'draft_edited' && !!v);
   const showEditorUnsaved = hasTokenEdits;           // show save/discard in editor
   const showDraftUnsaved = isDraftEdited;            // show save/discard in draft
-
+  // --- Model options ---
+  const MODEL_OPTIONS = [
+    { label: "NLLB 600M", value: "nllb-600M" },
+    { label: "NLLB Fine-tuned ENG → NZM", value: "nllb_finetuned_eng_nzm" }
+  ];
   // Keep isDraftEdited in sync anytime draft/original change (avoids timing issues)
   useEffect(() => {
     setIsDraftEdited(String(draftContent || "") !== String(originalDraft || ""));
@@ -63,11 +92,12 @@ export default function WordTranslation() {
         const books = await booksAPI.getBooksBySourceId(project.source_id);
         setProjectBooks(books);
       } catch (e) {
-notificationApi.error({
-      message: "Error",
-      description: "Failed to load book for this project",
-      placement: "top",
-    });      }
+        notificationApi.error({
+          message: "Error",
+          description: "Failed to load book for this project",
+          placement: "top",
+        });
+      }
     };
     fetchBooks();
   }, [project]);
@@ -141,7 +171,8 @@ notificationApi.error({
         message: "Error",
         description: "Failed to fetch or generate tokens ",
         placement: "top",
-      });    } finally {
+      });
+    } finally {
       setLoadingTokens(false);
     }
   };
@@ -195,7 +226,9 @@ notificationApi.error({
     }
     try {
       const eventSource = new EventSource(
-        import.meta.env.VITE_BACKEND_URL + `/api/generate_batch_stream/${projectId}?book_id=${encodeURIComponent(selectedBook.book_id)}`
+        // import.meta.env.VITE_BACKEND_URL + `/api/generate_batch_stream/${projectId}?book_id=${encodeURIComponent(selectedBook.book_id)}`
+        `${import.meta.env.VITE_BACKEND_URL}/api/generate_batch_stream/${projectId}?book_id=${encodeURIComponent(selectedBook.book_id)}&model_name=${encodeURIComponent(selectedModel)}`
+
       );
       let hasError = false;
       eventSource.onmessage = (event) => {
@@ -213,7 +246,7 @@ notificationApi.error({
             message: "Error",
             description: "Translation failed. The server might be down or the network is slow. Please try again.",
             placement: "top",
-          });          setIsGenerating(false);
+          }); setIsGenerating(false);
           eventSource.close();
           return;
         }
@@ -273,17 +306,37 @@ notificationApi.error({
           }, 1000);
         }
 
-        if (data.finished && !hasError) {
-          notificationApi.success({
-            message: "Success",
-            description: `All ${data.total ?? translatedCount} tokens translated!`,
-            placement: "top",
-          });          
+        //   if (data.finished && !hasError) {
+        //     notificationApi.success({
+        //       message: "Success",
+        //       description: `All ${data.total ?? translatedCount} tokens translated!`,
+        //       placement: "top",
+        //     });
+        //     setIsGenerating(false);
+        //     setHasGenerated(true);
+        //     eventSource.close();
+        //   }
+        // };
+        if (data.finished) {
+          if (hasError) {
+            notificationApi.error({
+              message: "Error",
+              description: "Translation job failed. Please try again.",
+              placement: "top",
+            });
+          } else {
+            notificationApi.success({
+              message: "Success",
+              description: `All ${data.total ?? translatedCount} tokens translated!`,
+              placement: "top",
+            });
+            setHasGenerated(true);
+          }
           setIsGenerating(false);
-          setHasGenerated(true);
           eventSource.close();
         }
       };
+
 
       eventSource.onerror = (err) => {
         console.error("SSE error:", err);
@@ -291,7 +344,7 @@ notificationApi.error({
           message: "Error",
           description: "Translation stream interrupted. Please try again.",
           placement: "top",
-        });        
+        });
         setIsGenerating(false); // 🔹 Reset on error
         eventSource.close();
       };
@@ -302,7 +355,7 @@ notificationApi.error({
         message: "Error",
         description: "Failed to start translation stream. Please try again.",
         placement: "top",
-      }); 
+      });
       setIsGenerating(false); // 🔹 Reset on failure
 
     }
@@ -333,7 +386,8 @@ notificationApi.error({
         message: "Error",
         description: "Failed to fetch draft.",
         placement: "top",
-      });     } finally {
+      });
+    } finally {
       setLoadingDraft(false);
     }
   };
@@ -361,14 +415,15 @@ notificationApi.error({
         message: "Success",
         description: `Draft generated for ${selectedBook.book_name}`,
         placement: "top",
-      });    
-     } catch (error) {
+      });
+    } catch (error) {
       console.error("[ERROR] handleGenerateDraft:", error);
       notificationApi.error({
         message: "Error",
         description: "Failed to generate draft.",
         placement: "top",
-      });     } finally {
+      });
+    } finally {
       setLoadingDraft(false);
     }
   };
@@ -379,7 +434,7 @@ notificationApi.error({
       console.log("No draft content to copy");
       return;
     }
-  
+
     if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
       // Modern secure API
       navigator.clipboard.writeText(draftContent)
@@ -400,7 +455,7 @@ notificationApi.error({
       document.body.appendChild(textarea);
       textarea.focus();
       textarea.select();
-  
+
       try {
         const success = document.execCommand("copy");
         if (success) {
@@ -413,11 +468,11 @@ notificationApi.error({
         console.error("Fallback copy failed:", err);
         messageApi.error("Failed to copy draft: " + (err.message || err));
       }
-  
+
       document.body.removeChild(textarea);
     }
   };
-  
+
   const updateDraftFromEditor = (tokenId, newTranslation, oldTranslation, tokenText, isManual = false) => {
     try {
       const oldVal = String(oldTranslation || tokenText || "");
@@ -475,7 +530,7 @@ notificationApi.error({
         message: "Error",
         description: "No project selected",
         placement: "top",
-      });      return;
+      }); return;
     }
 
     try {
@@ -557,7 +612,8 @@ notificationApi.error({
         message: "Error",
         description: "Failed to save translations",
         placement: "top",
-      });    }
+      });
+    }
   };
   const handleDiscardAll = () => {
     if (activeTab === "editor") {
@@ -664,7 +720,7 @@ notificationApi.error({
     <div style={{ padding: '4px', position: 'relative', height: "100vh", display: "flex", flexDirection: "column" }}>
       {/* {contextHolder} */}
       {messageContextHolder}
-  {notificationContextHolder}
+      {notificationContextHolder}
       <div style={{
         marginBottom: 24,
       }}>
@@ -679,13 +735,8 @@ notificationApi.error({
 
         {/* Project Name */}
         <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: '#1f2937' }}>
-         Word Translation ({project?.name})
+          Word Translation ({project?.name})
         </h2>
-
-        {/* Languages */}
-        {/* <p style={{ marginTop: 16, fontSize: 16, color: '#555' }}>
-          <span style={{ fontWeight: 500 }}>Source:</span> {sourceLang} | <span style={{ fontWeight: 500 }}>Target:</span> {targetLang}
-        </p> */}
       </div>
 
       {/* Book Selector */}
@@ -707,6 +758,25 @@ notificationApi.error({
           ))}
         </Select>
       </div>
+          {/* Progress Bar */}
+    {selectedBook && tokens.length > 0 && (
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+          <Text type="secondary" style={{ fontSize: 14 }}>
+            {Math.round((translatedCount / tokens.length) * 100)}%
+          </Text>
+          <Text strong style={{ fontSize: 14 }}>
+            {translatedCount}/{tokens.length} Tokens
+          </Text>
+        </div>
+        <Progress
+          percent={Math.round((translatedCount / tokens.length) * 100)}
+          strokeColor="#52c41a"
+          showInfo={false}
+          status="active"
+        />
+      </div>
+    )}
 
       {selectedBook && (
         <>
@@ -793,19 +863,60 @@ notificationApi.error({
                         Unsaved Changes:
                       </span>
                       <Button type="primary" onClick={handleSaveAll} size="medium" loading={saving}>
-                        Save 
+                        Save
                       </Button>
                       <Button onClick={handleDiscardAll} size="medium">
-                        Discard 
+                        Discard
                       </Button>
                     </div>
                   )}
                 {activeTab === "editor" ? (
                   <>
                     {/* Editor-specific buttons */}
-                    <Text type="secondary">
+                    {/* <Text type="secondary">
                       Progress: {translatedCount}/{tokens.length}
-                    </Text>
+                    </Text> */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      {selectedModel ? (
+                        <Tooltip
+                          title={
+                            <div style={{ textAlign: "left", fontSize: 12 }}>
+                              {Object.entries(MODEL_INFO[selectedModel]).map(([key, val]) => (
+                                <div key={key}><b>{key}:</b> {val}</div>
+                              ))}
+                            </div>
+                          }
+                          placement="right"
+                          color="#f0f0f0"
+                        >
+                          <Button
+                            type="text"
+                            icon={<InfoCircleOutlined style={{ fontSize: 18, color: "#2c8dfb" }} />}
+                          />
+                        </Tooltip>
+                      ) : (
+                        <Button
+                          type="text"
+                          icon={<InfoCircleOutlined style={{ fontSize: 18, color: "#2c8dfb" }} />}
+                          disabled
+                        />
+                      )}
+
+                      <Select
+                        placeholder="Select model"
+                        value={selectedModel || undefined} // placeholder visible if null
+                        style={{ width: 220, borderRadius: 8, fontSize: 16 }}
+                        onChange={(val) => setSelectedModel(val)}
+                      >
+                        {MODEL_OPTIONS.map((m) => (
+                          <Option key={m.value} value={m.value}>{m.label}</Option>
+                        ))}
+                      </Select>
+                    </div>
                     {hasGenerated ? (
                       <Popconfirm
                         disabled={isGenerating}
