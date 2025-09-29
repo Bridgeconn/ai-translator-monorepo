@@ -58,7 +58,7 @@ async function getAccessToken() {
   return resp.data.access_token;
 }
 
-async function requestDocTranslation(token, file, srcLangCode, tgtLangCode) {
+async function requestDocTranslation(token, file, srcLangCode, tgtLangCode, model_name) {
   const formData = new FormData();
   formData.append("file", file);
 
@@ -69,7 +69,7 @@ async function requestDocTranslation(token, file, srcLangCode, tgtLangCode) {
   );
 
   const resp = await vachanApi.post(
-    `/model/text/translate-document?device=cpu&model_name=nllb-600M&source_language=${srcLangCode}&target_language=${tgtLangCode}`,
+    `/model/text/translate-document?device=cpu&model_name=${model_name}&source_language=${srcLangCode}&target_language=${tgtLangCode}`,
     formData,
     {
       headers: {
@@ -564,7 +564,8 @@ export default function QuickTranslationPage() {
         token,
         fileToSend,
         sourceLang?.BCP_code,
-        targetLang?.BCP_code
+        targetLang?.BCP_code,
+        selectedModel || "nllb-600M"
       );
       if (signal.aborted) throw new Error("Translation cancelled");
 
@@ -1146,7 +1147,7 @@ export default function QuickTranslationPage() {
                 md={2}
                 style={{
                   textAlign: "center",
-                
+
                 }}
               >
                 <Tooltip title="Swap Languages" color="#fff">
@@ -1304,11 +1305,10 @@ export default function QuickTranslationPage() {
                     </Select.Option>
                   ))}
                 </Select>
-
-                {selectedModel ? (
-                  <Tooltip
-                    color="#ffffff"
-                    title={
+                <Tooltip
+                  color="#ffffff"
+                  title={
+                    selectedModel ? (
                       <div style={{ color: 'var(--primary-color)' }}>
                         <div><strong>Model Name:</strong> {selectedModel}</div>
                         <div><strong>Tasks:</strong> {modelsInfo[selectedModel].tasks}</div>
@@ -1317,13 +1317,16 @@ export default function QuickTranslationPage() {
                         <div><strong>Developed By:</strong> {modelsInfo[selectedModel].developedBy}</div>
                         <div><strong>License:</strong> {modelsInfo[selectedModel].license}</div>
                       </div>
-                    }
-                  >
-                    <Button shape="circle" icon={<InfoCircleOutlined />} />
-                  </Tooltip>
-                ) : (
-                  <Button shape="circle" icon={<InfoCircleOutlined />} disabled />
-                )}
+                    ) : "Select a model to see info"
+                  }
+                >
+                  <Button
+                    shape="circle"
+                    icon={<InfoCircleOutlined />}
+                    disabled={!selectedModel} // disables button when no model selected
+                  />
+                </Tooltip>
+
               </Space>
             }
             style={{

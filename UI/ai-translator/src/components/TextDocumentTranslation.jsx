@@ -15,10 +15,11 @@ import {
   Upload,
 } from "antd";
 import { languagesAPI } from "./api.js";
-import { EditOutlined, CopyOutlined,UploadOutlined, CloseOutlined, TranslationOutlined, } from "@ant-design/icons";
+import { EditOutlined, CopyOutlined, UploadOutlined, CloseOutlined, TranslationOutlined, } from "@ant-design/icons";
 import { useParams, Link } from "react-router-dom";
 import { textDocumentAPI } from "./api.js";
 import DownloadDraftButton from "./DownloadDraftButton";
+import { InfoCircleOutlined } from "@ant-design/icons";
 
 // Added imports for translation workflow
 import vachanApi from "../api/vachan";
@@ -27,6 +28,24 @@ import Papa from "papaparse";
 const { Option } = Select;
 const { Text } = Typography;
 const { TextArea } = Input;
+const MODEL_INFO = {
+  "nllb-600M": {
+    Model: "nllb-600M",
+    Tasks: "mt, text translation",
+    "Language Code Type": "BCP-47",
+    DevelopedBy: "Meta",
+    License: "CC-BY-NC 4.0",
+    Languages: "200 languages",
+  },
+  "nllb_finetuned_eng_nzm": {
+    Model: "nllb_finetuned_eng_nzm",
+    Tasks: "mt, text translation",
+    "Language Code Type": "BCP-47",
+    DevelopedBy: "Meta",
+    License: "CC-BY-NC 4.0",
+    Languages: "Zeme Naga, English",
+  },
+};
 
 // ------------------  Vachan Helpers ------------------
 async function getAccessToken() {
@@ -40,12 +59,12 @@ async function getAccessToken() {
   return resp.data.access_token;
 }
 
-async function requestDocTranslation(token, file, srcLangCode, tgtLangCode) {
+async function requestDocTranslation(token, file, srcLangCode, tgtLangCode, model_name) {
   const formData = new FormData();
   formData.append("file", file);
 
   const resp = await vachanApi.post(
-    `/model/text/translate-document?device=cpu&model_name=nllb-600M&source_language=${srcLangCode}&target_language=${tgtLangCode}`,
+    `/model/text/translate-document?device=cpu&model_name=${model_name}&source_language=${srcLangCode}&target_language=${tgtLangCode}`,
     formData,
     { headers: { Authorization: `Bearer ${token}` } }
   );
@@ -143,6 +162,7 @@ export default function TextDocumentTranslation() {
   const getSourceKey = (projectId, fileId) => `sourceEdit_${projectId}_${fileId}`;
   const getSelectedFileKey = (projectId) => `selectedFile_${projectId}`;
   const getTempSourceKey = (projectId) => `tempSource_${projectId}`;
+  const [selectedModel, setSelectedModel] = useState(null); // default
 
   const { message } = App.useApp();
 
@@ -266,7 +286,7 @@ export default function TextDocumentTranslation() {
     return false; // prevent auto upload
   };
 
-     // ------------------ Translate handler (Vachan workflow) ------------------
+  // ------------------ Translate handler (Vachan workflow) ------------------
   const handleTranslate = async () => {
     if (!sourceText.trim()) {
       message.warning("Please enter or upload source text first");
@@ -292,69 +312,70 @@ export default function TextDocumentTranslation() {
       }
 
       // 3. Prepare file
-const blob = new Blob([textToTranslate], { type: "text/plain" });
-const fileToSend = new File([blob], "content.txt", { type: "text/plain" });
+      const blob = new Blob([textToTranslate], { type: "text/plain" });
+      const fileToSend = new File([blob], "content.txt", { type: "text/plain" });
 
-//  Use source/target language from selected file or project default
-let srcCode = selectedFile?.source_id || project?.source_language?.code;
-let tgtCode = selectedFile?.target_id || project?.target_language?.code;
+      //  Use source/target language from selected file or project default
+      let srcCode = selectedFile?.source_id || project?.source_language?.code;
+      let tgtCode = selectedFile?.target_id || project?.target_language?.code;
 
-if (!srcCode || !tgtCode) {
-  message.error("Source or target language is not set for this project/file.");
-  return;
-}
+      if (!srcCode || !tgtCode) {
+        message.error("Source or target language is not set for this project/file.");
+        return;
+      }
 
-// ---  Request translation job using those languages ---
-// message.info("Preparing translation...");
-const jobId = await requestDocTranslation(
-  token,
-  fileToSend,
-  srcCode,
-  tgtCode
-);
+      // ---  Request translation job using those languages ---
+      // message.info("Preparing translation...");
+      const jobId = await requestDocTranslation(
+        token,
+        fileToSend,
+        srcCode,
+        tgtCode,
+        selectedModel
+      );
 
-message.info("⏳ Translating... please wait");
+      message.info("⏳ Translating... please wait");
 
 
-       // 5. Poll until finished
-    await pollJobStatus({ token, jobId });
+      // 5. Poll until finished
+      await pollJobStatus({ token, jobId });
 
-     // 6. Fetch assets
-    const csvText = await fetchAssets(token, jobId);
+      // 6. Fetch assets
+      const csvText = await fetchAssets(token, jobId);
 
       // 7. Parse CSV
-    const parsed = Papa.parse(csvText, {
-      header: true,
-      skipEmptyLines: true,
-    });
+      const parsed = Papa.parse(csvText, {
+        header: true,
+        skipEmptyLines: true,
+      });
 
-    // 8. Rebuild translation
-    const translatedText = isUSFM
-      ? reconstructUSFM(usfmStructure, parsed.data)
-      : simpleTranslation(textToTranslate, parsed.data);
+      // 8. Rebuild translation
+      const translatedText = isUSFM
+        ? reconstructUSFM(usfmStructure, parsed.data)
+        : simpleTranslation(textToTranslate, parsed.data);
 
-    setTargetText(translatedText);
-    message.success("Translation complete!");
+      setTargetText(translatedText);
+      message.success("Translation complete!");
 
-    // Auto-save the source and translated text if a file is selected
-    if (selectedFile) {
-      try {
-        await textDocumentAPI.updateFile(projectId, selectedFile.id, {
-          source_text: sourceText, // Save the edited source text
-          target_text: translatedText
-        });
-      } catch (err) {
-        console.error(err);
-        message.warning("Translation completed but failed to save automatically.");
+      // Auto-save the source and translated text if a file is selected
+      if (selectedFile) {
+        try {
+          await textDocumentAPI.updateFile(projectId, selectedFile.id, {
+            source_text: sourceText, // Save the edited source text
+            target_text: translatedText
+          });
+        } catch (err) {
+          console.error(err);
+          message.warning("Translation completed but failed to save automatically.");
+        }
       }
+    } catch (err) {
+      console.error(err);
+      message.error(err.message || "Translation failed");
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error(err);
-    message.error(err.message || "Translation failed");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   if (!project) return <Spin />;
 
@@ -393,7 +414,7 @@ message.info("⏳ Translating... please wait");
         />
 
         <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: "#1f2937" }}>
-           Document Translation ({sourceLangName} - {targetLangName})
+          Document Translation ({sourceLangName} - {targetLangName})
         </h2>
       </div>
 
@@ -418,24 +439,54 @@ message.info("⏳ Translating... please wait");
 
       {selectedFile && (
         <Card
-          title="Translation Editor"
+          title={
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              {/* Left: Heading */}
+              <h3 style={{ margin: 0 }}>Translation Editor</h3>
+
+              {/* Right: Model dropdown + Info button */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                {/* Model Dropdown */}
+                <Select
+                  placeholder="Select Model"
+                  style={{ width: 160 }}
+                  value={selectedModel}
+                  onChange={(value) => setSelectedModel(value)}
+                > <Option value="nllb-600M">nllb-600M</Option>
+                  <Option value="nllb_finetuned_eng_nzm">nllb_finetuned_eng_nzm</Option>
+
+                </Select>
+                <Tooltip
+                  title={
+                    selectedModel
+                      ? Object.entries(MODEL_INFO[selectedModel]).map(
+                        ([key, value]) => (
+                          <div key={key}>
+                            <strong>{key}:</strong> {value}
+                          </div>
+                        )
+                      )
+                      : "Select a model to see info"
+                  }
+                  color="#fff"
+                  overlayStyle={{ whiteSpace: "pre-line" }}
+                >
+                  <Button
+                    shape="circle"
+                    icon={<InfoCircleOutlined />}
+                    disabled={!selectedModel} // disable if no model selected
+                  />
+                </Tooltip>
+
+              </div>
+            </div>
+          }
           style={{ flex: 1, display: "flex", flexDirection: "column" }}
         >
           <Row gutter={16} style={{ flex: 1 }}>
             {/* Source */}
             <Col span={12} style={{ maxHeight: "70vh", overflowY: "auto" }}>
               <h3>Source</h3>
-              {/* <pre
-                style={{
-                  whiteSpace: "pre-wrap",
-                  background: "#f5f5f5",
-                  padding: 10,
-                  borderRadius: 4,
-                }}
-              >
-                {sourceText}
-              </pre> */}
-              {/*  Editable Source TextArea */}
               <TextArea
                 rows={20}
                 value={sourceText}
@@ -448,7 +499,7 @@ message.info("⏳ Translating... please wait");
                 placeholder="Enter or upload text to translate..."
                 style={{ marginBottom: 8 }}
               />
-              {/*  Upload + Clear buttons */}
+              {/* Upload + Clear buttons */}
               <div
                 style={{
                   marginTop: 12,
@@ -526,9 +577,6 @@ message.info("⏳ Translating... please wait");
                 </div>
               </div>
             </Col>
-
-            {/* Target */}
-
             {/* Target */}
             <Col span={12} style={{ maxHeight: "70vh", overflowY: "auto" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -604,8 +652,8 @@ message.info("⏳ Translating... please wait");
               />
             </Col>
           </Row>
-           {/*  Translate button centered below both panels */}
-           <Row justify="center" style={{ marginTop: 16 }}>
+          {/*  Translate button centered below both panels */}
+          <Row justify="center" style={{ marginTop: 16 }}>
             <Button
               type="primary"
               icon={<TranslationOutlined />}

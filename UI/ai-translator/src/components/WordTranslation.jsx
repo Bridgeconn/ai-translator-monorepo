@@ -758,25 +758,25 @@ export default function WordTranslation() {
           ))}
         </Select>
       </div>
-          {/* Progress Bar */}
-    {selectedBook && tokens.length > 0 && (
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-          <Text type="secondary" style={{ fontSize: 14 }}>
-            {Math.round((translatedCount / tokens.length) * 100)}%
-          </Text>
-          <Text strong style={{ fontSize: 14 }}>
-            {translatedCount}/{tokens.length} Tokens
-          </Text>
+      {/* Progress Bar */}
+      {selectedBook && tokens.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+            <Text type="secondary" style={{ fontSize: 14 }}>
+              {Math.round((translatedCount / tokens.length) * 100)}%
+            </Text>
+            <Text strong style={{ fontSize: 14 }}>
+              {translatedCount}/{tokens.length} Tokens
+            </Text>
+          </div>
+          <Progress
+            percent={Math.round((translatedCount / tokens.length) * 100)}
+            strokeColor="#52c41a"
+            showInfo={false}
+            status="active"
+          />
         </div>
-        <Progress
-          percent={Math.round((translatedCount / tokens.length) * 100)}
-          strokeColor="#52c41a"
-          showInfo={false}
-          status="active"
-        />
-      </div>
-    )}
+      )}
 
       {selectedBook && (
         <>
@@ -877,34 +877,29 @@ export default function WordTranslation() {
                       Progress: {translatedCount}/{tokens.length}
                     </Text> */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      
+
                     </div>
 
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      {selectedModel ? (
-                        <Tooltip
-                          title={
+                      <Tooltip
+                        title={
+                          selectedModel ? (
                             <div style={{ textAlign: "left", fontSize: 12 }}>
                               {Object.entries(MODEL_INFO[selectedModel]).map(([key, val]) => (
                                 <div key={key}><b>{key}:</b> {val}</div>
                               ))}
                             </div>
-                          }
-                          placement="right"
-                          color="#f0f0f0"
-                        >
-                          <Button
-                            type="text"
-                            icon={<InfoCircleOutlined style={{ fontSize: 18, color: "#2c8dfb" }} />}
-                          />
-                        </Tooltip>
-                      ) : (
+                          ) : "Select a model to see info"
+                        }
+                        placement="right"
+                        color="#f0f0f0"
+                      >
                         <Button
                           type="text"
                           icon={<InfoCircleOutlined style={{ fontSize: 18, color: "#2c8dfb" }} />}
-                          disabled
+                          disabled={!selectedModel} // disables button when no model selected
                         />
-                      )}
+                      </Tooltip>
 
                       <Select
                         placeholder="Select model"
@@ -917,6 +912,7 @@ export default function WordTranslation() {
                         ))}
                       </Select>
                     </div>
+
                     {hasGenerated ? (
                       <Popconfirm
                         disabled={isGenerating}
