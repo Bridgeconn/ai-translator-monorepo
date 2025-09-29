@@ -528,7 +528,7 @@ const [totalBooks, setTotalBooks] = useState(0);
                       version_name: source.version_name,
                       version_abbreviation: source.version_abbreviation,
                       language_id: source.language_id,
-                      description: source.description,
+                      //description: source.description,
                     });
                     setIsEditModalOpen(true);
                   }}
@@ -612,9 +612,9 @@ const [totalBooks, setTotalBooks] = useState(0);
             </Select>
           </Form.Item>
 
-          <Form.Item label="Description" name="description">
+          {/* <Form.Item label="Description" name="description">
             <Input.TextArea rows={3} placeholder="Optional" />
-          </Form.Item>
+          </Form.Item> */}
 
           <Button
             type="primary"
@@ -705,9 +705,9 @@ const [totalBooks, setTotalBooks] = useState(0);
             <Input placeholder="(leave blank if unchanged)" />
           </Form.Item>
 
-          <Form.Item label="Description" name="description">
+          {/* <Form.Item label="Description" name="description">
             <Input.TextArea rows={3} placeholder="(leave blank if unchanged)" />
-          </Form.Item>
+          </Form.Item> */}
 
           <Button
             type="primary"

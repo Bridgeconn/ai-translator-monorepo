@@ -275,9 +275,9 @@ const CreateProjectModal = ({
             </Select>
           </Form.Item>
 
-          <Form.Item label="Description" name="description">
+          {/* <Form.Item label="Description" name="description">
             <Input.TextArea rows={3} placeholder="Optional" />
-          </Form.Item>
+          </Form.Item> */}
 
           <Button
             type="primary"
