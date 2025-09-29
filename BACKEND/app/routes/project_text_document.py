@@ -154,7 +154,7 @@ def fetch_all_projects(
 async def update_file(
     project_id: UUID,
     file_id: UUID,
-    file_data: FileUpdate,   
+    file_data: FileUpdate,
     db: Session = Depends(get_db),
 ):
     db_file = db.query(ProjectTextDocument).filter(
@@ -172,3 +172,21 @@ async def update_file(
     db.refresh(db_file)
 
     return db_file
+
+@router.delete("/{project_id}", response_model=SuccessResponse[dict])
+def delete_project(
+    project_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Delete an entire project"""
+    try:
+        crud.delete_project(db, str(project_id), current_user.user_id)
+        return SuccessResponse(
+            message=f"Project {project_id} deleted successfully",
+            data={"status": "deleted"}
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting project: {str(e)}")

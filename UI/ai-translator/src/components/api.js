@@ -152,6 +152,10 @@ export const languagesAPI = {
     if (!languageId) return null;
     return (await api.get(`/languages/id/${languageId}`)).data.data;
   },
+  getLanguageByBcp: async (bcpCode) => {
+    if (!bcpCode) return null;
+    return (await api.get(`/languages/bcp/${bcpCode}`)).data.data;
+  },
 };
 
 // ------------------ Word Tokens API ------------------

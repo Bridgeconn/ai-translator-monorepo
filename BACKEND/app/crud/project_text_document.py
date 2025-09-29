@@ -7,6 +7,7 @@ from app.models.project_text_document import ProjectTextDocument
 from app.schemas.project_text_document import (
     ProjectTextDocumentResponse, ProjectFileResponse, ProjectFileData
 )
+from app.crud.languages import language_service
 
 def get_project_by_name(db: Session, project_name: str) -> Optional[ProjectTextDocument]:
     """Get a project by its name"""
@@ -90,16 +91,55 @@ def add_files_to_existing_project(
         ProjectTextDocument.project_type == "text_document",
         ProjectTextDocument.owner_id == user_id
     ).first()
-    
+
     if not existing_project:
         raise ValueError(f"Text document project with ID {project_id} does not exist")
-    
+
     # Verify project name matches
     if existing_project.project_name != project_name:
         raise ValueError(
             f"Project name mismatch. Expected '{existing_project.project_name}', got '{project_name}'"
         )
-    
+
+    # Check for language consistency
+    existing_files = db.query(ProjectTextDocument).filter(
+        ProjectTextDocument.project_id == project_id,
+        ProjectTextDocument.owner_id == user_id
+    ).all()
+
+    if existing_files:
+        # Get the source_id and target_id from the first existing file (assuming consistency)
+        project_source_id = existing_files[0].source_id
+        project_target_id = existing_files[0].target_id
+
+        for file_data in files:
+            if isinstance(file_data, ProjectFileData):
+                file_dict = file_data.dict()
+            else:
+                file_dict = file_data
+
+            file_source_id = file_dict.get('source_id')
+            file_target_id = file_dict.get('target_id')
+
+            if file_source_id != project_source_id or file_target_id != project_target_id:
+                # Fetch language names for better error message
+                try:
+                    project_source_name = language_service.get_by_code(db, project_source_id).name
+                    project_target_name = language_service.get_by_code(db, project_target_id).name
+                    file_source_name = language_service.get_by_code(db, file_source_id).name
+                    file_target_name = language_service.get_by_code(db, file_target_id).name
+                except:
+                    # Fallback to IDs if language not found
+                    project_source_name = project_source_id
+                    project_target_name = project_target_id
+                    file_source_name = file_source_id
+                    file_target_name = file_target_id
+
+                raise ValueError(
+                    f"Please select a project that has the same source and target languages ({file_source_name} to {file_target_name}) or create a new project. "
+                
+                )
+                
     # CHECK FOR DUPLICATE FILENAMES BEFORE PROCESSING
     for file_data in files:
         if isinstance(file_data, ProjectFileData):
@@ -220,4 +260,20 @@ def update_file_translation(db: Session, project_id: str, file_id: str, target_t
     db.commit()
     db.refresh(file_record)
     return file_record
+        
+def delete_project(db: Session, project_id: str, owner_id: UUID):
+    """Delete an entire project (all its files), ensuring ownership"""
+    # Check if project exists and is owned by user
+    project_files = db.query(ProjectTextDocument).filter(
+        ProjectTextDocument.project_id == project_id,
+        ProjectTextDocument.owner_id == owner_id
+    ).all()
 
+    if not project_files:
+        raise ValueError(f"Project with ID {project_id} not found or not owned by user")
+
+    # Delete all files in the project
+    for file_record in project_files:
+        db.delete(file_record)
+
+    db.commit()
