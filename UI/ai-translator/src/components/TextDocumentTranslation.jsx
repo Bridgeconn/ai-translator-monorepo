@@ -14,6 +14,7 @@ import {
   App,
   Upload,
 } from "antd";
+import { languagesAPI } from "./api.js";
 import { EditOutlined, CopyOutlined,UploadOutlined, CloseOutlined, TranslationOutlined, } from "@ant-design/icons";
 import { useParams, Link } from "react-router-dom";
 import { textDocumentAPI } from "./api.js";
@@ -136,6 +137,8 @@ export default function TextDocumentTranslation() {
   const [isEdited, setIsEdited] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSourceEdited, setIsSourceEdited] = useState(false);
+  const [sourceLangName, setSourceLangName] = useState('');
+  const [targetLangName, setTargetLangName] = useState('');
 
   const getSourceKey = (projectId, fileId) => `sourceEdit_${projectId}_${fileId}`;
   const getSelectedFileKey = (projectId) => `selectedFile_${projectId}`;
@@ -158,6 +161,18 @@ export default function TextDocumentTranslation() {
             source_language: { code: firstFile.source_id },
             target_language: { code: firstFile.target_id },
           });
+
+          // Fetch initial language names
+          try {
+            const srcLang = await languagesAPI.getLanguageByBcp(firstFile.source_id);
+            const tgtLang = await languagesAPI.getLanguageByBcp(firstFile.target_id);
+            setSourceLangName(srcLang?.name || firstFile.source_id);
+            setTargetLangName(tgtLang?.name || firstFile.target_id);
+          } catch (err) {
+            console.error('Failed to fetch initial languages:', err);
+            setSourceLangName(firstFile.source_id);
+            setTargetLangName(firstFile.target_id);
+          }
         }
         // Auto-select saved file after loading files
         const savedSelectedId = localStorage.getItem(getSelectedFileKey(projectId));
@@ -193,6 +208,18 @@ export default function TextDocumentTranslation() {
     setTargetText(file.target_text || "");
     setIsEdited(false);
     setIsSourceEdited(!!savedSource);
+
+    // Fetch language names for selected file
+    try {
+      const srcLang = await languagesAPI.getLanguageByBcp(file.source_id);
+      const tgtLang = await languagesAPI.getLanguageByBcp(file.target_id);
+      setSourceLangName(srcLang?.name || file.source_id);
+      setTargetLangName(tgtLang?.name || file.target_id);
+    } catch (err) {
+      console.error('Failed to fetch languages:', err);
+      setSourceLangName(file.source_id);
+      setTargetLangName(file.target_id);
+    }
   };
 
   // ------------------ Draft Editing ------------------
@@ -366,7 +393,7 @@ message.info("⏳ Translating... please wait");
         />
 
         <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: "#1f2937" }}>
-          {project?.project_name} - Document Translation
+           Document Translation ({sourceLangName} - {targetLangName})
         </h2>
       </div>
 
