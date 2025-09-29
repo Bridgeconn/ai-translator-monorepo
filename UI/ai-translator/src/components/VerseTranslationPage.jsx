@@ -900,7 +900,7 @@ const chapterStats = useMemo(() => {
             </Select>
             
             {/* Plus icon for book upload - only show when "All Books" is selected */}
-            {selectedBook === "all" && (
+            {/* {selectedBook === "all" && ( */}
               <Button
                 type="text"
                 //shape="circle"
@@ -915,7 +915,7 @@ const chapterStats = useMemo(() => {
                borderColor: 'rgb(44, 141, 251)',
                 }}
               />
-            )}
+            {/* )} */}
           </div>
  
           {selectedBook !== "all" && chapters.length > 0 && (
