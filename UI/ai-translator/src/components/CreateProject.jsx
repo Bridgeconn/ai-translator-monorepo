@@ -146,7 +146,7 @@ const CreateProjectModal = ({
           >
             <Space.Compact style={{ width: "100%" }}>
               <Select
-                placeholder="Select source"
+                placeholder="Select a source or add a new source"
                 loading={sourcesLoading}
                 style={{ width: "calc(100% - 32px)" }}
                 onChange={handleSourceChange}
