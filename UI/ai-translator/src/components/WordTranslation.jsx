@@ -27,7 +27,7 @@ function UploadProgressModal({ visible, uploading = [], uploaded = [], skipped =
     >
       <div style={{ marginBottom: 16 }}>
         <Text strong>
-          Uploading: {uploaded.length + skipped.length}/{total}
+          Uploaded: {uploaded.length + skipped.length}/{total}
         </Text>
       </div>
 
