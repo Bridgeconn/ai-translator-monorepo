@@ -12,16 +12,17 @@ import {
   Breadcrumb,
   Tooltip,
   App,
+  Upload,
 } from "antd";
-import { EditOutlined, CopyOutlined } from "@ant-design/icons";
+import { EditOutlined, CopyOutlined, PlusOutlined } from "@ant-design/icons";
 import { useParams, Link } from "react-router-dom";
 import { textDocumentAPI } from "./api.js";
 import DownloadDraftButton from "./DownloadDraftButton";
 
-
 const { Option } = Select;
-const { Text } = Typography;
 const { TextArea } = Input;
+const { Text: TypographyText } = Typography;
+
 
 export default function TextDocumentTranslation() {
   const { projectId } = useParams();
@@ -52,7 +53,7 @@ export default function TextDocumentTranslation() {
   }, [projectId]);
 
   // ------------------ Handle File Selection ------------------
-  const handleFileChange = async (fileId) => {
+  const handleFileChange = (fileId) => {
     const file = projectFiles.find((f) => f.id === fileId);
     if (!file) return;
     setSelectedFile(file);
@@ -76,7 +77,7 @@ export default function TextDocumentTranslation() {
       });
       message.success("Translation saved!");
       setIsEdited(false);
-      setIsEditing(false); // exit edit mode after save
+      setIsEditing(false);
     } catch (err) {
       console.error(err);
       message.error("Failed to save translation");
@@ -88,7 +89,7 @@ export default function TextDocumentTranslation() {
   const handleDiscardDraft = () => {
     setTargetText(selectedFile?.target_text || "");
     setIsEdited(false);
-    setIsEditing(false); // exit edit mode
+    setIsEditing(false);
     message.info("Reverted to saved translation");
   };
 
@@ -127,53 +128,95 @@ export default function TextDocumentTranslation() {
           ]}
           style={{ marginBottom: 8, fontSize: 14 }}
         />
-
         <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: "#1f2937" }}>
           {project?.project_name} - Document Translation
         </h2>
       </div>
 
-      {/* File Selector */}
-      <div style={{ marginBottom: 12 }}>
-        <Text strong style={{ display: "block", marginBottom: 4, fontSize: 14 }}>
-          Select File
-        </Text>
-        <Select
-          placeholder="Select a file"
-          style={{ width: 200 }}
-          onChange={handleFileChange}
-          value={selectedFile?.id}
-        >
-          {projectFiles.map((f) => (
-            <Option key={f.id} value={f.id}>
-              {f.file_name}
-            </Option>
-          ))}
-        </Select>
-      </div>
+{/* File Selector with Upload Button */}
+<div style={{ marginBottom: 12 }}>
+<TypographyText strong style={{ display: "block", marginBottom: 4, fontSize: 14 }}>
+  Select File
+</TypographyText>
 
+  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <Select
+      placeholder="Select a file"
+      style={{ width: 200 }}
+      onChange={handleFileChange}
+      value={selectedFile?.id || undefined} // avoid null warning
+    >
+      {projectFiles.map((f) => (
+        <Option key={f.id} value={f.id}>
+          {f.file_name}
+        </Option>
+      ))}
+    </Select>
+
+    {/* Plus Icon for uploading a new file */}
+    <Upload  
+  showUploadList={false}
+  accept=".docx,.pdf,.txt,.usfm" 
+  beforeUpload={(file) => {
+    const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'application/usfm', 'text/usfm'];
+    const allowedExtensions = ['.pdf', '.docx', '.txt', '.usfm'];
+
+    const fileExt = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+    if (!allowedExtensions.includes(fileExt)) {
+      message.error(`${file.name} is not a supported file type`);
+      return Upload.LIST_IGNORE; // prevents upload
+    }
+    return true; // allow upload
+  }}
+  customRequest={async ({ file, onSuccess, onError }) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const uploadedFile = await textDocumentAPI.uploadFile(projectId, formData);
+
+      setProjectFiles((prev) => [...prev, uploadedFile]);
+      setSelectedFile(uploadedFile);
+      setSourceText(uploadedFile.source_text || "");
+      setTargetText(uploadedFile.target_text || "");
+
+      message.success(`${file.name} uploaded successfully!`);
+      onSuccess(null, file);
+    } catch (err) {
+      console.error(err);
+      const errorMsg = err?.response?.data?.detail || err?.message || 'Unknown error';
+      message.error(`${errorMsg}`);
+      onError(err);
+    }
+    
+  }}
+>
+  <Button icon={<PlusOutlined />}
+  title="add a new file"
+  style={{ 
+    marginLeft: 8,
+  //backgroundColor: 'rgb(44, 141, 251)',
+ borderColor: 'rgb(44, 141, 251)',
+  }} />
+</Upload>
+
+
+  </div>
+</div>
+
+
+
+      {/* Translation Editor */}
       {selectedFile && (
-        <Card
-          title="Translation Editor"
-          style={{ flex: 1, display: "flex", flexDirection: "column" }}
-        >
+        <Card title="Translation Editor" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
           <Row gutter={16} style={{ flex: 1 }}>
             {/* Source */}
             <Col span={12} style={{ maxHeight: "70vh", overflowY: "auto" }}>
               <h3>Source</h3>
-              <pre
-                style={{
-                  whiteSpace: "pre-wrap",
-                  background: "#f5f5f5",
-                  padding: 10,
-                  borderRadius: 4,
-                }}
-              >
+              <pre style={{ whiteSpace: "pre-wrap", background: "#f5f5f5", padding: 10, borderRadius: 4 }}>
                 {sourceText}
               </pre>
             </Col>
-
-            {/* Target */}
 
             {/* Target */}
             <Col span={12} style={{ maxHeight: "70vh", overflowY: "auto" }}>
@@ -182,12 +225,7 @@ export default function TextDocumentTranslation() {
                 <div style={{ display: "flex", gap: 8 }}>
                   {!isEditing ? (
                     <>
-                      {/* Copy Button */}
-                      <Tooltip
-                        title="Copy translation"
-                        color="#fff"
-                        style={{ color: "#000" }}
-                      >
+                      <Tooltip title="Copy translation" color="#fff" style={{ color: "#000" }}>
                         <Button
                           type="default"
                           icon={<CopyOutlined />}
@@ -199,17 +237,9 @@ export default function TextDocumentTranslation() {
                         />
                       </Tooltip>
 
-                      <DownloadDraftButton
-                        content={targetText}
-                      //disabled={loading || !targetText}
-                      />
+                      <DownloadDraftButton content={targetText} />
 
-                      {/* Edit Button */}
-                      <Tooltip
-                        title="Edit draft"
-                        color="#fff"
-                        style={{ color: "#000" }}
-                      >
+                      <Tooltip title="Edit draft" color="#fff" style={{ color: "#000" }}>
                         <Button
                           type="default"
                           icon={<EditOutlined />}
@@ -219,15 +249,8 @@ export default function TextDocumentTranslation() {
                       </Tooltip>
                     </>
                   ) : (
-                    // Show Save + Discard when editing
                     <div>
-                      <Button
-                        type="primary"
-                        onClick={handleSaveDraft}
-                        style={{ marginRight: 8 }}
-                        size="small"
-                        loading={loading}
-                      >
+                      <Button type="primary" onClick={handleSaveDraft} style={{ marginRight: 8 }} size="small" loading={loading}>
                         Save
                       </Button>
                       <Button size="small" onClick={handleDiscardDraft}>
@@ -243,10 +266,7 @@ export default function TextDocumentTranslation() {
                 value={targetText}
                 onChange={handleDraftChange}
                 readOnly={!isEditing}
-                style={{
-                  marginTop: 8,
-                  backgroundColor: isEdited ? "#fffbe6" : "transparent",
-                }}
+                style={{ marginTop: 8, backgroundColor: isEdited ? "#fffbe6" : "transparent" }}
               />
             </Col>
           </Row>

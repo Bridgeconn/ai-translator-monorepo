@@ -135,6 +135,93 @@ export const textDocumentAPI = {
     const res = await api.delete(`/api/project-text-documents/${projectId}`); 
     return res.data;
   },
+  // Add this function to your textDocumentAPI object in api.js
+
+  // Add this function to your textDocumentAPI object in api.js
+
+// Add this function to your textDocumentAPI object in api.js
+
+// ---- FIXED uploadFile ----
+uploadFile: async (projectId, formData) => {
+  try {
+    const project = await textDocumentAPI.getProjectById(projectId);
+    const file = formData.get('file');
+
+    // --- Read source text from file ---
+    let sourceText = '';
+    if (file.name.endsWith('.pdf')) {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+      const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        sourceText += content.items.map(item => item.str).join(' ') + '\n';
+      }
+    } else if (file.name.endsWith('.docx')) {
+      const arrayBuffer = await file.arrayBuffer();
+      const mammoth = await import('mammoth');
+      const { value: text } = await mammoth.extractRawText({ arrayBuffer });
+      sourceText = text;
+    } else {
+      sourceText = await file.text();
+    }
+
+    // Use existing project's source/target if available
+    const existingFile = project.files?.find(f => f.source_id && f.target_id);
+    const sourceId = existingFile?.source_id || 'en';
+    const targetId = existingFile?.target_id || 'es';
+
+    const payload = {
+      project_name: project.project_name,
+      files: [
+        {
+          file_name: file.name,
+          source_text: sourceText,
+          target_text: '',
+          source_id: sourceId,
+          target_id: targetId,
+        }
+      ]
+    };
+
+    const token = localStorage.getItem('token');
+    const response = await fetch(
+      `${import.meta.env.VITE_BACKEND_URL}/api/project-text-documents/${projectId}/add-files`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to upload file');
+    }
+
+    const result = await response.json();
+    console.log('Upload response:', result);
+
+    // --- ✅ Extract the uploaded file ---
+    const uploadedFile = result.data?.added_files?.[0];
+    if (!uploadedFile) throw new Error('Uploaded file not returned correctly');
+
+    // Ensure `id` exists
+    if (!uploadedFile.id && uploadedFile._id) uploadedFile.id = uploadedFile._id;
+
+    return uploadedFile;
+
+  } catch (error) {
+    console.error('Error uploading file:', error);
+    throw error;
+  }
+},
+
 };
 
 
