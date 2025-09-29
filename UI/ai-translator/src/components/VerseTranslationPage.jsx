@@ -38,84 +38,74 @@ const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 const { Option } = Select;
 
-
-/* ---------------- Upload Summary Component (from SourcesListPage) ---------------- */
-function UploadSummaryToast({ visible, uploaded = [], skipped = [], onClose }) {
+/* ---------------- Upload Progress Modal ---------------- */
+function UploadProgressModal({ visible, uploading = [], uploaded = [], skipped = [], total = 0, onClose }) {
   if (!visible) return null;
 
+  const isComplete = uploaded.length + skipped.length === total;
+
   return (
-    <div
-      style={{
-        position: "fixed",
-        right: 20,
-        top: 20,
-        zIndex: 9999,
-        maxWidth: 420,
-      }}
+    <Modal
+      open={visible}
+      title="Book upload status"
+      footer={null}
+      closable={isComplete}
+      onCancel={isComplete ? onClose : undefined}
+      maskClosable={false}
     >
-      <Card
-        size="small"
-        title={
-          <Space>
-            <span role="img" aria-label="sparkles"></span>
-            <span>Upload Summary</span>
-          </Space>
-        }
-        extra={
-          <Button
-            type="text"
-            size="small"
-            icon={<CloseOutlined />}
-            onClick={onClose}
-          />
-        }
-        style={{
-          borderRadius: 12,
-          boxShadow: "0 8px 20px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.08)",
-        }}
-      >
-        {uploaded.length > 0 && (
-          <>
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>
-              ✅ Uploaded ({uploaded.length})
-            </div>
-            <div style={{ marginBottom: 8 }}>
-              {uploaded.map((c) => (
-                <Tag color="green" key={`u-${c}`} style={{ marginBottom: 6 }}>
-                  {c}
-                </Tag>
-              ))}
-            </div>
-          </>
-        )}
+      <div style={{ marginBottom: 16 }}>
+        <Text strong>
+          Uploading: {uploaded.length + skipped.length}/{total}
+        </Text>
+      </div>
 
-        {skipped.length > 0 && (
-          <>
-            {uploaded.length > 0 && <Divider style={{ margin: "8px 0" }} />}
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>
-              ⚠️ Skipped (already exists) ({skipped.length})
-            </div>
-            <div>
-              {skipped.map((c) => (
-                <Tag color="gold" key={`s-${c}`} style={{ marginBottom: 6 }}>
-                  {c}
-                </Tag>
-              ))}
-            </div>
-          </>
-        )}
+      {uploading.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <Text type="secondary">Currently uploading:</Text>
+          <div style={{ marginTop: 8 }}>
+            {uploading.map((code) => (
+              <Tag color="blue" key={`uploading-${code}`} style={{ marginBottom: 6 }}>
+                {code} <Spin size="small" style={{ marginLeft: 8 }} />
+              </Tag>
+            ))}
+          </div>
+        </div>
+      )}
 
-        {!uploaded.length && !skipped.length && (
-          <Text type="secondary">No files processed.</Text>
-        )}
+      {uploaded.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <Text type="secondary">✅ Uploaded ({uploaded.length}):</Text>
+          <div style={{ marginTop: 8 }}>
+            {uploaded.map((code) => (
+              <Tag color="green" key={`uploaded-${code}`} style={{ marginBottom: 6 }}>
+                {code}
+              </Tag>
+            ))}
+          </div>
+        </div>
+      )}
 
-        <div style={{ textAlign: "right", marginTop: 8 }}>
-          <Button type="primary" onClick={onClose} size="small">
+      {skipped.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <Text type="secondary">⚠️ Skipped (already exists) ({skipped.length}):</Text>
+          <div style={{ marginTop: 8 }}>
+            {skipped.map((code) => (
+              <Tag color="gold" key={`skipped-${code}`} style={{ marginBottom: 6 }}>
+                {code}
+              </Tag>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {isComplete && (
+        <div style={{ textAlign: "right", marginTop: 16 }}>
+          <Button type="primary" onClick={onClose}>
             Close
           </Button>
         </div>
-      </Card>
-    </div>
+      )}
+    </Modal>
   );
 }
  
@@ -153,9 +143,17 @@ const VerseTranslationPage = () => {
   const { message } = App.useApp(); //get message instance
     // Book upload state
     const [isBookUploadModalOpen, setIsBookUploadModalOpen] = useState(false);
-    const [summaryOpen, setSummaryOpen] = useState(false);
-    const [summaryData, setSummaryData] = useState({ uploaded: [], skipped: [] });
+    //const [uploadProgressOpen, setUploadProgressOpen] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState({ uploaded: [], skipped: [] });
     const hiddenUploadInputRef = useRef(null);
+// Modal control
+const [uploadProgressOpen, setUploadProgressOpen] = useState(false);
+
+// Upload tracking
+const [uploadingBooks, setUploadingBooks] = useState([]);
+const [uploadedBooks, setUploadedBooks] = useState([]);
+const [skippedBooks, setSkippedBooks] = useState([]);
+const [totalBooks, setTotalBooks] = useState(0);
 
      // ---------- Book Upload Utils (from SourcesListPage) ----------
   const getExistingBooks = async (sourceId) => {
@@ -191,7 +189,7 @@ const VerseTranslationPage = () => {
   };
 
   const uploadBooksForSource = async (sourceId, files) => {
-    if (!sourceId || !files?.length) return { uploaded: [], skipped: [] };
+    if (!sourceId || !files?.length) return { uploading: [], uploaded: [], skipped: [], total: 0 };
 
     const existing = await getExistingBooks(sourceId);
     const existingCodes = new Set((existing || []).map((b) => b.book_code));
@@ -225,18 +223,46 @@ const VerseTranslationPage = () => {
   const handleBookUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length || !project?.source_id) return;
-
-    const { uploaded, skipped } = await uploadBooksForSource(project.source_id, files);
-    
-    // Refresh books list
+  
+    setTotalBooks(files.length);
+    setUploadingBooks([]);
+    setUploadedBooks([]);
+    setSkippedBooks([]);
+    setUploadProgressOpen(true);
+  
+    for (const file of files) {
+      const code = await guessUSFMCode(file); // Get the book code
+  
+      // Mark as uploading (by code, not filename)
+      setUploadingBooks(prev => [...prev, code]);
+  
+      try {
+        // Call your existing API helper
+        const { uploaded, skipped } = await uploadBooksForSource(
+          project.source_id,
+          [file] // send one at a time
+        );
+  
+        if (uploaded.length) {
+          setUploadedBooks(prev => [...prev, code]); // use code instead of file.name
+        }
+        if (skipped.length) {
+          setSkippedBooks(prev => [...prev, code]); // use code instead of file.name
+        }
+      } catch (err) {
+        setSkippedBooks(prev => [...prev, code]); // treat errors as skipped
+      } finally {
+        // Remove from "uploading"
+        setUploadingBooks(prev => prev.filter(c => c !== code));
+      }
+    }
+  
+    // Refresh book list after uploads complete
     await fetchAvailableBooks(project.source_id);
-    
-    showUploadSummary(uploaded, skipped);
-    setIsBookUploadModalOpen(false);
-    
-    // Reset file input
-    e.target.value = "";
+  
+    e.target.value = ""; // reset input
   };
+  
 
   const openBookUploadModal = () => {
     setIsBookUploadModalOpen(true);
@@ -807,12 +833,22 @@ const chapterStats = useMemo(() => {
       }}
     >
           {/* Upload Summary Toast */}
-          <UploadSummaryToast
+          {/* <UploadSummaryToast
         visible={summaryOpen}
         uploaded={summaryData.uploaded}
         skipped={summaryData.skipped}
         onClose={() => setSummaryOpen(false)}
-      />
+      /> */}
+   <UploadProgressModal
+  visible={uploadProgressOpen}
+  uploading={uploadingBooks}
+  uploaded={uploadedBooks}
+  skipped={skippedBooks}
+  total={totalBooks}
+  onClose={() => setUploadProgressOpen(false)}
+/>
+
+
          {/* Hidden file input for book upload */}
          <input
         type="file"
@@ -868,13 +904,15 @@ const chapterStats = useMemo(() => {
               <Button
                 type="text"
                 //shape="circle"
-                icon={<PlusCircleOutlined />}
+                icon={<UploadOutlined
+                  style={{ color: "#1890ff", cursor: "pointer" }}
+                />}
                 onClick={openFileDialog}
                 title="Upload Books"
                 style={{ 
                   marginLeft: 8,
                 //backgroundColor: 'rgb(44, 141, 251)',
-               // borderColor: 'rgb(44, 141, 251)',
+               borderColor: 'rgb(44, 141, 251)',
                 }}
               />
             )}

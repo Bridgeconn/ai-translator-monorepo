@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Row, Col, Select, Card, Input, Typography, Button, message, Breadcrumb, Popconfirm, Modal,notification,App,Tag,Divider } from 'antd';
-import { CopyOutlined, DownloadOutlined, ExclamationCircleOutlined,PlusOutlined ,CloseOutlined, PlusCircleOutlined} from '@ant-design/icons';
+import { Row, Col, Select, Card, Input, Typography, Button, message, Breadcrumb, Popconfirm, Modal,notification,App,Tag,Divider,Spin } from 'antd';
+import { CopyOutlined, DownloadOutlined, ExclamationCircleOutlined,PlusOutlined ,CloseOutlined, PlusCircleOutlined,UploadOutlined} from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { projectsAPI, wordTokenAPI, booksAPI, languagesAPI, sourcesAPI, draftAPI } from './api.js';
 import { useParams, Link } from 'react-router-dom';
@@ -10,82 +10,76 @@ const { Text } = Typography;
 const { TextArea } = Input;
 
 // Upload Summary Toast Component (copied from SourcesListPage)
-function UploadSummaryToast({ visible, uploaded = [], skipped = [], onClose }) {
+/* ---------------- Upload Progress Modal ---------------- */
+function UploadProgressModal({ visible, uploading = [], uploaded = [], skipped = [], total = 0, onClose }) {
   if (!visible) return null;
 
+  const isComplete = uploaded.length + skipped.length === total;
+
   return (
-    <div
-      style={{
-        position: "fixed",
-        right: 20,
-        top: 20,
-        zIndex: 9999,
-        maxWidth: 420,
-      }}
+    <Modal
+      open={visible}
+      title="Book upload status"
+      footer={null}
+      closable={isComplete}
+      onCancel={isComplete ? onClose : undefined}
+      maskClosable={false}
     >
-      <Card
-        size="small"
-        title={
-          <span>Upload Summary</span>
-        }
-        extra={
-          <Button
-            type="text"
-            size="small"
-            icon={<CloseOutlined />}
-            onClick={onClose}
-          />
-        }
-        style={{
-          borderRadius: 12,
-          boxShadow: "0 8px 20px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.08)",
-        }}
-      >
-        {uploaded.length > 0 && (
-          <>
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>
-              Uploaded ({uploaded.length})
-            </div>
-            <div style={{ marginBottom: 8 }}>
-              {uploaded.map((c) => (
-                <Tag color="green" key={`u-${c}`} style={{ marginBottom: 6 }}>
-                  {c}
-                </Tag>
-              ))}
-            </div>
-          </>
-        )}
+      <div style={{ marginBottom: 16 }}>
+        <Text strong>
+          Uploading: {uploaded.length + skipped.length}/{total}
+        </Text>
+      </div>
 
-        {skipped.length > 0 && (
-          <>
-            {uploaded.length > 0 && <Divider style={{ margin: "8px 0" }} />}
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>
-              Skipped (already exists) ({skipped.length})
-            </div>
-            <div>
-              {skipped.map((c) => (
-                <Tag color="gold" key={`s-${c}`} style={{ marginBottom: 6 }}>
-                  {c}
-                </Tag>
-              ))}
-            </div>
-          </>
-        )}
+      {uploading.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <Text type="secondary">Currently uploading:</Text>
+          <div style={{ marginTop: 8 }}>
+            {uploading.map((code) => (
+              <Tag color="blue" key={`uploading-${code}`} style={{ marginBottom: 6 }}>
+                {code} <Spin size="small" style={{ marginLeft: 8 }} />
+              </Tag>
+            ))}
+          </div>
+        </div>
+      )}
 
-        {!uploaded.length && !skipped.length && (
-          <Text type="secondary">No files processed.</Text>
-        )}
+      {uploaded.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <Text type="secondary">✅ Uploaded ({uploaded.length}):</Text>
+          <div style={{ marginTop: 8 }}>
+            {uploaded.map((code) => (
+              <Tag color="green" key={`uploaded-${code}`} style={{ marginBottom: 6 }}>
+                {code}
+              </Tag>
+            ))}
+          </div>
+        </div>
+      )}
 
-        <div style={{ textAlign: "right", marginTop: 8 }}>
-          <Button type="primary" onClick={onClose} size="small">
+      {skipped.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <Text type="secondary">⚠️ Skipped (already exists) ({skipped.length}):</Text>
+          <div style={{ marginTop: 8 }}>
+            {skipped.map((code) => (
+              <Tag color="gold" key={`skipped-${code}`} style={{ marginBottom: 6 }}>
+                {code}
+              </Tag>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {isComplete && (
+        <div style={{ textAlign: "right", marginTop: 16 }}>
+          <Button type="primary" onClick={onClose}>
             Close
           </Button>
         </div>
-      </Card>
-    </div>
+      )}
+    </Modal>
   );
 }
-
 export default function WordTranslation() {
   const { projectId } = useParams();
   const [selectedBook, setSelectedBook] = useState(null);
@@ -115,6 +109,14 @@ export default function WordTranslation() {
     const [uploadSummaryOpen, setUploadSummaryOpen] = useState(false);
     const [uploadSummaryData, setUploadSummaryData] = useState({ uploaded: [], skipped: [] });
     const hiddenUploadInputRef = useRef(null);
+    //Modal states
+    const [uploadProgressOpen, setUploadProgressOpen] = useState(false);
+    
+    // Upload tracking
+    const [uploadingBooks, setUploadingBooks] = useState([]);
+    const [uploadedBooks, setUploadedBooks] = useState([]);
+    const [skippedBooks, setSkippedBooks] = useState([]);
+    const [totalBooks, setTotalBooks] = useState(0);
   // Derived helpers
   const hasTokenEdits = Object.entries(editedTokens).some(([k, v]) => k !== 'draft_edited' && !!v);
   const showEditorUnsaved = hasTokenEdits;           // show save/discard in editor
@@ -167,42 +169,56 @@ export default function WordTranslation() {
         reader.readAsText(file);
       });
   
-    const uploadBooksForSource = async (sourceId, files) => {
-      if (!sourceId || !files?.length) return { uploaded: [], skipped: [] };
-  
-      const existing = await getExistingBooks(sourceId);
-      const existingCodes = new Set((existing || []).map((b) => b.book_code));
-      const uploaded = [];
-      const skipped = [];
-  
-      for (const file of files) {
-        const code = await guessUSFMCode(file);
-  
-        if (existingCodes.has(code)) {
-          skipped.push(code);
-          continue;
+      const uploadBooksForSource = async (sourceId, files) => {
+        if (!sourceId || !files?.length) return { uploaded: [], skipped: [] };
+      
+        const existing = await getExistingBooks(sourceId);
+        const existingCodes = new Set((existing || []).map((b) => b.book_code));
+        const uploaded = [];
+        const skipped = [];
+      
+        setTotalBooks(files.length);
+        setUploadingBooks([]);   // start empty
+        setUploadedBooks([]);
+        setSkippedBooks([]);
+        setUploadProgressOpen(true);
+      
+        for (const file of files) {
+          const code = await guessUSFMCode(file);
+      
+          // mark as uploading (by code)
+          setUploadingBooks((prev) => [...prev, code]);
+      
+          if (existingCodes.has(code)) {
+            skipped.push(code);
+            setSkippedBooks((prev) => [...prev, code]);
+            setUploadingBooks((prev) => prev.filter((c) => c !== code));
+            continue;
+          }
+      
+          const formData = new FormData();
+          formData.append("file", file);
+      
+          try {
+            await api.post(`/books/upload_books/?source_id=${sourceId}`, formData, {
+              headers: { "Content-Type": "multipart/form-data" },
+            });
+            uploaded.push(code);
+            setUploadedBooks((prev) => [...prev, code]);
+            existingCodes.add(code);
+          } catch {
+            skipped.push(code);
+            setSkippedBooks((prev) => [...prev, code]);
+          } finally {
+            // remove from uploading
+            setUploadingBooks((prev) => prev.filter((c) => c !== code));
+          }
         }
-  
-        const formData = new FormData();
-        formData.append("file", file);
-        try {
-          await api.post(`/books/upload_books/?source_id=${sourceId}`, formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-          });
-          uploaded.push(code);
-          existingCodes.add(code);
-        } catch {
-          appMessage.error(`Failed to upload ${code}`);
-        }
-      }
-  
-      return { uploaded, skipped };
-    };
-  
-    const showUploadSummary = (uploaded = [], skipped = []) => {
-      setUploadSummaryData({ uploaded, skipped });
-      setUploadSummaryOpen(true);
-    };
+      
+        return { uploaded, skipped };
+      };
+      
+      
   
     // Handle book upload
     const handleUploadBooks = () => {
@@ -218,27 +234,25 @@ export default function WordTranslation() {
     };
   
     const onUploadFilesChosen = async (e) => {
-      const files = Array.from(e.target.files || []);
-      if (!files.length || !project?.source_id) return;
-  
       try {
-        const { uploaded, skipped } = await uploadBooksForSource(project.source_id, files);
-        
-        if (uploaded.length > 0 || skipped.length > 0) {
-          showUploadSummary(uploaded, skipped);
-          
-          // Refresh the books list
-          const books = await booksAPI.getBooksBySourceId(project.source_id);
-          setProjectBooks(books);
-        }
+        const files = Array.from(e.target.files || []);
+        if (!files.length || !project?.source_id) return;
+    
+        await uploadBooksForSource(project.source_id, files);
+    
+        // 🔹 Refresh projectBooks list after upload
+        const refreshed = await booksAPI.getBooksBySourceId(project.source_id);
+        setProjectBooks(refreshed);
+    
       } catch (error) {
-        console.error('Upload failed:', error);
-        appMessage.error('Failed to upload books');
+        console.error("Upload failed:", error);
+        appMessage.error("Upload failed, please try again.");
+      } finally {
+        e.target.value = ""; // reset input
       }
-  
-      // Clear the input
-      e.target.value = "";
     };
+    
+    
   // Fetch books for the project
   useEffect(() => {
     const fetchBooks = async () => {
@@ -850,12 +864,15 @@ notificationApi.error({
       {messageContextHolder}
   {notificationContextHolder}
     {/* Upload Summary Toast */}
-    <UploadSummaryToast
-        visible={uploadSummaryOpen}
-        uploaded={uploadSummaryData.uploaded}
-        skipped={uploadSummaryData.skipped}
-        onClose={() => setUploadSummaryOpen(false)}
-      />
+    <UploadProgressModal
+  visible={uploadProgressOpen}
+  uploading={uploadingBooks}
+  uploaded={uploadedBooks}
+  skipped={skippedBooks}
+  total={totalBooks}
+  onClose={() => setUploadProgressOpen(false)}
+/>
+
         {/* Hidden file input for book upload */}
         <input
         type="file"
@@ -911,12 +928,14 @@ notificationApi.error({
             <Button
               type="text"
               //shape="circle"
-              icon={<PlusCircleOutlined />}
+              icon={<UploadOutlined 
+                style={{ color: "#1890ff", cursor: "pointer" }}
+              />}
               onClick={handleUploadBooks} 
               title="Upload Books"
               style={{
                 //backgroundColor: 'rgb(44, 141, 251)',
-                //borderColor: 'rgb(44, 141, 251)',
+                borderColor: 'rgb(44, 141, 251)',
               }}
             />
           </div>

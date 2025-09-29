@@ -166,7 +166,8 @@ const CreateProjectModal = ({
               </Select>
               <Button
                 type="default"
-                icon={<PlusCircleOutlined />}
+                icon={<PlusCircleOutlined
+                  style={{ color: "#1890ff", cursor: "pointer" }} />}
                 onClick={() => setIsSourceModalOpen(true)}
                 title="Add New Source"
               />
