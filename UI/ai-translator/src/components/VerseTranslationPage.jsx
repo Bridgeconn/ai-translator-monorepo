@@ -332,7 +332,7 @@ const VerseTranslationPage = () => {
 
     const key = "translating";
     message.loading({ key, content: "Translating verses…", duration: 0 });
-
+    setLoadingTranslate(true);
     try {
       let skip = 0;
       let hasMore = true;
@@ -371,6 +371,9 @@ const VerseTranslationPage = () => {
       console.error("Translation error:", err);
       message.error({ key, content: `Error: ${err.message || "Failed"}` });
     }
+    finally {
+      setLoadingTranslate(false); // enable dropdown
+    }
   };
   function chunkArray(array, size) {
     const result = [];
@@ -391,7 +394,7 @@ const VerseTranslationPage = () => {
       message.info("Please select a specific book and chapter to translate.");
       return;
     }
-
+    setLoadingTranslate(true); 
     try {
       const key = "translating";
       message.loading({ key, content: "Starting translation…", duration: 0 });
@@ -470,6 +473,9 @@ const VerseTranslationPage = () => {
         key: "translating",
         content: `Error: ${err.message || "Failed"}`,
       });
+    }
+    finally {
+      setLoadingTranslate(false); // ✅ translation finished, dropdown enables
     }
   };
 
@@ -756,28 +762,39 @@ const VerseTranslationPage = () => {
                   />
                 </Tooltip>
                 <Select
-                  // value={selectedModel}
                   placeholder="Select model"
                   style={{ width: 220 }}
                   value={selectedModel || undefined} // placeholder shows if null
                   onChange={(val) => setSelectedModel(val)}
+                  disabled={loadingTranslate} // disabled during translation
                 >
                   <Option value="nllb-600M">nllb-600M</Option>
                   <Option value="nllb_finetuned_eng_nzm">nllb_finetuned_eng_nzm</Option>
                 </Select>
               </div>
             </Col>
-
-
             <Col>
-              <Button
-                type="dashed"
-                icon={<ThunderboltOutlined />}
-                onClick={selectedChapter ? handleTranslateChapter : handleTranslateAllChunks}
-                disabled={selectedBook === "all"}
+              <Tooltip
+                title={
+                  !selectedModel && selectedBook !== "all" && selectedChapter
+                    ? "Please select a model first"
+                    : ""
+                }
+                placement="top"
               >
-                Translate
-              </Button>
+                <span style={{ display: "inline-block" }}>
+                  <Button
+                    type="dashed"
+                    icon={<ThunderboltOutlined />}
+                    onClick={selectedChapter ? handleTranslateChapter : handleTranslateAllChunks}
+                    disabled={
+                      !selectedModel || selectedBook === "all" || !selectedChapter
+                    }
+                  >
+                    Translate
+                  </Button>
+                </span>
+              </Tooltip>
             </Col>
 
           </Row>
@@ -922,18 +939,6 @@ const VerseTranslationPage = () => {
                         )}
   */}
                         <Space style={{ marginTop: 6 }}>
-                          {/* <Button
-                            size="small"
-                            icon={<SaveOutlined />}
-                            onClick={async () => {
-                              await handleManualUpdate(
-                                t.verse_token_id,
-                                t.verse_translated_text || ""
-                              );
-                            }}
-                          >
-                            Save
-                          </Button> */}
                           {editedTokens[t.verse_token_id] && (
                             <>
                               <Button

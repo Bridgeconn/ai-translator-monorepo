@@ -1409,29 +1409,43 @@ export default function QuickTranslationPage() {
 
         {/* Translate button centered */}
         <Col span={24} style={{ textAlign: "center", marginTop: 24 }}>
-          <Button
-            type={loading ? "primary" : "primary"}
-            danger={loading}
-            size="medium"
-            icon={loading ? <CloseOutlined /> : <TranslationOutlined />}
-            onClick={() => {
-              if (loading) {
-                handleCancelTranslate();
-              } else {
-                handleTranslate();
-              }
-            }}
-            style={{
-              padding: "0 32px",
-              borderRadius: "8px",
-              minWidth: "200px",
-              backgroundColor: loading ? "#ff4d4f" : "rgb(44,141,251)",
-              borderColor: loading ? "#ff4d4f" : "rgb(44,141,251)",
-              color: "#fff",
-            }}
+          <Tooltip
+            title={!selectedModel ? "Please select a model first" : ""}
+            color="#fff"
           >
-            {loading ? "Cancel Translation" : "Translate"}
-          </Button>
+            <Button
+              type="primary"
+              danger={loading}
+              size="medium"
+              icon={loading ? <CloseOutlined /> : <TranslationOutlined />}
+              onClick={() => {
+                if (loading) {
+                  handleCancelTranslate();
+                } else {
+                  handleTranslate();
+                }
+              }}
+              disabled={loading || !selectedModel} // disable if loading or no model selected
+              style={{
+                padding: "0 32px",
+                borderRadius: "8px",
+                minWidth: "200px",
+                backgroundColor: loading
+                  ? "#ff4d4f"
+                  : !selectedModel
+                    ? "#d9d9d9"
+                    : "rgb(44,141,251)",
+                borderColor: loading
+                  ? "#ff4d4f"
+                  : !selectedModel
+                    ? "#d9d9d9"
+                    : "rgb(44,141,251)",
+                color: "#fff",
+              }}
+            >
+              {loading ? "Cancel Translation" : "Translate"}
+            </Button>
+          </Tooltip>
 
           {statusMsg && (
             <div style={{ marginTop: 12 }}>
@@ -1439,6 +1453,7 @@ export default function QuickTranslationPage() {
             </div>
           )}
         </Col>
+
       </Row>
       <Modal
         title="Save Translation"

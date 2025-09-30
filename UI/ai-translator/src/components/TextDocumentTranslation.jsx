@@ -654,15 +654,22 @@ export default function TextDocumentTranslation() {
           </Row>
           {/*  Translate button centered below both panels */}
           <Row justify="center" style={{ marginTop: 16 }}>
-            <Button
-              type="primary"
-              icon={<TranslationOutlined />}
-              onClick={handleTranslate}
-              loading={loading}
-            >
-              {loading ? "Translating..." : "Translate"}
-            </Button>
-          </Row>
+  <Tooltip
+    title={!selectedModel ? "Please select a model first" : ""}
+    color="#fff"
+  >
+    <Button
+      type="primary"
+      icon={<TranslationOutlined />}
+      onClick={handleTranslate}
+      loading={loading}
+      disabled={!selectedModel} // <-- disable if no model selected
+    >
+      {loading ? "Translating..." : "Translate"}
+    </Button>
+  </Tooltip>
+</Row>
+
         </Card>
       )}
     </div>

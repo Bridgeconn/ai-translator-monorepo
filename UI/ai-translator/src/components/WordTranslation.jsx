@@ -906,6 +906,7 @@ export default function WordTranslation() {
                         value={selectedModel || undefined} // placeholder visible if null
                         style={{ width: 220, borderRadius: 8, fontSize: 16 }}
                         onChange={(val) => setSelectedModel(val)}
+                        disabled={isGenerating} 
                       >
                         {MODEL_OPTIONS.map((m) => (
                           <Option key={m.value} value={m.value}>{m.label}</Option>
@@ -931,19 +932,24 @@ export default function WordTranslation() {
                         okText="Yes, Regenerate"
                         cancelText="Cancel"
                       >
-                        <Button type="primary" loading={isGenerating}>
+                        <Tooltip title={!selectedModel ? "Please select a model first" : ""}>
+                        <Button type="primary" loading={isGenerating}disabled={!selectedModel || isGenerating}
+                        >
                           {isGenerating ? "Regenerating..." : "Regenerate Translations"}
                         </Button>
+                        </Tooltip>
                       </Popconfirm>
                     ) : (
+                      <Tooltip title={!selectedModel ? "Please select a model first" : ""}>
                       <Button
                         type="primary"
                         size="large"
                         onClick={handleGenerateTranslationsSSEWithPreserveEdits}
                         loading={isGenerating}
-                        disabled={isGenerating}
+                        disabled={!selectedModel || isGenerating}
                       >{isGenerating ? "Generating..." : "Generate Translations"}
                       </Button>
+                      </Tooltip>
                     )}
                   </>
                 ) : (
