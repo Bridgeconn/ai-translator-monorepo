@@ -130,9 +130,14 @@ export const textDocumentAPI = {
     const res = await api.put(`/api/project-text-documents/${projectId}/files/${fileId}`, payload);
     return res.data;
   },
-  
+
+  clearFileContent: async (projectId, fileId) => {
+    const res = await api.delete(`/api/project-text-documents/${projectId}/files/${fileId}/clear`);
+    return res.data;
+  },
+
   deleteProject: async (projectId) => {
-    const res = await api.delete(`/api/project-text-documents/${projectId}`); 
+    const res = await api.delete(`/api/project-text-documents/${projectId}`);
     return res.data;
   },
 };
@@ -151,6 +156,10 @@ export const languagesAPI = {
   getLanguageById: async (languageId) => {
     if (!languageId) return null;
     return (await api.get(`/languages/id/${languageId}`)).data.data;
+  },
+  getLanguageByBcp: async (bcpCode) => {
+    if (!bcpCode) return null;
+    return (await api.get(`/languages/bcp/${bcpCode}`)).data.data;
   },
 };
 

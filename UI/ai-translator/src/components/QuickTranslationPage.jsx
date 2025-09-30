@@ -1060,7 +1060,7 @@ export default function QuickTranslationPage() {
         errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       }
       setSaveError(errorMessage);
-      showNotification("error", "Save Failed", errorMessage);
+      // showNotification("error", "Save Failed", errorMessage);
       return;
     }
 
@@ -1069,7 +1069,7 @@ export default function QuickTranslationPage() {
 
     const successMsg = `Translation saved successfully! File "${payload.files[0].file_name}" added to project "${projectName}"`;
     setSaveSuccess(successMsg);
-    showNotification("success", "Save Successful", successMsg);
+    // showNotification("success", "Save Successful", successMsg);
 
     setTimeout(() => {
       setSaveModalVisible(false);
