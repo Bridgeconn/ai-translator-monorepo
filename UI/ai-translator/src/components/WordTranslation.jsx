@@ -889,7 +889,7 @@ export default function WordTranslation() {
                             </div>
                           ) : "Select a model to see info"
                         }
-                        placement="right"
+                        placement="left"
                         color="#f0f0f0"
                       >
                         <Button
