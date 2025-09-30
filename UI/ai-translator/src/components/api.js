@@ -130,9 +130,14 @@ export const textDocumentAPI = {
     const res = await api.put(`/api/project-text-documents/${projectId}/files/${fileId}`, payload);
     return res.data;
   },
-  
+
+  clearFileContent: async (projectId, fileId) => {
+    const res = await api.delete(`/api/project-text-documents/${projectId}/files/${fileId}/clear`);
+    return res.data;
+  },
+
   deleteProject: async (projectId) => {
-    const res = await api.delete(`/api/project-text-documents/${projectId}`); 
+    const res = await api.delete(`/api/project-text-documents/${projectId}`);
     return res.data;
   },
 };

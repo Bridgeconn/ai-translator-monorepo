@@ -260,6 +260,22 @@ def update_file_translation(db: Session, project_id: str, file_id: str, target_t
     db.commit()
     db.refresh(file_record)
     return file_record
+
+def clear_file_content(db: Session, file_id: str):
+    """Clear the source and target text of a file"""
+    file_record = db.query(ProjectTextDocument).filter(
+        ProjectTextDocument.id == file_id
+    ).first()
+
+    if not file_record:
+        raise ValueError(f"File with ID {file_id} not found")
+
+    file_record.source_text = ""
+    file_record.target_text = ""
+    file_record.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(file_record)
+    return file_record
         
 def delete_project(db: Session, project_id: str, owner_id: UUID):
     """Delete an entire project (all its files), ensuring ownership"""
@@ -277,3 +293,4 @@ def delete_project(db: Session, project_id: str, owner_id: UUID):
         db.delete(file_record)
 
     db.commit()
+
