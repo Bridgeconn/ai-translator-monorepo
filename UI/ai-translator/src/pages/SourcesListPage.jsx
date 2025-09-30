@@ -215,16 +215,21 @@ const [totalBooks, setTotalBooks] = useState(0);
   /* --------- Mutations --------- */
   const createSourceMutation = useMutation({
     mutationFn: createSource,
-    onSuccess: () => {
-      queryClient.invalidateQueries(["sources"]);
+    onSuccess: (res) => {
+      const newSource = res.data.data; // adjust if your API returns differently
+  
+      // Prepend the new source to the query cache
+      queryClient.setQueryData(["sources"], (old = []) => [newSource, ...old]);
+  
       setIsModalOpen(false);
       form.resetFields();
-      setCreateSuccessOpen(true); // ✅ show popup
+      setCreateSuccessOpen(true); // ✅ show success toast
     },
     onError: () => {
-      message.error(" Failed to create, source already exists");
+      message.error("Failed to create, source already exists");
     },
   });
+  
 
   const createVersionMutation = useMutation({
     mutationFn: createVersion,

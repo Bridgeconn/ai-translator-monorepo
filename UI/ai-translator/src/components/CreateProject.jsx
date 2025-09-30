@@ -201,6 +201,7 @@ const CreateProjectModal = ({
             <Select placeholder="Select type" style={{ width: "100%" }}>
               <Option value="verse">Verse Translation</Option>
               <Option value="word">Word Translation</Option>
+              <Option value="text_document">text_document Translation</Option>
             </Select>
           </Form.Item>
 

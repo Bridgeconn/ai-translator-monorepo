@@ -4,24 +4,15 @@ from fastapi import HTTPException
 from app.schemas import project as schemas
 from app.models import sources as source_models, languages as language_models, project as project_models
 from app.models import verse as verse_models, chapter as chapter_models, book as book_models, books_details as book_details_models
- 
- 
-def create_project(db: Session, project: schemas.ProjectCreate, user_id: UUID):
-    # ✅ Check if project already exists with same name, source, target and type
-    existing = db.query(project_models.Project).filter(
-        project_models.Project.name == project.name,
-        project_models.Project.source_id == project.source_id,
-        project_models.Project.target_language_id == project.target_language_id,
-        project_models.Project.translation_type == project.translation_type
-    ).first()
-    if existing:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Project with name '{project.name}', source '{project.source_id}', "
-                   f"target '{project.target_language_id}' and type '{project.translation_type}' already exists"
-        )
+from app.models.project_text_document import ProjectTextDocument
+from app.schemas.project import ProjectCreate
+import uuid
+from uuid import uuid4
+from sqlalchemy.exc import IntegrityError
+from fastapi import HTTPException
 
-    # Validate source_id exists
+def create_project(db: Session, project: ProjectCreate, user_id: UUID):
+    # ---------------- Validate source ----------------
     source = db.query(source_models.Source).filter(
         source_models.Source.source_id == project.source_id
     ).first()
@@ -31,7 +22,7 @@ def create_project(db: Session, project: schemas.ProjectCreate, user_id: UUID):
             detail=f"Invalid source_id: {project.source_id} not found",
         )
 
-    # Validate target_language_id exists
+    # ---------------- Validate target ----------------
     target_lang = db.query(language_models.Language).filter(
         language_models.Language.language_id == project.target_language_id
     ).first()
@@ -40,31 +31,77 @@ def create_project(db: Session, project: schemas.ProjectCreate, user_id: UUID):
             status_code=400,
             detail=f"Invalid target_language_id: {project.target_language_id} not found",
         )
+    # ---------------- Handle text_document ----------------
+    if project.translation_type == "text_document":
+        existing_text_project = db.query(ProjectTextDocument).filter(
+            ProjectTextDocument.owner_id == user_id,
+            ProjectTextDocument.source_id == str(project.source_id),
+            ProjectTextDocument.target_id == str(project.target_language_id),
+            ProjectTextDocument.project_type == "text_document"
+        ).first()
+        if existing_text_project:
+            raise HTTPException(
+                status_code=400,
+                detail=f"A text document project with the same source and target language already exists."
+            )
 
-    # Validate translation_type
-    if project.translation_type not in ["verse", "word"]:
+        db_project = ProjectTextDocument(
+            project_id=uuid4(),
+            owner_id=user_id,
+            project_name=project.name,
+            project_type="text_document",
+            translation_type="text_document",
+            file_name="default_file.txt",
+            source_id=project.source_id,
+            target_id=project.target_language_id,
+            source_text="",
+            target_text="",
+        )
+
+        db.add(db_project)
+        db.commit()
+        db.refresh(db_project)
+        return db_project 
+
+    # ---------------- Handle verse/word projects ----------------
+    elif project.translation_type in ["verse", "word"]:
+        existing = db.query(project_models.Project).filter(
+            project_models.Project.name == project.name,
+            project_models.Project.source_id == project.source_id,
+            project_models.Project.target_language_id == project.target_language_id,
+            project_models.Project.translation_type == project.translation_type
+        ).first()
+        if existing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Project with name '{project.name}', source '{project.source_id}', "
+                       f"target '{project.target_language_id}' and type '{project.translation_type}' already exists"
+            )
+
+        db_project = project_models.Project(
+            name=project.name,
+            source_id=project.source_id,
+            target_language_id=project.target_language_id,
+            translation_type=project.translation_type,
+            selected_books=project.selected_books,
+            status="created",
+            progress=0,
+            total_items=0,
+            completed_items=0,
+            is_active=True,
+            owner_id=user_id
+        )
+        db.add(db_project)
+        db.commit()
+        db.refresh(db_project)
+        return get_project_by_id(db, db_project.project_id)
+
+    else:
         raise HTTPException(
             status_code=400,
             detail=f"Invalid translation_type: {project.translation_type}",
         )
 
-    db_project = project_models.Project(
-        name=project.name,
-        source_id=project.source_id,
-        target_language_id=project.target_language_id,
-        translation_type=project.translation_type,
-        selected_books=project.selected_books,
-        status="created",
-        progress=0,
-        total_items=0,
-        completed_items=0,
-        is_active=True,
-        owner_id=user_id
-    )
-    db.add(db_project)
-    db.commit()
-    db.refresh(db_project)
-    return get_project_by_id(db, db_project.project_id)
  
 def get_project_by_id(db: Session, project_id: UUID):
     db_project = (

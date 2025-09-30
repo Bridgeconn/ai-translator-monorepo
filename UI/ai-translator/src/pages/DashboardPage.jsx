@@ -33,7 +33,7 @@ const Dashboard = () => {
   } = useQuery({
     queryKey: ["text-doc-projects"],
     queryFn: async () => {
-      const res = await api.get("/text-doc-projects/", {
+      const res = await api.get("/api/project-text-documents/", {
         headers: { Authorization: `Bearer ${token}` },
       });
       return res.data.data || res.data;

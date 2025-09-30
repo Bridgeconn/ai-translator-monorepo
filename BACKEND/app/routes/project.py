@@ -1,26 +1,49 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from uuid import UUID
-from app.schemas.project import ProjectResponse, SuccessResponse, ProjectCreate, ProjectUpdate
+from app.schemas.project import ProjectResponse, SuccessResponse, ProjectCreate, ProjectUpdate,TextProjectResponse
 from app.database import get_db
 from app.crud import project as crud
 from app.dependencies.token import get_current_user 
 from app.models.users import User
+from app.models import project as project_models
+from app.models.project_text_document import ProjectTextDocument
+import uuid
+from typing import Union
+from app.schemas.project import TextProjectResponse
+from app.schemas.project import ProjectCreate, ProjectResponse, TextProjectResponse
+
+
  
 router = APIRouter()
  
-@router.post("/", response_model=SuccessResponse[ProjectResponse])
+from typing import Union
+
+@router.post("/", response_model=SuccessResponse[Union[ProjectResponse, TextProjectResponse]])
 def create_project(
     project: ProjectCreate, 
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_user)
 ):
     if not project.name or not project.source_id or not project.target_language_id:
-        raise HTTPException(status_code=400, detail="Name, source_id and target_language_id are required")
+        raise HTTPException(
+            status_code=400,
+            detail="Name, source_id and target_language_id are required"
+        )
+
     db_project = crud.create_project(db, project, current_user.user_id)
-    project_data = ProjectResponse.from_orm(db_project)
-    return {"message": "Project created successfully", "data": project_data}
- 
+
+    # Decide which response schema to use
+    if project.translation_type == "text_document":
+        response_data = TextProjectResponse.from_orm(db_project)
+    else:  # verse or word projects
+        response_data = ProjectResponse.from_orm(db_project)
+
+    return {
+        "message": "Project created successfully",
+        "data": response_data
+    }
+
  
 @router.get("/{project_id}", response_model=SuccessResponse[ProjectResponse])
 def get_project_id(project_id: UUID, db: Session = Depends(get_db)):

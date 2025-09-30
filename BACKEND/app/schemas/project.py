@@ -1,19 +1,76 @@
-# schemas.py
 from pydantic import BaseModel, Field
 from uuid import UUID
 from typing import List, Optional
 from datetime import datetime
+from typing import Generic, TypeVar
+from pydantic.generics import GenericModel
 
+
+# Base project fields
 class ProjectBase(BaseModel):
     name: str
     source_id: UUID
     target_language_id: UUID
-    translation_type: str
-    selected_books: Optional[List[str]]
+    translation_type: str  # "verse", "word", or "text_document"
+    selected_books: Optional[List[str]] = None
 
+
+# Create schema
 class ProjectCreate(ProjectBase):
-    pass
+    # only relevant for text_document projects
+    file_name: Optional[str] = None  
 
+    class Config:
+        orm_mode = True
+
+
+# Response for normal projects (verse/word)
+class ProjectResponse(BaseModel):
+    project_id: UUID
+    name: str
+    source_id: UUID
+    target_language_id: UUID
+    translation_type: str
+    selected_books: Optional[List[str]] = Field(default_factory=list)
+
+    # Defaults
+    status: Optional[str] = "created"
+    progress: Optional[int] = 0
+    total_items: Optional[int] = 0
+    completed_items: Optional[int] = 0
+    is_active: bool = True
+
+    # Extra fields
+    source_language_name: Optional[str]
+    target_language_name: Optional[str]
+    source_text: Optional[str]
+
+    created_at: Optional[datetime]
+    updated_at: Optional[datetime]
+
+    class Config:
+        orm_mode = True
+
+
+# Response for text document projects
+class TextProjectResponse(BaseModel):
+    project_id: UUID
+    project_name: str
+    project_type: str
+    translation_type: str
+    file_name: Optional[str] = None   # ✅ allow None
+    source_id: UUID
+    target_id: UUID
+    source_text: str
+    target_text: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        orm_mode = True
+
+
+# Update schema
 class ProjectUpdate(BaseModel):
     name: Optional[str]
     source_id: Optional[UUID]
@@ -26,29 +83,8 @@ class ProjectUpdate(BaseModel):
     completed_items: Optional[int]
     is_active: Optional[bool]
 
-# class ProjectResponse(BaseModel):
-#     project_id: UUID
-#     name: str
-#     source_id: UUID
-#     target_language_id: UUID
-#     translation_type: str
-#     selected_books: Optional[List[str]] = Field(default_factory=list)
-#     # Fix the ValidationError by making these optional with defaults
-#     status: Optional[str] = "created"
-#     progress: Optional[int] = 0
-#     total_items: Optional[int] = 0
-#     completed_items: Optional[int] = 0
-#     is_active: bool = True
 
-#     created_at: Optional[datetime]
-#     updated_at: Optional[datetime]
-
-#     class Config:
-#         orm_mode = True
-
-from typing import Generic, TypeVar
-from pydantic.generics import GenericModel
-
+# Generic API responses
 T = TypeVar("T")
 
 class SuccessResponse(GenericModel, Generic[T]):
@@ -57,29 +93,3 @@ class SuccessResponse(GenericModel, Generic[T]):
 
 class ErrorResponse(BaseModel):
     message: str
-
-class ProjectResponse(BaseModel):
-    project_id: UUID
-    name: str
-    source_id: UUID
-    target_language_id: UUID
-    translation_type: str
-    selected_books: Optional[List[str]] = Field(default_factory=list)
-
-    # Existing defaults
-    status: Optional[str] = "created"
-    progress: Optional[int] = 0
-    total_items: Optional[int] = 0
-    completed_items: Optional[int] = 0
-    is_active: bool = True
-
-    #  New fields
-    source_language_name: Optional[str]
-    target_language_name: Optional[str]
-    source_text: Optional[str]
-
-    created_at: Optional[datetime]
-    updated_at: Optional[datetime]
-
-    class Config:
-        orm_mode = True
