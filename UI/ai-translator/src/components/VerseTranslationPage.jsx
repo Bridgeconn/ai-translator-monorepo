@@ -61,7 +61,7 @@ const VerseTranslationPage = () => {
   const [editedTokens, setEditedTokens] = useState({});
   const [activeTab, setActiveTab] = useState("editor");
   const [originalDraft, setOriginalDraft] = useState(""); // NEW
-  const [selectedModel, setSelectedModel] = useState(null);
+  const [selectedModel, setSelectedModel] = useState("nllb-600M");
 
 
   const { message } = App.useApp(); //get message instance
@@ -721,9 +721,11 @@ const VerseTranslationPage = () => {
                 ? 0
                 : Math.round((chapterStats.translated / chapterStats.total) * 100),
           }}
-          format={() =>
-            `${chapterStats.translated} / ${chapterStats.total} verses`
-          }
+          format={() => (
+            <span style={{ color: '#000' }}>
+              {chapterStats.translated} / {chapterStats.total} verses
+            </span>
+          )}
           strokeColor="#d9d9d9" // always grey
           style={{ marginTop: 8, marginBottom: 8 }}
         />
@@ -762,9 +764,8 @@ const VerseTranslationPage = () => {
                   />
                 </Tooltip>
                 <Select
-                  placeholder="Select model"
                   style={{ width: 220 }}
-                  value={selectedModel || undefined} // placeholder shows if null
+                  value={selectedModel || undefined} 
                   onChange={(val) => setSelectedModel(val)}
                   disabled={loadingTranslate} // disabled during translation
                 >

@@ -162,7 +162,7 @@ export default function TextDocumentTranslation() {
   const getSourceKey = (projectId, fileId) => `sourceEdit_${projectId}_${fileId}`;
   const getSelectedFileKey = (projectId) => `selectedFile_${projectId}`;
   const getTempSourceKey = (projectId) => `tempSource_${projectId}`;
-  const [selectedModel, setSelectedModel] = useState(null); // default
+  const [selectedModel, setSelectedModel] = useState("nllb-600M"); 
 
   const { message } = App.useApp();
 
@@ -448,7 +448,6 @@ export default function TextDocumentTranslation() {
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 {/* Model Dropdown */}
                 <Select
-                  placeholder="Select Model"
                   style={{ width: 160 }}
                   value={selectedModel}
                   onChange={(value) => setSelectedModel(value)}
@@ -603,7 +602,7 @@ export default function TextDocumentTranslation() {
 
                       <DownloadDraftButton
                         content={targetText}
-                      //disabled={loading || !targetText}
+                  
                       />
 
                       {/* Edit Button */}

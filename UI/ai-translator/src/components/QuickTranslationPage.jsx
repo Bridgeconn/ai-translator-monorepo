@@ -224,7 +224,7 @@ export default function QuickTranslationPage() {
   const [newProjectFilename, setNewProjectFilename] = useState("");
   const [creatingProject, setCreatingProject] = useState(false);
   const [createProjectError, setCreateProjectError] = useState("");
-  const [selectedModel, setSelectedModel] = useState(null); // default model
+  const [selectedModel, setSelectedModel] = useState("nllb-600M");
   const availableModels = [
     { label: "nllb-600M", value: "nllb-600M" },
     { label: "nllb_finetuned_eng_nzm", value: "nllb_finetuned_eng_nzm" }
@@ -1293,7 +1293,6 @@ export default function QuickTranslationPage() {
             extra={
               <Space>
                 <Select
-                  placeholder="Select model"
                   value={selectedModel || undefined}
                   onChange={setSelectedModel}
                   disabled={loading}

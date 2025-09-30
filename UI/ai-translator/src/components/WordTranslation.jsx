@@ -35,7 +35,7 @@ export default function WordTranslation() {
   const [messageApi, messageContextHolder] = message.useMessage();
   const [notificationApi, notificationContextHolder] = notification.useNotification();
   const editedTokensRef = useRef(editedTokens);
-  const [selectedModel, setSelectedModel] = useState(null);
+  const [selectedModel, setSelectedModel] = useState("nllb-600M");
 
   const MODEL_INFO = {
     "nllb-600M": {
@@ -760,23 +760,21 @@ export default function WordTranslation() {
       </div>
       {/* Progress Bar */}
       {selectedBook && tokens.length > 0 && (
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-            <Text type="secondary" style={{ fontSize: 14 }}>
-              {Math.round((translatedCount / tokens.length) * 100)}%
-            </Text>
-            <Text strong style={{ fontSize: 14 }}>
-              {translatedCount}/{tokens.length} Tokens
-            </Text>
-          </div>
-          <Progress
-            percent={Math.round((translatedCount / tokens.length) * 100)}
-            strokeColor="#52c41a"
-            showInfo={false}
-            status="active"
-          />
-        </div>
+  <div style={{ marginBottom: 20 }}>
+    <Progress
+      percent={Math.round((translatedCount / tokens.length) * 100)}
+      strokeColor="#52c41a"
+      showInfo={true} // keep it true to use custom format
+      format={() => (
+        <span style={{ color: '#000' }}>
+          {translatedCount}/{tokens.length} Tokens
+        </span>
       )}
+      status="active"
+    />
+  </div>
+)}
+
 
       {selectedBook && (
         <>
@@ -902,8 +900,7 @@ export default function WordTranslation() {
                       </Tooltip>
 
                       <Select
-                        placeholder="Select model"
-                        value={selectedModel || undefined} // placeholder visible if null
+                        value={selectedModel || undefined} 
                         style={{ width: 220, borderRadius: 8, fontSize: 16 }}
                         onChange={(val) => setSelectedModel(val)}
                         disabled={isGenerating} 
