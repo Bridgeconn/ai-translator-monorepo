@@ -11,9 +11,9 @@ venv/
 .venv/
 
 # Environment variable files
-# .env
-# *.env
-# .env.*
+.env
+*.env
+.env.*
 
 # ================
 # PYTHON
