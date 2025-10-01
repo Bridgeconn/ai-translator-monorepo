@@ -23,10 +23,12 @@ import {
   CloseOutlined,
   TranslationOutlined,
   PlusOutlined,
+  SaveOutlined,
 } from "@ant-design/icons";
 import { useParams, Link } from "react-router-dom";
 import { textDocumentAPI } from "./api.js";
 import DownloadDraftButton from "./DownloadDraftButton";
+import { InfoCircleOutlined } from "@ant-design/icons";
 
 // Added imports for translation workflow
 import vachanApi from "../api/vachan";
@@ -35,6 +37,24 @@ import Papa from "papaparse";
 const { Option } = Select;
 const { TextArea } = Input;
 const { Text: TypographyText } = Typography;
+const MODEL_INFO = {
+  "nllb-600M": {
+    Model: "nllb-600M",
+    Tasks: "mt, text translation",
+    "Language Code Type": "BCP-47",
+    DevelopedBy: "Meta",
+    License: "CC-BY-NC 4.0",
+    Languages: "200 languages",
+  },
+  "nllb_finetuned_eng_nzm": {
+    Model: "nllb_finetuned_eng_nzm",
+    Tasks: "mt, text translation",
+    "Language Code Type": "BCP-47",
+    DevelopedBy: "Meta",
+    License: "CC-BY-NC 4.0",
+    Languages: "Zeme Naga, English",
+  },
+};
 
 // ------------------  Vachan Helpers ------------------
 async function getAccessToken() {
@@ -48,12 +68,12 @@ async function getAccessToken() {
   return resp.data.access_token;
 }
 
-async function requestDocTranslation(token, file, srcLangCode, tgtLangCode) {
+async function requestDocTranslation(token, file, srcLangCode, tgtLangCode, model_name) {
   const formData = new FormData();
   formData.append("file", file);
 
   const resp = await vachanApi.post(
-    `/model/text/translate-document?device=cpu&model_name=nllb-600M&source_language=${srcLangCode}&target_language=${tgtLangCode}`,
+    `/model/text/translate-document?device=cpu&model_name=${model_name}&source_language=${srcLangCode}&target_language=${tgtLangCode}`,
     formData,
     { headers: { Authorization: `Bearer ${token}` } }
   );
@@ -143,7 +163,7 @@ export default function TextDocumentTranslation() {
   const [targetText, setTargetText] = useState("");
   const [loading, setLoading] = useState(false);
   const [isEdited, setIsEdited] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(true);
   const [isSourceEditing, setIsSourceEditing] = useState(false);
   const [isSourceEdited, setIsSourceEdited] = useState(false);
   const [sourceLangName, setSourceLangName] = useState("");
@@ -154,6 +174,7 @@ export default function TextDocumentTranslation() {
     `sourceEdit_${projectId}_${fileId}`;
   const getSelectedFileKey = (projectId) => `selectedFile_${projectId}`;
   const getTempSourceKey = (projectId) => `tempSource_${projectId}`;
+  const [selectedModel, setSelectedModel] = useState("nllb-600M"); 
 
   const { message } = App.useApp();
 
@@ -259,7 +280,7 @@ export default function TextDocumentTranslation() {
       );
       message.success("Translation saved!");
       setIsEdited(false);
-      setIsEditing(false);
+      // setIsEditing(false);
     } catch (err) {
       console.error(err);
       message.error("Failed to save translation");
@@ -297,12 +318,12 @@ export default function TextDocumentTranslation() {
     setIsSourceEditing(false);
   };
 
-  const handleDiscardDraft = () => {
-    setTargetText(selectedFile?.target_text || "");
-    setIsEdited(false);
-    setIsEditing(false);
-    message.info("Reverted to saved translation");
-  };
+  // const handleDiscardDraft = () => {
+  //   setTargetText(selectedFile?.target_text || "");
+  //   setIsEdited(false);
+  //   setIsEditing(false);
+  //   message.info("Reverted to saved translation");
+  // };
 
   const handleClearConfirm = async () => {
     try {
@@ -326,7 +347,7 @@ export default function TextDocumentTranslation() {
       setIsSourceEdited(false);
       setIsSourceEditing(false);
       setIsEdited(false);
-      setIsEditing(false);
+      // setIsEditing(false);
       message.success("Content cleared successfully");
     } catch (err) {
       console.error(err);
@@ -397,7 +418,8 @@ export default function TextDocumentTranslation() {
         token,
         fileToSend,
         srcCode,
-        tgtCode
+        tgtCode,
+        selectedModel
       );
 
       message.info("⏳ Translating... please wait");
@@ -486,11 +508,9 @@ export default function TextDocumentTranslation() {
           ]}
           style={{ marginBottom: 8, fontSize: 14 }}
         />
-        <h2
-          style={{ margin: 0, fontSize: 24, fontWeight: 600, color: "#1f2937" }}
-        >
+
+        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: "#1f2937" }}>
           Document Translation ({sourceLangName} - {targetLangName})
-          {/* Document Translation ({project?.project_name}) */}
         </h2>
       </div>
 
@@ -584,12 +604,53 @@ export default function TextDocumentTranslation() {
       {/* Translation Editor */}
       {selectedFile && (
         <Card
-          title="Translation Editor"
+          title={
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              {/* Left: Heading */}
+              <h3 style={{ margin: 0 }}>Translation Editor</h3>
+
+              {/* Right: Model dropdown + Info button */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                {/* Model Dropdown */}
+                <Select
+                  style={{ width: 160 }}
+                  value={selectedModel}
+                  onChange={(value) => setSelectedModel(value)}
+                > <Option value="nllb-600M">nllb-600M</Option>
+                  <Option value="nllb_finetuned_eng_nzm">nllb_finetuned_eng_nzm</Option>
+
+                </Select>
+                <Tooltip
+                  title={
+                    selectedModel
+                      ? Object.entries(MODEL_INFO[selectedModel]).map(
+                        ([key, value]) => (
+                          <div key={key}>
+                            <strong>{key}:</strong> {value}
+                          </div>
+                        )
+                      )
+                      : "Select a model to see info"
+                  }
+                  color="#fff"
+                  overlayStyle={{ whiteSpace: "pre-line" }}
+                >
+                  <Button
+                    shape="circle"
+                    icon={<InfoCircleOutlined />}
+                    disabled={!selectedModel} // disable if no model selected
+                  />
+                </Tooltip>
+
+              </div>
+            </div>
+          }
           style={{ flex: 1, display: "flex", flexDirection: "column" }}
         >
           <Row gutter={16} style={{ flex: 1 }}>
             {/* Source */}
             <Col span={12} style={{ maxHeight: "70vh", overflowY: "auto" }}>
+              {/* Upload + Clear buttons */}
               <div
                 onClick={() => !isSourceEditing && setIsSourceEditing(true)}
                 style={{
@@ -724,7 +785,6 @@ export default function TextDocumentTranslation() {
                 </div>
               </div>
             </Col>
-
             {/* Target */}
             <Col span={12} style={{ maxHeight: "70vh", overflowY: "auto" }}>
               <div
@@ -736,10 +796,21 @@ export default function TextDocumentTranslation() {
               >
                 <h3 style={{ margin: 0 }}>Target</h3>
                 <div style={{ display: "flex", gap: 8 }}>
-                  {!isEditing ? (
                     <>
+                    <Tooltip
+                        title="Save"
+                        color="#fff"
+                        style={{ color: "#000" }}
+                      >
+                        <Button
+                          type="default"
+                          icon={<SaveOutlined />}
+                          onClick={handleSaveDraft}
+                          size="middle"
+                        />
+                      </Tooltip>
                       <Tooltip
-                        title="Copy translation"
+                        title="Copy"
                         color="#fff"
                         style={{ color: "#000" }}
                       >
@@ -754,22 +825,12 @@ export default function TextDocumentTranslation() {
                         />
                       </Tooltip>
 
-                      <DownloadDraftButton content={targetText} />
-
-                      <Tooltip
-                        title="Edit draft"
-                        color="#fff"
-                        style={{ color: "#000" }}
-                      >
-                        <Button
-                          type="default"
-                          icon={<EditOutlined />}
-                          onClick={() => setIsEditing(true)}
-                          size="middle"
-                        />
-                      </Tooltip>
+                      <DownloadDraftButton
+                        content={targetText}
+                  
+                      />
                     </>
-                  ) : (
+                   {/* : (
                     <div>
                       <Button
                         type="primary"
@@ -784,7 +845,7 @@ export default function TextDocumentTranslation() {
                         Discard
                       </Button>
                     </div>
-                  )}
+                  )} */}
                 </div>
               </div>
 
@@ -792,7 +853,7 @@ export default function TextDocumentTranslation() {
                 rows={20}
                 value={targetText}
                 onChange={handleDraftChange}
-                readOnly={!isEditing}
+                // readOnly={!isEditing}
                 style={{
                   marginTop: 8,
                   backgroundColor: isEdited ? "#fffbe6" : "transparent",
@@ -802,15 +863,22 @@ export default function TextDocumentTranslation() {
           </Row>
           {/*  Translate button centered below both panels */}
           <Row justify="center" style={{ marginTop: 16 }}>
-            <Button
-              type="primary"
-              icon={<TranslationOutlined />}
-              onClick={handleTranslate}
-              loading={loading}
-            >
-              {loading ? "Translating..." : "Translate"}
-            </Button>
-          </Row>
+  <Tooltip
+    title={!selectedModel ? "Please select a model first" : ""}
+    color="#fff"
+  >
+    <Button
+      type="primary"
+      icon={<TranslationOutlined />}
+      onClick={handleTranslate}
+      loading={loading}
+      disabled={!selectedModel} // <-- disable if no model selected
+    >
+      {loading ? "Translating..." : "Translate"}
+    </Button>
+  </Tooltip>
+</Row>
+
         </Card>
       )}
 

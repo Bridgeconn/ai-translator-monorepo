@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from uuid import UUID
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 # REQUEST schema (for POST): only needs project_id
 class VerseTokenTranslationCreate(BaseModel):
@@ -38,4 +38,6 @@ class MessageOnlyResponse(BaseModel):
 class ManualTranslationUpdate(BaseModel):
     translated_text: str
 
-    
+class TranslateChapterRequest(BaseModel):
+    verse_numbers: List[int]           # Required list of verses to translate
+    model_name: Optional[str] = "nllb-600M"  # Optional, defaults to nllb-600M    

@@ -18,6 +18,13 @@ PASSWORD = "Demon@9827"
  
 MAX_RETRIES = 15
 POLL_INTERVAL = 2
+
+SUPPORTED_MODELS = [
+    "nllb-600M",
+    "nllb_finetuned_eng_nzm"
+]
+
+DEFAULT_MODEL = "nllb-600M"
  
 def get_access_token():
     try:
@@ -36,15 +43,22 @@ def get_access_token():
     except Exception as e:
         logging.error("get_access_token failed", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Vachan login failed: {str(e)}")
-def request_translation(token: str, texts: list[str], src_lang: str, tgt_lang: str):
+def request_translation(token: str, texts: list[str], src_lang: str, tgt_lang: str, model_name: str = DEFAULT_MODEL):
     """Send batch translation request and return job_id."""
+    if model_name not in SUPPORTED_MODELS:
+        raise HTTPException(status_code=400, detail=f"Unsupported model: {model_name}")
+
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
         "Accept": "application/json"
     }
-    url = f"{VACHAN_TRANSLATE_URL}?device=cpu&model_name=nllb-600M&source_language={src_lang}&target_language={tgt_lang}"
- 
+    # url = f"{VACHAN_TRANSLATE_URL}?device=cpu&model_name=nllb-600M&source_language={src_lang}&target_language={tgt_lang}"
+    
+    url = (f"{VACHAN_TRANSLATE_URL}?device=cpu"
+           f"&model_name={model_name}"
+           f"&source_language={src_lang}"
+           f"&target_language={tgt_lang}")
     # Pass the whole list of tokens
     resp = httpx.post(url, json=texts, headers=headers)
     resp.raise_for_status()
@@ -96,7 +110,7 @@ def request_translation(token: str, texts: list[str], src_lang: str, tgt_lang: s
 #         print(f"Translation failed: {e}")
 #         # Raise the exception to stop the backend batch loop immediately
 #         raise
-def translate_texts_with_polling(src_lang: str, tgt_lang: str, texts: list[str]):
+def translate_texts_with_polling(src_lang: str, tgt_lang: str, texts: list[str], model_name: str = DEFAULT_MODEL):
     """
     Full batch translation flow with fixed batch size 10.
     Returns list of translated texts.
@@ -114,7 +128,7 @@ def translate_texts_with_polling(src_lang: str, tgt_lang: str, texts: list[str])
 
         while token_index < total_tokens:
             batch_texts = texts[token_index: token_index + batch_size]
-            job_id = request_translation(token, batch_texts, src_lang, tgt_lang)
+            job_id = request_translation(token, batch_texts, src_lang, tgt_lang, model_name)
             # Collect translations from generator
             translated_texts = list(poll_job_status(token, job_id))
             all_translations.extend(translated_texts)
