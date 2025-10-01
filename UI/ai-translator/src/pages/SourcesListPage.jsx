@@ -14,6 +14,7 @@ import {
   Tag,
   Divider,
   App,
+  Spin,
 } from "antd";
 import {
   FileTextOutlined,
@@ -54,82 +55,73 @@ const updateSource = async ({ source_id, values }) =>
   api.put(`/sources/${source_id}`, values);
 
 /* ---------------- Floating Upload Summary ---------------- */
-function UploadSummaryToast({ visible, uploaded = [], skipped = [], onClose }) {
+function UploadProgressModal({ visible, uploading = [], uploaded = [], skipped = [], total = 0, onClose }) {
   if (!visible) return null;
 
+  const isComplete = uploaded.length + skipped.length === total;
+
   return (
-    <div
-      style={{
-        position: "fixed",
-        right: 20,
-        top: 20,
-        zIndex: 9999,
-        maxWidth: 420,
-      }}
+    <Modal
+      open={visible}
+      title="Book upload status"
+      footer={null}
+      closable={isComplete}
+      onCancel={isComplete ? onClose : undefined}
+      maskClosable={false}
     >
-      <Card
-        size="small"
-        title={
-          <Space>
-            <span role="img" aria-label="sparkles"></span>
-            <span>Upload Summary</span>
-          </Space>
-        }
-        extra={
-          <Button
-            type="text"
-            size="small"
-            icon={<CloseOutlined />}
-            onClick={onClose}
-          />
-        }
-        style={{
-          borderRadius: 12,
-          boxShadow: "0 8px 20px rgba(0,0,0,0.12), 0 2px 6px rgba(0,0,0,0.08)",
-        }}
-      >
-        {uploaded.length > 0 && (
-          <>
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>
-              ✅ Uploaded ({uploaded.length})
-            </div>
-            <div style={{ marginBottom: 8 }}>
-              {uploaded.map((c) => (
-                <Tag color="green" key={`u-${c}`} style={{ marginBottom: 6 }}>
-                  {c}
-                </Tag>
-              ))}
-            </div>
-          </>
-        )}
+      <div style={{ marginBottom: 16 }}>
+        <Text strong>
+          Uploaded: {uploaded.length + skipped.length}/{total}
+        </Text>
+      </div>
 
-        {skipped.length > 0 && (
-          <>
-            {uploaded.length > 0 && <Divider style={{ margin: "8px 0" }} />}
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>
-              ⚠️ Skipped (already exists) ({skipped.length})
-            </div>
-            <div>
-              {skipped.map((c) => (
-                <Tag color="gold" key={`s-${c}`} style={{ marginBottom: 6 }}>
-                  {c}
-                </Tag>
-              ))}
-            </div>
-          </>
-        )}
+      {uploading.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <Text type="secondary">Currently uploading:</Text>
+          <div style={{ marginTop: 8 }}>
+            {uploading.map((code) => (
+              <Tag color="blue" key={`uploading-${code}`} style={{ marginBottom: 6 }}>
+                {code} <Spin size="small" style={{ marginLeft: 8 }} />
+              </Tag>
+            ))}
+          </div>
+        </div>
+      )}
 
-        {!uploaded.length && !skipped.length && (
-          <Text type="secondary">No files processed.</Text>
-        )}
+      {uploaded.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <Text type="secondary">✅ Uploaded ({uploaded.length}):</Text>
+          <div style={{ marginTop: 8 }}>
+            {uploaded.map((code) => (
+              <Tag color="green" key={`uploaded-${code}`} style={{ marginBottom: 6 }}>
+                {code}
+              </Tag>
+            ))}
+          </div>
+        </div>
+      )}
 
-        <div style={{ textAlign: "right", marginTop: 8 }}>
-          <Button type="primary" onClick={onClose} size="small">
+      {skipped.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <Text type="secondary">⚠️ Skipped (already exists) ({skipped.length}):</Text>
+          <div style={{ marginTop: 8 }}>
+            {skipped.map((code) => (
+              <Tag color="gold" key={`skipped-${code}`} style={{ marginBottom: 6 }}>
+                {code}
+              </Tag>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {isComplete && (
+        <div style={{ textAlign: "right", marginTop: 16 }}>
+          <Button type="primary" onClick={onClose}>
             Close
           </Button>
         </div>
-      </Card>
-    </div>
+      )}
+    </Modal>
   );
 }
 function SuccessToast({ visible, onClose, messageText }) {
@@ -194,6 +186,12 @@ export default function SourcesListPage() {
   const quickSourceIdRef = useRef(null);
   const { message } = App.useApp();
 
+const [uploadProgressOpen, setUploadProgressOpen] = useState(false);
+const [uploadingBooks, setUploadingBooks] = useState([]);
+const [uploadedBooks, setUploadedBooks] = useState([]);
+const [skippedBooks, setSkippedBooks] = useState([]);
+const [totalBooks, setTotalBooks] = useState(0);
+
   /* --------- Queries --------- */
   const { data: sources = [], isLoading } = useQuery({
     queryKey: ["sources"],
@@ -217,16 +215,21 @@ export default function SourcesListPage() {
   /* --------- Mutations --------- */
   const createSourceMutation = useMutation({
     mutationFn: createSource,
-    onSuccess: () => {
-      queryClient.invalidateQueries(["sources"]);
+    onSuccess: (res) => {
+      const newSource = res.data.data; // adjust if your API returns differently
+  
+      // Prepend the new source to the query cache
+      queryClient.setQueryData(["sources"], (old = []) => [newSource, ...old]);
+  
       setIsModalOpen(false);
       form.resetFields();
-      setCreateSuccessOpen(true); // ✅ show popup
+      setCreateSuccessOpen(true); // ✅ show success toast
     },
     onError: () => {
-      message.error(" Failed to create, source already exists");
+      message.error("Failed to create, source already exists");
     },
   });
+  
 
   const createVersionMutation = useMutation({
     mutationFn: createVersion,
@@ -312,33 +315,51 @@ export default function SourcesListPage() {
 
   const uploadBooksForSource = async (sourceId, files) => {
     if (!sourceId || !files?.length) return { uploaded: [], skipped: [] };
-
+  
     const existing = await getExistingBooks(sourceId);
     const existingCodes = new Set((existing || []).map((b) => b.book_code));
     const uploaded = [];
     const skipped = [];
-
+  
+    // Initialize modal tracking
+    setTotalBooks(files.length);
+    setUploadingBooks([]);   // start empty
+    setUploadedBooks([]);
+    setSkippedBooks([]);
+    setUploadProgressOpen(true);
+  
     for (const file of files) {
       const code = await guessUSFMCode(file);
-
+  
+      // Mark as uploading (by code)
+      setUploadingBooks((prev) => [...prev, code]);
+  
       if (existingCodes.has(code)) {
         skipped.push(code);
+        setSkippedBooks((prev) => [...prev, code]);
+        setUploadingBooks((prev) => prev.filter((c) => c !== code));
         continue;
       }
-
+  
       const formData = new FormData();
       formData.append("file", file);
+  
       try {
         await api.post(`/books/upload_books/?source_id=${sourceId}`, formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
         uploaded.push(code);
+        setUploadedBooks((prev) => [...prev, code]);
         existingCodes.add(code);
       } catch {
-        message.error(` Failed to upload ${code}`);
+        skipped.push(code);
+        setSkippedBooks((prev) => [...prev, code]);
+      } finally {
+        // Remove from uploading
+        setUploadingBooks((prev) => prev.filter((c) => c !== code));
       }
     }
-
+  
     return { uploaded, skipped };
   };
 
@@ -355,10 +376,12 @@ export default function SourcesListPage() {
     const sourceId = quickSourceIdRef.current;
     const files = Array.from(e.target.files || []);
     if (!sourceId || !files.length) return;
-
-    const { uploaded, skipped } = await uploadBooksForSource(sourceId, files);
+  
+    await uploadBooksForSource(sourceId, files);
     queryClient.invalidateQueries(["books", sourceId]);
-    showUploadSummary(uploaded, skipped);
+    
+    // Remove the old showUploadSummary call
+    // showUploadSummary(uploaded, skipped); // DELETE THIS LINE
   };
 
   /* --------- Filtered list --------- */
@@ -376,12 +399,14 @@ export default function SourcesListPage() {
   return (
     <div style={{ padding: 24 }}>
       {/* Floating upload summary */}
-      <UploadSummaryToast
-        visible={summaryOpen}
-        uploaded={summaryData.uploaded}
-        skipped={summaryData.skipped}
-        onClose={() => setSummaryOpen(false)}
-      />
+      <UploadProgressModal
+  visible={uploadProgressOpen}
+  uploading={uploadingBooks}
+  uploaded={uploadedBooks}
+  skipped={skippedBooks}
+  total={totalBooks}
+  onClose={() => setUploadProgressOpen(false)}
+/>
       <SuccessToast
         visible={editSuccessOpen}
         onClose={() => setEditSuccessOpen(false)}
@@ -508,7 +533,7 @@ export default function SourcesListPage() {
                       version_name: source.version_name,
                       version_abbreviation: source.version_abbreviation,
                       language_id: source.language_id,
-                      description: source.description,
+                      //description: source.description,
                     });
                     setIsEditModalOpen(true);
                   }}
@@ -592,9 +617,9 @@ export default function SourcesListPage() {
             </Select>
           </Form.Item>
 
-          <Form.Item label="Description" name="description">
+          {/* <Form.Item label="Description" name="description">
             <Input.TextArea rows={3} placeholder="Optional" />
-          </Form.Item>
+          </Form.Item> */}
 
           <Button
             type="primary"
@@ -685,9 +710,9 @@ export default function SourcesListPage() {
             <Input placeholder="(leave blank if unchanged)" />
           </Form.Item>
 
-          <Form.Item label="Description" name="description">
+          {/* <Form.Item label="Description" name="description">
             <Input.TextArea rows={3} placeholder="(leave blank if unchanged)" />
-          </Form.Item>
+          </Form.Item> */}
 
           <Button
             type="primary"
@@ -748,7 +773,7 @@ function BookGrid({ sourceId, uploadBooksForSource, showUploadSummary }) {
       message.success(`book with book code ${book.book_code} deleted successfully`);
       queryClient.invalidateQueries(["books", sourceId]);
     } catch {
-      message.error("❌ Failed to delete book");
+      message.error(" Failed to delete book");
     }
   };
 
