@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from uuid import UUID
-from typing import List, Optional
+from typing import List, Optional,Dict, Any
 from datetime import datetime
 from typing import Generic, TypeVar
 from pydantic.generics import GenericModel
@@ -53,18 +53,22 @@ class ProjectResponse(BaseModel):
 
 
 # Response for text document projects
-class TextProjectResponse(BaseModel):
-    project_id: UUID
-    project_name: str
-    project_type: str
-    translation_type: str
-    file_name: Optional[str] = None   # ✅ allow None
-    source_id: UUID
-    target_id: UUID
+
+class FileResponse(BaseModel):
+    file_name: str
     source_text: str
     target_text: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+
+    class Config:
+        orm_mode = True  # allows parsing from ORM objects
+
+class TextProjectResponse(BaseModel):
+    project_id: UUID
+    files: List[FileResponse]
+    source: Dict[str, Any]
+    target: Dict[str, Any]
 
     class Config:
         orm_mode = True

@@ -58,4 +58,5 @@ class SuccessResponse(BaseModel, Generic[T]):
     message: str
     data: T
 class FileUpdate(BaseModel):
+    source_text: Optional[str] = None
     target_text: Optional[str] = None

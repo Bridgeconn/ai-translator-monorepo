@@ -33,7 +33,9 @@ const CreateProjectModal = ({
     const selectedSourceId = form.getFieldValue("source_id");
     const targetLangId = form.getFieldValue("target_language_id");
 
-    const selectedSource = sources.find((s) => s.source_id === selectedSourceId);
+    const selectedSource = sources.find(
+      (s) => s.source_id === selectedSourceId
+    );
     const targetLang = languages?.find((l) => l.language_id === targetLangId);
 
     if (selectedSource && targetLang) {
@@ -122,7 +124,37 @@ const CreateProjectModal = ({
         <Form
           form={form}
           layout="vertical"
-          onFinish={onSubmit}
+          onFinish={(values) => {
+            let payload = { ...values };
+
+            if (values.translation_type === "text_document") {
+              const sourceObj = sources.find(
+                (s) => s.source_id === values.source_id
+              );
+              const targetLang = languages.find(
+                (l) => l.language_id === values.target_language_id
+              );
+
+              payload = {
+                ...values,
+                source_language: sourceObj
+                  ? {
+                      code: sourceObj.language_code,
+                      name: sourceObj.language_name,
+                    }
+                  : null,
+                target_language: targetLang
+                  ? {
+                      code: targetLang.code,
+                      name: targetLang.name,
+                      script: targetLang.script || null,
+                    }
+                  : null,
+              };
+            }
+
+            onSubmit(payload); // send to parent
+          }}
           style={{ marginTop: 16 }}
         >
           {/* General backend error banner */}
@@ -166,8 +198,11 @@ const CreateProjectModal = ({
               </Select>
               <Button
                 type="default"
-                icon={<PlusCircleOutlined
-                  style={{ color: "#1890ff", cursor: "pointer" }} />}
+                icon={
+                  <PlusCircleOutlined
+                    style={{ color: "#1890ff", cursor: "pointer" }}
+                  />
+                }
                 onClick={() => setIsSourceModalOpen(true)}
                 title="Add New Source"
               />
@@ -178,14 +213,13 @@ const CreateProjectModal = ({
           <Form.Item
             label="Target Language"
             name="target_language_id"
-            rules={[{ required: true, message: "Please select target language" }]}
+            rules={[
+              { required: true, message: "Please select target language" },
+            ]}
             style={{ width: "100%" }}
           >
             <div className="full-width-select">
-              <LanguageSelect
-                label=""
-                onChange={handleTargetLanguageChange}
-              />
+              <LanguageSelect label="" onChange={handleTargetLanguageChange} />
             </div>
           </Form.Item>
 

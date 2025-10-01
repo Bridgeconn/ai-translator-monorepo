@@ -1,6 +1,8 @@
 from sqlalchemy.orm import Session
 from uuid import UUID
+from typing import List, Optional, Dict, Any, Union
 from fastapi import HTTPException
+from datetime import datetime
 from app.schemas import project as schemas
 from app.models import sources as source_models, languages as language_models, project as project_models
 from app.models import verse as verse_models, chapter as chapter_models, book as book_models, books_details as book_details_models
@@ -10,8 +12,11 @@ import uuid
 from uuid import uuid4
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException
+from app.schemas.project_text_document import (
+    ProjectTextDocumentResponse, ProjectFileResponse, ProjectFileData
+)
 
-def create_project(db: Session, project: ProjectCreate, user_id: UUID):
+def create_project(db: Session, project: ProjectCreate, user_id: UUID, files: List[Union[ProjectFileData, Dict[str, Any]]] = None):
     # ---------------- Validate source ----------------
     source = db.query(source_models.Source).filter(
         source_models.Source.source_id == project.source_id
@@ -31,37 +36,82 @@ def create_project(db: Session, project: ProjectCreate, user_id: UUID):
             status_code=400,
             detail=f"Invalid target_language_id: {project.target_language_id} not found",
         )
+
+    # ---------------- Handle text_document ----------------
     # ---------------- Handle text_document ----------------
     if project.translation_type == "text_document":
+        # Resolve source + target BCP codes
+        source_lang = db.query(language_models.Language).filter(
+            language_models.Language.language_id == source.language_id
+        ).first()
+        source_bcp_code = source_lang.BCP_code if source_lang else None
+        target_bcp_code = target_lang.BCP_code
+    
+        if not source_bcp_code or not target_bcp_code:
+            raise HTTPException(
+                status_code=400,
+                detail="Could not determine language BCP codes"
+            )
+    
+        # Prevent duplicate project with same owner + source/target combo
         existing_text_project = db.query(ProjectTextDocument).filter(
             ProjectTextDocument.owner_id == user_id,
-            ProjectTextDocument.source_id == str(project.source_id),
-            ProjectTextDocument.target_id == str(project.target_language_id),
+            ProjectTextDocument.source_id == source_bcp_code,
+            ProjectTextDocument.target_id == target_bcp_code,
             ProjectTextDocument.project_type == "text_document"
         ).first()
         if existing_text_project:
             raise HTTPException(
                 status_code=400,
-                detail=f"A text document project with the same source and target language already exists."
+                detail="A text document project with the same source and target language already exists."
             )
+    
+        project_id = str(uuid4())
+        created_files = []
+    
+        try:
+            if not files or len(files) == 0:
+                # Create a default empty file if no files provided
+                files = [{"file_name": "default_file.txt", "source_text": "", "target_text": ""}]
+    
+            for file_data in files:
+                if isinstance(file_data, ProjectFileData):
+                    file_dict = file_data.dict()
+                else:
+                    file_dict = file_data
+    
+                new_file = ProjectTextDocument(
+                    project_id=project_id,
+                    owner_id=user_id,
+                    project_name=project.name,
+                    project_type="text_document",
+                    translation_type="text_document",
+                    file_name=file_dict.get("file_name", "default_file.txt"),
+                    source_id=source_bcp_code,  # ✅ stored as BCP code
+                    target_id=target_bcp_code,  # ✅ stored as BCP code
+                    source_text=file_dict.get("source_text", ""),
+                    target_text=file_dict.get("target_text", ""),
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow(),
+                )
+                db.add(new_file)
+                created_files.append(new_file)
+    
+            db.commit()
+            for file_obj in created_files:
+                db.refresh(file_obj)
+    
+            return {
+                "project_id": project_id,
+                "files": created_files,
+                "source": {"id": source.source_id, "name": source.language_name},
+                "target": {"id": target_lang.language_id, "name": target_lang.name},
+            }
+    
+        except Exception as e:
+            db.rollback()
+            raise e
 
-        db_project = ProjectTextDocument(
-            project_id=uuid4(),
-            owner_id=user_id,
-            project_name=project.name,
-            project_type="text_document",
-            translation_type="text_document",
-            file_name="default_file.txt",
-            source_id=project.source_id,
-            target_id=project.target_language_id,
-            source_text="",
-            target_text="",
-        )
-
-        db.add(db_project)
-        db.commit()
-        db.refresh(db_project)
-        return db_project 
 
     # ---------------- Handle verse/word projects ----------------
     elif project.translation_type in ["verse", "word"]:

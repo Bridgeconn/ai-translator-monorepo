@@ -21,8 +21,8 @@ from typing import Union
 
 @router.post("/", response_model=SuccessResponse[Union[ProjectResponse, TextProjectResponse]])
 def create_project(
-    project: ProjectCreate, 
-    db: Session = Depends(get_db), 
+    project: ProjectCreate,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     if not project.name or not project.source_id or not project.target_language_id:
@@ -33,16 +33,17 @@ def create_project(
 
     db_project = crud.create_project(db, project, current_user.user_id)
 
-    # Decide which response schema to use
     if project.translation_type == "text_document":
-        response_data = TextProjectResponse.from_orm(db_project)
-    else:  # verse or word projects
+        # db_project is already a dict from CRUD
+        response_data = TextProjectResponse(**db_project)
+    else:
         response_data = ProjectResponse.from_orm(db_project)
 
     return {
         "message": "Project created successfully",
         "data": response_data
     }
+
 
  
 @router.get("/{project_id}", response_model=SuccessResponse[ProjectResponse])
