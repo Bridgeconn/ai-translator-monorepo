@@ -31,6 +31,7 @@ import { InfoCircleOutlined } from "@ant-design/icons";
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 const { Option } = Select;
+import { useRef } from "react";
 
 const VerseTranslationPage = () => {
   const { projectId } = useParams();
@@ -62,8 +63,8 @@ const VerseTranslationPage = () => {
   const [activeTab, setActiveTab] = useState("editor");
   const [originalDraft, setOriginalDraft] = useState(""); // NEW
   const [selectedModel, setSelectedModel] = useState("nllb-600M");
-
-
+  const abortControllerRef = useRef(null);
+  const [cancelTranslation, setCancelTranslation] = useState(false);
   const { message } = App.useApp(); //get message instance
   const MODEL_INFO = {
     "nllb-600M": {
@@ -329,15 +330,21 @@ const VerseTranslationPage = () => {
       return;
     }
     setTranslationAttempted(true);
+    setCancelTranslation(false);
+    setLoadingTranslate(true);
 
     const key = "translating";
     message.loading({ key, content: "Translating verses…", duration: 0 });
-    setLoadingTranslate(true);
+
     try {
       let skip = 0;
       let hasMore = true;
 
       while (hasMore) {
+        if (cancelTranslation) {
+          message.warning({ key, content: "Translation canceled!" });
+          break;
+        }
         const res = await api.post(
           `/verse_tokens/translate-chunk/${projectId}/${selectedBook}`,
           null,
@@ -365,14 +372,16 @@ const VerseTranslationPage = () => {
         if (newTokens.length < 10) hasMore = false;
         else skip += 10;
       }
-
-      message.success({ key, content: "All verses translated!" });
+      if (!cancelTranslation) {
+        message.success({ key, content: "All verses translated!" });
+      }
     } catch (err) {
       console.error("Translation error:", err);
       message.error({ key, content: `Error: ${err.message || "Failed"}` });
     }
     finally {
-      setLoadingTranslate(false); // enable dropdown
+      setLoadingTranslate(false);
+      setCancelTranslation(false);
     }
   };
   function chunkArray(array, size) {
@@ -394,7 +403,13 @@ const VerseTranslationPage = () => {
       message.info("Please select a specific book and chapter to translate.");
       return;
     }
-    setLoadingTranslate(true); 
+    setLoadingTranslate(true);
+    setCancelTranslation(false); // Reset cancel before starting
+
+    // Create a new AbortController
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       const key = "translating";
       message.loading({ key, content: "Starting translation…", duration: 0 });
@@ -410,6 +425,10 @@ const VerseTranslationPage = () => {
       const batchSize = 5;
 
       for (let i = 0; i < total; i += batchSize) {
+        if (cancelTranslation) {
+          message.warning({ key, content: "Translation canceled!" });
+          break; // stop the loop
+        }
         const batch = uniqueVerseNumbers.slice(i, i + batchSize);
 
         // Show placeholder while batch in progress
@@ -427,7 +446,8 @@ const VerseTranslationPage = () => {
           selectedBook,
           selectedChapter,
           batch,
-          selectedModel
+          selectedModel,
+          controller.signal
         );
 
         if (newTokens?.length > 0) {
@@ -462,20 +482,40 @@ const VerseTranslationPage = () => {
         });
       }
 
-      message.success({ key, content: "Chapter translated successfully!" });
-
+      if (!cancelTranslation) {
+        message.success({ key, content: "Chapter translated successfully!" });
+      }
       // ✅ immediately refresh draft so UI shows translations without refresh
       // await updateServerDraft();
 
     } catch (err) {
-      console.error("Translation error:", err);
-      message.error({
-        key: "translating",
-        content: `Error: ${err.message || "Failed"}`,
-      });
+      const key = "translating";
+    
+      if (err.name === "CanceledError" || err.name === "AbortError") {
+        console.log("Translation aborted");
+        message.destroy(key); // Clear the "Starting translation..." message
+        // Reset tokens that were showing "Translating…"
+        setTokens(prev =>
+          prev.map(tok =>
+            tok.verse_translated_text === "Translating…"
+              ? { ...tok, verse_translated_text: "" }
+              : tok
+          )
+        );
+        setLoadingTranslate(false);
+        setCancelTranslation(false);
+        abortControllerRef.current = null;
+        message.warning("Translation canceled!");
+        return;
+      } else {
+        console.error("Translation error:", err);
+        message.error({ key, content: `Error: ${err.message || "Failed"}` });
+      }
     }
     finally {
       setLoadingTranslate(false); // ✅ translation finished, dropdown enables
+      setCancelTranslation(false); // Reset cancel state
+      abortControllerRef.current = null;
     }
   };
 
@@ -765,7 +805,7 @@ const VerseTranslationPage = () => {
                 </Tooltip>
                 <Select
                   style={{ width: 220 }}
-                  value={selectedModel || undefined} 
+                  value={selectedModel || undefined}
                   onChange={(val) => setSelectedModel(val)}
                   disabled={loadingTranslate} // disabled during translation
                 >
@@ -787,12 +827,19 @@ const VerseTranslationPage = () => {
                   <Button
                     type="dashed"
                     icon={<ThunderboltOutlined />}
-                    onClick={selectedChapter ? handleTranslateChapter : handleTranslateAllChunks}
-                    disabled={
-                      !selectedModel || selectedBook === "all" || !selectedChapter
-                    }
+                    onClick={() => {
+                      if (loadingTranslate) {
+                        setCancelTranslation(true);          // Stop the loop
+                        abortControllerRef.current?.abort(); // Abort any in-progress API call
+                      } else {
+                        selectedChapter ? handleTranslateChapter() : handleTranslateAllChunks();
+                      }
+                    }}
+                    disabled={!selectedModel || selectedBook === "all" || !selectedChapter}
+                    style={loadingTranslate ? { color: "red", borderColor: "red" } : {}}
+
                   >
-                    Translate
+                    {loadingTranslate ? "Cancel Translation" : "Translate"}
                   </Button>
                 </span>
               </Tooltip>

@@ -133,21 +133,31 @@ def translate_chunk_route(
     return verse_token_crud.translate_chunk(db, project_id, book_name, skip=skip, limit=limit)
 
 # chapter
+from fastapi import Request
+
 @router.post(
     "/translate-chapter/{project_id}/{book_name}/{chapter_number}",
     response_model=List[VerseTokenTranslationResponse]
 )
-def translate_chapter_route(
+async def translate_chapter_route(
     project_id: UUID,
     book_name: str,
     chapter_number: int,
-    request: TranslateChapterRequest = Body(...),  # 👈 required list, always batch
-    db: Session = Depends(get_db)
+    request: Request,                                # ✅ Add Request first (non-default)
+    request_body: TranslateChapterRequest = Body(...),  # your existing request body
+    db: Session = Depends(get_db),                   # your DB session
 ): 
-    print("Received verse_numbers:", request.verse_numbers)
-    return verse_token_crud.translate_chapter(
-        db, project_id, book_name, chapter_number, request.verse_numbers, model_name=request.model_name
+    print("Received verse_numbers:", request_body.verse_numbers)
+    return await verse_token_crud.translate_chapter(
+        db,
+        project_id,
+        book_name,
+        chapter_number,
+        request_body.verse_numbers,
+        model_name=request_body.model_name,
+        request=request  # ✅ pass it down to the CRUD function
     )
+
 @router.get("/verse_tokens/verse-numbers/{project_id}/{book_name}/{chapter_number}")
 def get_verse_numbers(project_id: UUID, book_name: str, chapter_number: int, db: Session = Depends(get_db)):
     verses = (
