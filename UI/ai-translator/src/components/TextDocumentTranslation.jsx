@@ -536,19 +536,6 @@ export default function TextDocumentTranslation() {
           <Row gutter={16} style={{ flex: 1 }}>
             {/* Source */}
             <Col span={12} style={{ maxHeight: "70vh", overflowY: "auto" }}>
-              <h3>Source</h3>
-              <TextArea
-                rows={20}
-                value={sourceText}
-                onChange={(e) => {
-                  setSourceText(e.target.value);
-                  setIsSourceEdited(true);
-                  const key = selectedFile ? getSourceKey(projectId, selectedFile.id) : getTempSourceKey(projectId);
-                  localStorage.setItem(key, e.target.value);
-                }}
-                placeholder="Enter or upload text to translate..."
-                style={{ marginBottom: 8 }}
-              />
               {/* Upload + Clear buttons */}
               <div
                 onClick={() => !isSourceEditing && setIsSourceEditing(true)}
