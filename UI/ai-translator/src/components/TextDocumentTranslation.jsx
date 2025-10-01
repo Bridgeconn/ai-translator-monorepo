@@ -83,7 +83,7 @@ async function requestDocTranslation(token, file, srcLangCode, tgtLangCode, mode
 
 async function pollJobStatus({ token, jobId }) {
   let attempts = 0;
-  while (attempts < 80) {
+  while (attempts < 200) {
     const resp = await vachanApi.get(`/model/job?job_id=${jobId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });

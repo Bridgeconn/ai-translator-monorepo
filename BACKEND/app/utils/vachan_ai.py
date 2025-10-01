@@ -16,8 +16,8 @@ VACHAN_JOB_STATUS_URL = "https://api.vachanengine.org/v2/ai/model/job"
 USERNAME = "slimywhite2@gmail.com"
 PASSWORD = "Demon@9827"
  
-MAX_RETRIES = 15
-POLL_INTERVAL = 2
+MAX_RETRIES = 200
+POLL_INTERVAL = 3 
 
 SUPPORTED_MODELS = [
     "nllb-600M",

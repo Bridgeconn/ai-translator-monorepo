@@ -89,7 +89,7 @@ async function pollJobStatus({
   jobId,
   onStatusUpdate,
   notification,
-  maxAttempts = 80,
+  maxAttempts = 200,
   interval = 3000,
   signal,
 }) {
@@ -451,7 +451,7 @@ export default function QuickTranslationPage() {
       return;
     }
 
-    // ✅ Create AbortController right away so user can cancel anytime
+    //  Create AbortController right away so user can cancel anytime
     controllerRef.current = new AbortController();
     const signal = controllerRef.current.signal;
 
