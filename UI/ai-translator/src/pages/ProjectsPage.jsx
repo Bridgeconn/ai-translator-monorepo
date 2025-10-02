@@ -180,8 +180,9 @@ const ZeroDraftGenerator = () => {
         name: values.project_name,
         translation_type: values.translation_type,
       };
-      setAllProjects((prev) => [...prev, newProject]);
-      setFilteredProjects((prev) => [...prev, newProject]);
+      setAllProjects((prev) => [newProject, ...prev]);
+      setFilteredProjects((prev) => [newProject, ...prev]);
+
       setSuccessMessage("Project created successfully!");
       setSuccessModalVisible(true);
       handleCancel();

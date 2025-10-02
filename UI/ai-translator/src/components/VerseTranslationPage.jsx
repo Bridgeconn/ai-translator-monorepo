@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   Button,
@@ -17,11 +17,19 @@ import {
   Breadcrumb,
   Progress,
   Popconfirm,
+  Modal,
+  Tag,
+  Divider,
 } from "antd";
 import {
   ThunderboltOutlined,
   SaveOutlined,
   CopyOutlined,
+  PlusOutlined,
+  UploadOutlined,
+  CloseOutlined,
+  PlusCircleOutlined,
+  
 } from "@ant-design/icons";
 import api, { translateChapter } from "./api";
 import { generateDraftJson, saveDraft, fetchLatestDraft } from "./api";
@@ -34,6 +42,77 @@ const { TabPane } = Tabs;
 const { Option } = Select;
 import { useRef } from "react";
 
+/* ---------------- Upload Progress Modal ---------------- */
+function UploadProgressModal({ visible, uploading = [], uploaded = [], skipped = [], total = 0, onClose }) {
+  if (!visible) return null;
+
+  const isComplete = uploaded.length + skipped.length === total;
+
+  return (
+    <Modal
+      open={visible}
+      title="Book upload status"
+      footer={null}
+      closable={isComplete}
+      onCancel={isComplete ? onClose : undefined}
+      maskClosable={false}
+    >
+      <div style={{ marginBottom: 16 }}>
+        <Text strong>
+          Uploaded: {uploaded.length + skipped.length}/{total}
+        </Text>
+      </div>
+
+      {uploading.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <Text type="secondary">Currently uploading:</Text>
+          <div style={{ marginTop: 8 }}>
+            {uploading.map((code) => (
+              <Tag color="blue" key={`uploading-${code}`} style={{ marginBottom: 6 }}>
+                {code} <Spin size="small" style={{ marginLeft: 8 }} />
+              </Tag>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {uploaded.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <Text type="secondary">✅ Uploaded ({uploaded.length}):</Text>
+          <div style={{ marginTop: 8 }}>
+            {uploaded.map((code) => (
+              <Tag color="green" key={`uploaded-${code}`} style={{ marginBottom: 6 }}>
+                {code}
+              </Tag>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {skipped.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <Text type="secondary">⚠️ Skipped (already exists) ({skipped.length}):</Text>
+          <div style={{ marginTop: 8 }}>
+            {skipped.map((code) => (
+              <Tag color="gold" key={`skipped-${code}`} style={{ marginBottom: 6 }}>
+                {code}
+              </Tag>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {isComplete && (
+        <div style={{ textAlign: "right", marginTop: 16 }}>
+          <Button type="primary" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+      )}
+    </Modal>
+  );
+}
+ 
 const VerseTranslationPage = () => {
   const { projectId } = useParams();
   const [project, setProject] = useState(null);
@@ -110,6 +189,138 @@ const VerseTranslationPage = () => {
     }
   }, [project]);
   
+    // Book upload state
+    const [isBookUploadModalOpen, setIsBookUploadModalOpen] = useState(false);
+    //const [uploadProgressOpen, setUploadProgressOpen] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState({ uploaded: [], skipped: [] });
+    const hiddenUploadInputRef = useRef(null);
+// Modal control
+const [uploadProgressOpen, setUploadProgressOpen] = useState(false);
+
+// Upload tracking
+const [uploadingBooks, setUploadingBooks] = useState([]);
+const [uploadedBooks, setUploadedBooks] = useState([]);
+const [skippedBooks, setSkippedBooks] = useState([]);
+const [totalBooks, setTotalBooks] = useState(0);
+
+     // ---------- Book Upload Utils (from SourcesListPage) ----------
+  const getExistingBooks = async (sourceId) => {
+    try {
+      const res = await api.get(`/books/by_source/${sourceId}`);
+      return Array.isArray(res.data?.data) ? res.data.data : res.data || [];
+    } catch (err) {
+      if (err?.response?.status === 404) return [];
+      throw err;
+    }
+  };
+
+  const guessUSFMCode = (file) =>
+    new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const txt = String(reader.result || "");
+          const m = txt.match(/\\id\s+([^\s]+)/i);
+          if (m && m[1]) {
+            return resolve(m[1].replace(/[^0-9A-Za-z]/g, "").toUpperCase());
+          }
+        } catch {}
+        const name = file.name.split(".")[0] || file.name;
+        resolve(name.replace(/[^0-9A-Za-z]/g, "").toUpperCase());
+      };
+      reader.readAsText(file);
+    });
+
+  const showUploadSummary = (uploaded = [], skipped = []) => {
+    setSummaryData({ uploaded, skipped });
+    setSummaryOpen(true);
+  };
+
+  const uploadBooksForSource = async (sourceId, files) => {
+    if (!sourceId || !files?.length) return { uploading: [], uploaded: [], skipped: [], total: 0 };
+
+    const existing = await getExistingBooks(sourceId);
+    const existingCodes = new Set((existing || []).map((b) => b.book_code));
+    const uploaded = [];
+    const skipped = [];
+
+    for (const file of files) {
+      const code = await guessUSFMCode(file);
+
+      if (existingCodes.has(code)) {
+        skipped.push(code);
+        continue;
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+      try {
+        await api.post(`/books/upload_books/?source_id=${sourceId}`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        uploaded.push(code);
+        existingCodes.add(code);
+      } catch {
+        message.error(`Failed to upload ${code}`);
+      }
+    }
+
+    return { uploaded, skipped };
+  };
+
+  const handleBookUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length || !project?.source_id) return;
+  
+    setTotalBooks(files.length);
+    setUploadingBooks([]);
+    setUploadedBooks([]);
+    setSkippedBooks([]);
+    setUploadProgressOpen(true);
+  
+    for (const file of files) {
+      const code = await guessUSFMCode(file); // Get the book code
+  
+      // Mark as uploading (by code, not filename)
+      setUploadingBooks(prev => [...prev, code]);
+  
+      try {
+        // Call your existing API helper
+        const { uploaded, skipped } = await uploadBooksForSource(
+          project.source_id,
+          [file] // send one at a time
+        );
+  
+        if (uploaded.length) {
+          setUploadedBooks(prev => [...prev, code]); // use code instead of file.name
+        }
+        if (skipped.length) {
+          setSkippedBooks(prev => [...prev, code]); // use code instead of file.name
+        }
+      } catch (err) {
+        setSkippedBooks(prev => [...prev, code]); // treat errors as skipped
+      } finally {
+        // Remove from "uploading"
+        setUploadingBooks(prev => prev.filter(c => c !== code));
+      }
+    }
+  
+    // Refresh book list after uploads complete
+    await fetchAvailableBooks(project.source_id);
+  
+    e.target.value = ""; // reset input
+  };
+  
+
+  const openBookUploadModal = () => {
+    setIsBookUploadModalOpen(true);
+  };
+
+  const openFileDialog = () => {
+    if (hiddenUploadInputRef.current) {
+      hiddenUploadInputRef.current.click();
+    }
+  };
   // ---------- Project / Books / Chapters ----------
   const fetchProjectDetails = async () => {
     try {
@@ -711,6 +922,33 @@ const VerseTranslationPage = () => {
         paddingLeft: 20,
       }}
     >
+          {/* Upload Summary Toast */}
+          {/* <UploadSummaryToast
+        visible={summaryOpen}
+        uploaded={summaryData.uploaded}
+        skipped={summaryData.skipped}
+        onClose={() => setSummaryOpen(false)}
+      /> */}
+   <UploadProgressModal
+  visible={uploadProgressOpen}
+  uploading={uploadingBooks}
+  uploaded={uploadedBooks}
+  skipped={skippedBooks}
+  total={totalBooks}
+  onClose={() => setUploadProgressOpen(false)}
+/>
+
+
+         {/* Hidden file input for book upload */}
+         <input
+        type="file"
+        ref={hiddenUploadInputRef}
+        style={{ display: "none" }}
+        multiple
+        accept=".usfm"
+        onChange={handleBookUpload}
+      />
+
       <Breadcrumb style={{ marginBottom: 16 }}>
         <Breadcrumb.Item>
           <Link to="/projects">Projects</Link>
@@ -725,23 +963,51 @@ const VerseTranslationPage = () => {
       </Breadcrumb>
 
       <Space direction="vertical" style={{ width: "100%" }} size="small">
-        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: '#1f2937' }}>
-          Verse Translation ({project?.name})
-        </h2>
-        <Space>
-          <Select
-            value={selectedBook}
-            onChange={(val) => setSelectedBook(val)}
-            style={{ minWidth: 200 }}
-          >
-            <Option value="all">All Books</Option>
-            {books.map((b) => (
-              <Option key={b.book_id} value={b.book_name}>
-                {b.book_name}
-              </Option>
-            ))}
-          </Select>
-
+      <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: '#1f2937' }}>
+       Verse Translation ({project?.name})
+        </h2>        
+        {/* {project && (
+          <Text>
+            Source: {project.source_language_name} | Target:{" "}
+            {project.target_language_name}
+          </Text>
+        )} */}
+ 
+   {/* Book + Chapter Selectors with Upload Plus Icon */}
+   <Space>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <Select
+              value={selectedBook}
+              onChange={(val) => setSelectedBook(val)}
+              style={{ minWidth: 200 }}
+            >
+              <Option value="all">All Books</Option>
+              {books.map((b) => (
+                <Option key={b.book_id} value={b.book_name}>
+                  {b.book_name}
+                </Option>
+              ))}
+            </Select>
+            
+            {/* Plus icon for book upload - only show when "All Books" is selected */}
+            {/* {selectedBook === "all" && ( */}
+              <Button
+                type="text"
+                //shape="circle"
+                icon={<UploadOutlined
+                  style={{ color: "#1890ff", cursor: "pointer" }}
+                />}
+                onClick={openFileDialog}
+                title="Upload Books"
+                style={{ 
+                  marginLeft: 8,
+                //backgroundColor: 'rgb(44, 141, 251)',
+               borderColor: 'rgb(44, 141, 251)',
+                }}
+              />
+            {/* )} */}
+          </div>
+ 
           {selectedBook !== "all" && chapters.length > 0 && (
             <Space>
               {/* Prev Button */}

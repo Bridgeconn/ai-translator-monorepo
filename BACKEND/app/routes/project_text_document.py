@@ -63,13 +63,18 @@ def add_files_to_existing(
 ):
     """Add files to an existing text document project"""
     try:
-        # Pass the files as they are - CRUD will handle Pydantic objects
-        new_files = crud.add_files_to_existing_project(db, project_id, request.project_name, request.files, current_user.user_id)
+        new_files = crud.add_files_to_existing_project(
+            db, project_id, request.project_name, request.files, current_user.user_id
+        )
+        
+        # Convert ORM objects to Pydantic response
+        files_response = [ProjectFileResponse.from_orm(f).dict() for f in new_files]
+        
         return SuccessResponse(
             message=f"Successfully added {len(new_files)} files to project '{request.project_name}'",
             data={
                 "status": "success", 
-                "added_files": [f.file_name for f in new_files],
+                "added_files": files_response,  # full objects here
                 "files_added": len(new_files)
             }
         )
@@ -77,6 +82,7 @@ def add_files_to_existing(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error adding files: {str(e)}")
+
 
 @router.get("/{project_id}", response_model=ProjectTextDocumentResponse)
 def get_project(project_id: str, db: Session = Depends(get_db)):
