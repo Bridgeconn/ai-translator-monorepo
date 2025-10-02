@@ -19,8 +19,8 @@ export default function WordTranslation() {
   const [loadingTokens, setLoadingTokens] = useState(false);
   const [activeTab, setActiveTab] = useState("editor");
   const [sourceText, setSourceText] = useState("");
-  const [sourceLang, setSourceLang] = useState("Loading...");
-  const [targetLang, setTargetLang] = useState("Unknown");
+  const [sourceLang, setSourceLang] = useState({ name: "Loading...", BCP_code: "" });
+  const [targetLang, setTargetLang] = useState({ name: "Unknown", BCP_code: "" });
   const [projectBooks, setProjectBooks] = useState([]);
   const [editedTokens, setEditedTokens] = useState({});
   const [draftContent, setDraftContent] = useState("");
@@ -36,7 +36,17 @@ export default function WordTranslation() {
   const [notificationApi, notificationContextHolder] = notification.useNotification();
   const editedTokensRef = useRef(editedTokens);
   const [selectedModel, setSelectedModel] = useState("nllb-600M");
+  const [modelLanguageError, setModelLanguageError] = useState(""); // <-- ADD THIS
+  const isManualSelection = useRef(false);
 
+  const showNotification = (type, message, description, duration) => {
+    notification[type]({
+      message: message,
+      description: description,
+      duration: duration,
+      placement: "topRight",
+    });
+  };
   const MODEL_INFO = {
     "nllb-600M": {
       Model: "nllb-600M",
@@ -101,33 +111,102 @@ export default function WordTranslation() {
     };
     fetchBooks();
   }, [project]);
-
-  // Fetch language names
   useEffect(() => {
     const fetchLanguages = async () => {
       if (!project) return;
       try {
+        let srcLangData = null;
+        let tgtLangData = null;
+
+        // Fetch Source Language Object
         if (project.source_id) {
           const source = await sourcesAPI.getSourceById(project.source_id);
           if (source?.language_id) {
-            const srcLang = await languagesAPI.getLanguageById(source.language_id);
-            setSourceLang(srcLang?.name || "Unknown");
-          } else {
-            setSourceLang(source?.language_name || "Unknown");
+            // Get the full language object which contains BCP_code
+            srcLangData = await languagesAPI.getLanguageById(source.language_id);
           }
         }
+        // Set state to the language object, or a fallback object if data is incomplete
+        setSourceLang(srcLangData || { name: "Unknown", BCP_code: "" });
+
+        // Fetch Target Language Object
         if (project.target_language_id) {
-          const tgt = await languagesAPI.getLanguageById(project.target_language_id);
-          setTargetLang(tgt?.name || "Unknown");
+          // Get the full language object which contains BCP_code
+          tgtLangData = await languagesAPI.getLanguageById(project.target_language_id);
         }
+        // Set state to the language object, or a fallback object if data is incomplete
+        setTargetLang(tgtLangData || { name: "Unknown", BCP_code: "" });
+
       } catch (e) {
         console.error("Failed to fetch languages", e);
+        setSourceLang({ name: "Error", BCP_code: "" });
+        setTargetLang({ name: "Error", BCP_code: "" });
       }
     };
     fetchLanguages();
   }, [project]);
 
-  // ------------------ Fetch or Generate tokens ------------------
+  useEffect(() => {
+    if (!sourceLang || !targetLang) return; // Wait for languages to load
+
+    const srcCode = sourceLang.BCP_code;
+    const tgtCode = targetLang.BCP_code;
+    const ZEME_NAGA_CODE = "nzm_Latn";
+    const FINE_TUNED_MODEL = "nllb_finetuned_eng_nzm";
+    const BASE_MODEL = "nllb-600M";
+
+    const SUPPORTED_CODES = ["eng_Latn", ZEME_NAGA_CODE];
+    const isSupported = (code) => SUPPORTED_CODES.includes(code);
+    const isZemeNagaSelected = srcCode === ZEME_NAGA_CODE || tgtCode === ZEME_NAGA_CODE;
+
+    let calculatedErrorMsg = "";
+
+    // 1. **AUTO-SELECTION (ONLY ON INITIAL LOAD/DATA FETCH):**
+    // This logic runs ONLY if Zeme Naga is selected AND the model is currently the initial default ("nllb-600M").
+    // This satisfies the "select finetuned by default" requirement.
+    if (isZemeNagaSelected && selectedModel === BASE_MODEL) {
+
+      setSelectedModel(FINE_TUNED_MODEL);
+      setModelLanguageError(""); // Clear error state on switch
+
+      showNotification(
+        "info",
+        "Model Switched",
+        "Zeme Naga language detected. Automatically switched to 'nllb_finetuned_eng_nzm' for optimal translation.",
+        3
+      );
+      // We explicitly return here to let the state update trigger a clean run of the validation.
+      return;
+    }
+
+    // 2. **VALIDATION (Runs every time, including after a manual selection):**
+
+    // Rule 1: Disable button if nllb-600M is selected for Zeme Naga project.
+    if (selectedModel === BASE_MODEL) {
+      if (isZemeNagaSelected) {
+        calculatedErrorMsg =
+          "Zeme Naga translation is not supported by 'nllb-600M'. Please select the 'nllb_finetuned_eng_nzm' model, or switch languages.";
+      }
+    }
+    // Rule 2: Validation for nllb_finetuned_eng_nzm
+    else if (selectedModel === FINE_TUNED_MODEL) {
+      if (!isSupported(srcCode) || !isSupported(tgtCode)) {
+        calculatedErrorMsg =
+          "The 'nllb_finetuned_eng_nzm' model only supports English (eng_Latn) and Zeme Naga (nzm_Latn). Please switch languages or model.";
+      }
+    }
+    // Show notification ONLY if the error state is transitioning to a new error
+    if (calculatedErrorMsg && calculatedErrorMsg !== modelLanguageError) {
+      // This is a redundant check, as the <Select> component shows the immediate error, 
+      // but it's good practice to keep the validation check here too.
+      showNotification("error", "Language Mismatch", calculatedErrorMsg, 5);
+    }
+
+    // Set the state last. This is what enables/disables the button.
+    setModelLanguageError(calculatedErrorMsg);
+
+  }, [sourceLang, targetLang, selectedModel, showNotification, modelLanguageError]);
+  //  -------- Fetch or Generate tokens ------------------
   const fetchTokens = async (bookId) => {
     if (!bookId) return;
     setLoadingTokens(true);
@@ -305,18 +384,6 @@ export default function WordTranslation() {
             );
           }, 1000);
         }
-
-        //   if (data.finished && !hasError) {
-        //     notificationApi.success({
-        //       message: "Success",
-        //       description: `All ${data.total ?? translatedCount} tokens translated!`,
-        //       placement: "top",
-        //     });
-        //     setIsGenerating(false);
-        //     setHasGenerated(true);
-        //     eventSource.close();
-        //   }
-        // };
         if (data.finished) {
           if (hasError) {
             notificationApi.error({
@@ -760,22 +827,20 @@ export default function WordTranslation() {
       </div>
       {/* Progress Bar */}
       {selectedBook && tokens.length > 0 && (
-  <div style={{ marginBottom: 20 }}>
-    <Progress
-      percent={Math.round((translatedCount / tokens.length) * 100)}
-      strokeColor="#52c41a"
-      showInfo={true} // keep it true to use custom format
-      format={() => (
-        <span style={{ color: '#000' }}>
-          {translatedCount}/{tokens.length} Tokens
-        </span>
+        <div style={{ marginBottom: 20 }}>
+          <Progress
+            percent={Math.round((translatedCount / tokens.length) * 100)}
+            strokeColor="#52c41a"
+            showInfo={true} // keep it true to use custom format
+            format={() => (
+              <span style={{ color: '#000' }}>
+                {translatedCount}/{tokens.length} Tokens
+              </span>
+            )}
+            status="active"
+          />
+        </div>
       )}
-      status="active"
-    />
-  </div>
-)}
-
-
       {selectedBook && (
         <>
           {/* Tabs */}
@@ -898,16 +963,65 @@ export default function WordTranslation() {
                           disabled={!selectedModel} // disables button when no model selected
                         />
                       </Tooltip>
-
                       <Select
-                        value={selectedModel || undefined} 
-                        style={{ width: 220, borderRadius: 8, fontSize: 16 }}
-                        onChange={(val) => setSelectedModel(val)}
-                        disabled={isGenerating} 
+                        value={selectedModel}
+                        onChange={(val) => {
+                          isManualSelection.current = true;
+                          setSelectedModel(val);
+                        }}
+                        style={{ width: 250 }}
+                        dropdownRender={(menu) => {
+                          const ZEME_NAGA_CODE = "nzm_Latn";
+                          const isZemeNagaSelected =
+                            sourceLang?.BCP_code === ZEME_NAGA_CODE ||
+                            targetLang?.BCP_code === ZEME_NAGA_CODE;
+
+                          return (
+                            <>
+                              {MODEL_OPTIONS.map((opt) => {
+                                // Disable nllb-600M for Zeme Naga
+                                // Disable finetuned model for non-Zeme Naga
+                                const disabled =
+                                  (isZemeNagaSelected && opt.value === "nllb-600M") ||
+                                  (!isZemeNagaSelected && opt.value === "nllb_finetuned_eng_nzm");
+
+                                const tooltipText =
+                                  isZemeNagaSelected && opt.value === "nllb-600M"
+                                    ? "This model does not support Zeme Naga language."
+                                    : !isZemeNagaSelected && opt.value === "nllb_finetuned_eng_nzm"
+                                      ? "This model only supports Zeme Naga language."
+                                      : "";
+
+                                return (
+                                  <Tooltip
+                                    key={opt.value}
+                                    title={tooltipText}
+                                    placement="right"
+                                    overlayInnerStyle={{
+                                      backgroundColor: "#fff",
+                                      color: "#000",
+                                      border: "1px solid #ddd",
+                                      borderRadius: "6px",
+                                      padding: "6px 10px",
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        padding: "6px 12px",
+                                        cursor: disabled ? "not-allowed" : "pointer",
+                                        color: disabled ? "#999" : "inherit",
+                                      }}
+                                      onClick={() => !disabled && setSelectedModel(opt.value)}
+                                    >
+                                      {opt.label}
+                                    </div>
+                                  </Tooltip>
+                                );
+                              })}
+                            </>
+                          );
+                        }}
                       >
-                        {MODEL_OPTIONS.map((m) => (
-                          <Option key={m.value} value={m.value}>{m.label}</Option>
-                        ))}
                       </Select>
                     </div>
 
@@ -930,22 +1044,22 @@ export default function WordTranslation() {
                         cancelText="Cancel"
                       >
                         <Tooltip title={!selectedModel ? "Please select a model first" : ""}>
-                        <Button type="primary" loading={isGenerating}disabled={!selectedModel || isGenerating}
-                        >
-                          {isGenerating ? "Regenerating..." : "Regenerate Translations"}
-                        </Button>
+                          <Button type="primary" loading={isGenerating} disabled={!selectedModel || isGenerating}
+                          >
+                            {isGenerating ? "Regenerating..." : "Regenerate Translations"}
+                          </Button>
                         </Tooltip>
                       </Popconfirm>
                     ) : (
                       <Tooltip title={!selectedModel ? "Please select a model first" : ""}>
-                      <Button
-                        type="primary"
-                        size="large"
-                        onClick={handleGenerateTranslationsSSEWithPreserveEdits}
-                        loading={isGenerating}
-                        disabled={!selectedModel || isGenerating}
-                      >{isGenerating ? "Generating..." : "Generate Translations"}
-                      </Button>
+                        <Button
+                          type="primary"
+                          size="large"
+                          onClick={handleGenerateTranslationsSSEWithPreserveEdits}
+                          loading={isGenerating}
+                          disabled={!selectedModel || isGenerating}
+                        >{isGenerating ? "Generating..." : "Generate Translations"}
+                        </Button>
                       </Tooltip>
                     )}
                   </>
