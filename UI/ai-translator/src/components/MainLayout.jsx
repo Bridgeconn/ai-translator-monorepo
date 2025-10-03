@@ -57,7 +57,7 @@ const onMenuClick = ({ key }) => {
   items={[
     { key: "/dashboard", label: "Dashboard" },
     { key: "/projects", label: "Projects" },
-    { key: "/sources", label: "Sources" },
+    // { key: "/sources", label: "Sources" },
     { key: "/quick-translation", label: "Quick Translation" }
   ]}
 />
@@ -151,7 +151,7 @@ const userMenuItems = token
   ];
     const navigationItems = [
       { key: "/dashboard", icon: <HomeOutlined />, label: "Dashboard" },
-      { key: "/sources", icon: <FileTextOutlined />, label: "Sources" },
+      // { key: "/sources", icon: <FileTextOutlined />, label: "Sources" },
       { key: "/projects", icon: <FolderOutlined />, label: "Projects" },
       { key: "/quick-translation", icon: <ThunderboltOutlined />, label: "Quick Translation" },
     ];
