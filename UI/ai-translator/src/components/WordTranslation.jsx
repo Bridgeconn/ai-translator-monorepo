@@ -429,7 +429,7 @@ export default function WordTranslation() {
       // Show cancellation notification
       notificationApi.warning({
         message: "Translation Cancelled",
-        description: "Translation generation has been stopped.",
+        description: "Translation cancelled by the user.",
         placement: "top",
         duration: 3,
       });

@@ -527,7 +527,7 @@ export default function QuickTranslationPage() {
             showNotification(
               "warning",
               "USFM Markers Detected",
-              "This text contains USFM markers. The translation output may not be accurate."
+              "This text contains USFM markers. The translation output may not be accurate. Use verse translation for better results."
             );
           
             isUSFMContent = true;

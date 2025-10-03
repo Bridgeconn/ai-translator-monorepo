@@ -388,7 +388,8 @@ export default function TextDocumentTranslation() {
       let usfmStructure = null;
       if (containsUSFMMarkers(sourceText)) {
         message.warning(
-          " This file contains USFM markers. The translation output may not be accurate."
+          " This file contains USFM markers. The translation output may not be accurate.Use verse translation for better results."
+           
         );
       
         const extracted = extractUSFMContent(sourceText);
