@@ -24,6 +24,8 @@ import {
   TranslationOutlined,
   PlusOutlined,
   SaveOutlined,
+  DeleteOutlined,
+  ExclamationCircleOutlined,
 } from "@ant-design/icons";
 import { useParams, Link } from "react-router-dom";
 import { textDocumentAPI } from "./api.js";
@@ -176,7 +178,10 @@ export default function TextDocumentTranslation() {
   const getTempSourceKey = (projectId) => `tempSource_${projectId}`;
   const [selectedModel, setSelectedModel] = useState("nllb-600M"); 
 
-  const { message } = App.useApp();
+  const { message } = App.useApp();  
+  const [modal, modalContextHolder] = Modal.useModal();
+  
+
 
   // ------------------ Fetch Project + Files ------------------
   useEffect(() => {
@@ -356,6 +361,32 @@ export default function TextDocumentTranslation() {
       setClearModalVisible(false);
     }
   };
+  const handleDeleteFile = () => {
+    if (!selectedFile) return;
+    modal.confirm({
+      title: "Delete File",
+      icon: <ExclamationCircleOutlined />,
+      content: `Are you sure you want to delete "${selectedFile.file_name}"?`,
+      okText: "Delete",
+      okType: "danger",
+      cancelText: "Cancel",
+      onOk: async () => {
+        try {
+          await textDocumentAPI.deleteFile(projectId, selectedFile.id);
+          message.success("File deleted successfully!");
+          const updatedFiles = projectFiles.filter(f => f.id !== selectedFile.id);
+          setProjectFiles(updatedFiles);
+          setSelectedFile(null);
+          setSourceText("");
+          setTargetText("");
+        } catch (err) {
+          console.error(err);
+          message.error("Failed to delete file");
+        }
+      },
+    });
+  };
+  
 
   // ------------------  Upload handler ------------------
   const handleFileUpload = (file) => {
@@ -478,6 +509,7 @@ export default function TextDocumentTranslation() {
         flexDirection: "column",
       }}
     >
+      {modalContextHolder}
       {/* Header */}
       <div
         style={{
@@ -598,6 +630,15 @@ export default function TextDocumentTranslation() {
               }}
             />
           </Upload>
+            {/* Delete File Button */}
+            <Tooltip title="Delete file">
+    <Button
+      icon={<DeleteOutlined style={{ color: "red", cursor: "pointer" }}/>}
+      onClick={handleDeleteFile}
+      disabled={!selectedFile}
+      danger
+    />
+  </Tooltip>
         </div>
       </div>
 

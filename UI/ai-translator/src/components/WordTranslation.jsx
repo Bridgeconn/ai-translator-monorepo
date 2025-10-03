@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Row, Col, Select, Card, Input, Typography, Button, message, Breadcrumb, Popconfirm, Modal,notification,App,Tag,Spin,Tooltip,Progress } from 'antd';
-import { CopyOutlined, DownloadOutlined, ExclamationCircleOutlined,UploadOutlined,InfoCircleOutlined} from '@ant-design/icons';
+import { Row, Col, Select, Card, Input, Typography, Button, message, Breadcrumb, Popconfirm, Modal,notification,App,Tag,Spin,Tooltip,Progress,} from 'antd';
+import { CopyOutlined, DownloadOutlined, ExclamationCircleOutlined,UploadOutlined,InfoCircleOutlined,DeleteOutlined} from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { projectsAPI, wordTokenAPI, booksAPI, languagesAPI, sourcesAPI, draftAPI } from './api.js';
 import { useParams, Link } from 'react-router-dom';
@@ -105,6 +105,7 @@ export default function WordTranslation() {
   const [messageApi, messageContextHolder] = message.useMessage();
   const [notificationApi, notificationContextHolder] = notification.useNotification();
   const editedTokensRef = useRef(editedTokens);
+  const [modal, modalContextHolder] = Modal.useModal();
   const { message: appMessage } = App.useApp();
 
     // Book upload states
@@ -323,6 +324,64 @@ export default function WordTranslation() {
     fetchLanguages();
   }, [project]);
 
+  const handleDeleteBook = () => {
+    console.log("handleDeleteBook called");
+    console.log("selectedBook:", selectedBook);
+    console.log("project.source_id:", project?.source_id);
+
+    if (!selectedBook) {
+      messageApi.warning("No book selected to delete");
+      return;
+    }
+
+    if (!project?.source_id) {
+      messageApi.error("Cannot delete book: No source ID found");
+      return;
+    }
+  
+    modal.confirm({
+      title: `Delete Book: ${selectedBook.book_name}?`,
+      icon: <ExclamationCircleOutlined />,
+      content: "This will permanently delete the book and all its content (chapters, verses).",
+      okText: "Delete",
+      okType: "danger",
+      cancelText: "Cancel",
+      onOk: async () => {
+        try {
+          console.log("Confirming delete for book_id:", selectedBook.book_id);
+          
+          // Call the delete API
+          const response = await booksAPI.deleteBook(selectedBook.book_id);
+          console.log("Delete response:", response);
+          
+          messageApi.success(`Book "${selectedBook.book_name}" deleted successfully`);
+  
+          // Refresh the books list from source
+          const refreshedBooks = await booksAPI.getBooksBySourceId(project.source_id);
+          console.log("Refreshed books after delete:", refreshedBooks);
+          setProjectBooks(refreshedBooks);
+          
+          // Reset selectedBook and related states
+          setSelectedBook(null);
+          setTokens([]);
+          setDraftContent("");
+          setOriginalDraft("");
+          setEditedTokens({});
+          setTranslatedCount(0);
+          setHasGenerated(false);
+  
+        } catch (err) {
+          console.error("Failed to delete book:", err);
+          console.error("Error details:", err.response);
+          messageApi.error(`Failed to delete book: ${err.response?.data?.detail || err.message || "Unknown error"}`);
+        }
+      },
+      onCancel: () => {
+        console.log("Delete cancelled");
+      }
+    });
+  };
+  
   // ------------------ Fetch or Generate tokens ------------------
   const fetchTokens = async (bookId) => {
     if (!bookId) return;
@@ -917,6 +976,7 @@ export default function WordTranslation() {
       {/* {contextHolder} */}
       {messageContextHolder}
   {notificationContextHolder}
+  {modalContextHolder}
     {/* Upload Summary Toast */}
     <UploadProgressModal
   visible={uploadProgressOpen}
@@ -987,6 +1047,15 @@ export default function WordTranslation() {
                 borderColor: 'rgb(44, 141, 251)',
               }}
             />
+            <Button
+  type="text"
+  icon={<DeleteOutlined style={{ color: "red", cursor: "pointer" , }} />}
+  onClick={handleDeleteBook}
+  title="Delete Selected Book"
+  disabled={!selectedBook}
+  danger
+/>
+
           </div>
         </div>
       </div>

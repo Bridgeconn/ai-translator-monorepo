@@ -26,12 +26,12 @@ import {
   CopyOutlined,
   PlusOutlined,
   UploadOutlined,
-  CloseOutlined,
-  PlusCircleOutlined,
+  DeleteOutlined,
+  ExclamationCircleOutlined,
   
 } from "@ant-design/icons";
 import api, { translateChapter } from "./api";
-import { generateDraftJson, saveDraft, fetchLatestDraft } from "./api";
+import { generateDraftJson, saveDraft, fetchLatestDraft,booksAPI } from "./api";
 import DownloadDraftButton from "../components/DownloadDraftButton";
 import { Tooltip } from "antd";
 import { InfoCircleOutlined } from "@ant-design/icons";
@@ -142,7 +142,8 @@ const VerseTranslationPage = () => {
   const [originalDraft, setOriginalDraft] = useState(""); // NEW
   const [selectedModel, setSelectedModel] = useState("nllb-600M");
 
-
+  const [modal, modalContextHolder] = Modal.useModal();
+  
   const { message } = App.useApp(); //get message instance
   const MODEL_INFO = {
     "nllb-600M": {
@@ -335,7 +336,69 @@ const [totalBooks, setTotalBooks] = useState(0);
       setLoadingSource(false);
     }
   };
-
+  const handleDeleteBook = () => {
+    console.log("handleDeleteBook called");
+    console.log("selectedBook:", selectedBook);
+    console.log("project.source_id:", project?.source_id);
+  
+    if (!selectedBook || selectedBook === "all") {
+      message.warning("No book selected to delete");
+      return;
+    }
+  
+    if (!project?.source_id) {
+      message.error("Cannot delete book: No source ID found");
+      return;
+    }
+  
+    // Find the actual book object from the books array
+    const bookObj = books.find((b) => b.book_name === selectedBook);
+    
+    if (!bookObj) {
+      message.error("Book not found");
+      return;
+    }
+  
+    modal.confirm({
+      title: `Delete Book: ${selectedBook}?`,
+      icon: <ExclamationCircleOutlined />,
+      content: "This will permanently delete the book and all its content (chapters, verses).",
+      okText: "Delete",
+      okType: "danger",
+      cancelText: "Cancel",
+      onOk: async () => {
+        try {
+          console.log("Confirming delete for book_id:", bookObj.book_id);
+          
+          // Call the delete API with the actual book_id
+          const response = await booksAPI.deleteBook(bookObj.book_id);
+          console.log("Delete response:", response);
+          
+          message.success(`Book "${selectedBook}" deleted successfully`);
+  
+          // Refresh the books list from source
+          await fetchAvailableBooks(project.source_id);
+          
+          // Reset selection to "all"
+          setSelectedBook("all");
+          setSelectedChapter(null);
+          setTokens([]);
+          setChapters([]);
+          setRawBookContent("");
+          setServerDraft("");
+          setEditedTokens({});
+  
+        } catch (err) {
+          console.error("Failed to delete book:", err);
+          console.error("Error details:", err.response);
+          message.error(`Failed to delete book: ${err.response?.data?.detail || err.message || "Unknown error"}`);
+        }
+      },
+      onCancel: () => {
+        console.log("Delete cancelled");
+      }
+    });
+  };
   // ---------- Ensure tokens exist for a book (generate if missing) ----------
   const ensureBookTokens = async (bookName) => {
     // Try to see if *any* tokens exist for this book first
@@ -674,7 +737,7 @@ const [totalBooks, setTotalBooks] = useState(0);
 
       message.success({ key, content: "Chapter translated successfully!" });
 
-      // ✅ immediately refresh draft so UI shows translations without refresh
+      // immediately refresh draft so UI shows translations without refresh
       // await updateServerDraft();
 
     } catch (err) {
@@ -856,6 +919,7 @@ const [totalBooks, setTotalBooks] = useState(0);
         skipped={summaryData.skipped}
         onClose={() => setSummaryOpen(false)}
       /> */}
+     {modalContextHolder}
    <UploadProgressModal
   visible={uploadProgressOpen}
   uploading={uploadingBooks}
@@ -932,6 +996,14 @@ const [totalBooks, setTotalBooks] = useState(0);
                borderColor: 'rgb(44, 141, 251)',
                 }}
               />
+               <Button
+  type="text"
+  icon={<DeleteOutlined style={{ color: "red", cursor: "pointer" }} />}
+  onClick={handleDeleteBook}
+  title="Delete Selected Book"
+  disabled={!selectedBook}
+  danger
+/>
             {/* )} */}
           </div>
  
