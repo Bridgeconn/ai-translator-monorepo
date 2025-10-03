@@ -15,6 +15,7 @@ from app.models.chapter import Chapter
 from app.models.book import Book
 
 from app.schemas.verse_tokens import (
+    TranslateChapterRequest,
     VerseTokenTranslationResponse,
     ManualTranslationUpdate,
     MessageOnlyResponse,
@@ -140,12 +141,12 @@ def translate_chapter_route(
     project_id: UUID,
     book_name: str,
     chapter_number: int,
-    verse_numbers: List[int] = Body(..., embed=True),   # 👈 required list, always batch
+    request: TranslateChapterRequest = Body(...),  # 👈 required list, always batch
     db: Session = Depends(get_db)
 ): 
-    print("Received verse_numbers:", verse_numbers)
+    print("Received verse_numbers:", request.verse_numbers)
     return verse_token_crud.translate_chapter(
-        db, project_id, book_name, chapter_number, verse_numbers
+        db, project_id, book_name, chapter_number, request.verse_numbers, model_name=request.model_name
     )
 @router.get("/verse_tokens/verse-numbers/{project_id}/{book_name}/{chapter_number}")
 def get_verse_numbers(project_id: UUID, book_name: str, chapter_number: int, db: Session = Depends(get_db)):

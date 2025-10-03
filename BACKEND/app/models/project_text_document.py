@@ -12,7 +12,7 @@ class ProjectTextDocument(Base):
     project_name = Column(String, nullable=False)  # Same for all files in project
     project_type = Column(String, nullable=False, default="text_document")  # Project type
     translation_type = Column(String, nullable=False, default="text_document")  # Translation type
-    file_name = Column(String, nullable=False)  # Different for each file
+    file_name = Column(String, nullable=True)  # Different for each file
     source_id = Column(String, nullable=False)
     target_id = Column(String, nullable=False)
     source_text = Column(String, nullable=False)

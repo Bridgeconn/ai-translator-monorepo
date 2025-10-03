@@ -19,7 +19,7 @@ def update_translation(db: Session, word_token_id: UUID, update_data: WordTokenU
     db.refresh(db_token)
     return db_token
 
-def generate_tokens_batch(db: Session, project_id: UUID, book_id: UUID):
+def generate_tokens_batch(db: Session, project_id: UUID, book_id: UUID,model_name: str = "nllb-600M"):
     # Fetch the project first
     project = db.query(Project).filter(Project.project_id == project_id).first()
     if not project:
@@ -79,7 +79,8 @@ def generate_tokens_batch(db: Session, project_id: UUID, book_id: UUID):
             translated_texts = translate_texts_with_polling(
                 src_lang=source_lang_code,
                 tgt_lang=target_lang_code,
-                texts=texts
+                texts=texts,
+                model_name=model_name
             )
 
             # Map translations back to tokens
@@ -95,7 +96,7 @@ def generate_tokens_batch(db: Session, project_id: UUID, book_id: UUID):
             raise HTTPException(status_code=502, detail="Translation server failed")
     return translated_tokens
 def generate_tokens_batch_stream(
-    db: Session, project_id: UUID, book_id: UUID
+    db: Session, project_id: UUID, book_id: UUID,model_name: str = "nllb-600M"
 ) -> Generator[str, None, None]:
     """
     Stream translation of tokens batch by batch.
@@ -167,7 +168,7 @@ def generate_tokens_batch_stream(
         texts = [t.token_text for t in batch]
 
         try:
-            job_id = request_translation(token, texts, source_lang_code, target_lang_code)
+            job_id = request_translation(token, texts, source_lang_code, target_lang_code,model_name=model_name)
 
             # Poll translations per token
             for idx, translated_text in enumerate(poll_job_status(token, job_id)):

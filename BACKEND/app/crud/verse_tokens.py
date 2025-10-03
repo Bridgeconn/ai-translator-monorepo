@@ -31,7 +31,7 @@ VACHAN_PASSWORD="Demon@9827"
 VACHAN_LOGIN_URL = "https://api.vachanengine.org/v2/ai/token"
 VACHAN_TRANSLATE_URL = "https://api.vachanengine.org/v2/ai/model/text/translate"
 VACHAN_JOB_STATUS_URL = "https://api.vachanengine.org/v2/ai/model/job"
-VACHAN_MODEL_NAME = "nllb-600M"
+# VACHAN_MODEL_NAME = "nllb-600M"
 
 # VACHAN_LOGIN_URL = os.getenv("VACHAN_AUTH_URL")
 # VACHAN_TRANSLATE_URL = os.getenv("VACHAN_TRANSLATE_URL")
@@ -162,7 +162,7 @@ def get_verse_token_by_id(db: Session, verse_token_id: UUID, project_id: UUID):
 # --------------------------------------------------
 # Translation Functions
 # --------------------------------------------------
-def translate_verse_token(db: Session, verse_token_id: UUID):
+def translate_verse_token(db: Session, verse_token_id: UUID,model_name: str = "nllb-600M"):
     token_obj = db.query(VerseTokenTranslation).filter_by(verse_token_id=verse_token_id).first()
     if not token_obj:
         raise HTTPException(status_code=404, detail="Verse token not found")
@@ -186,7 +186,11 @@ def translate_verse_token(db: Session, verse_token_id: UUID):
         "Content-Type": "application/json",
         "Accept": "application/json"
     }
-    url = f"{VACHAN_TRANSLATE_URL}?device=cpu&model_name={VACHAN_MODEL_NAME}&source_language={source_lang.BCP_code}&target_language={target_lang.BCP_code}"
+    # url = f"{VACHAN_TRANSLATE_URL}?device=cpu&model_name={VACHAN_MODEL_NAME}&source_language={source_lang.BCP_code}&target_language={target_lang.BCP_code}"
+    url = (f"{VACHAN_TRANSLATE_URL}?device=cpu"
+       f"&model_name={model_name}"
+       f"&source_language={source_lang.BCP_code}"
+       f"&target_language={target_lang.BCP_code}")
 
     resp = httpx.post(url, json=[token_obj.token_text], headers=headers)
     resp.raise_for_status()
@@ -248,7 +252,7 @@ def manual_update_translation(db: Session, verse_token_id: UUID, project_id: UUI
 
 
 # # # Book Translation
-def translate_chunk(db: Session, project_id: UUID, book_name: str, skip: int = 0, limit: int = 10):
+def translate_chunk(db: Session, project_id: UUID, book_name: str, skip: int = 0, limit: int = 10,model_name: str = "nllb-600M"):
     # Get tokens for this chunk
     tokens = (
         db.query(VerseTokenTranslation)
@@ -285,8 +289,12 @@ def translate_chunk(db: Session, project_id: UUID, book_name: str, skip: int = 0
         "Accept": "application/json"
     }
 
-    url = (f"{VACHAN_TRANSLATE_URL}?device=cpu&model_name={VACHAN_MODEL_NAME}"
-           f"&source_language={source_lang.BCP_code}&target_language={target_lang.BCP_code}")
+    # url = (f"{VACHAN_TRANSLATE_URL}?device=cpu&model_name={VACHAN_MODEL_NAME}"
+    #        f"&source_language={source_lang.BCP_code}&target_language={target_lang.BCP_code}")
+    url = (f"{VACHAN_TRANSLATE_URL}?device=cpu"
+       f"&model_name={model_name}"
+       f"&source_language={source_lang.BCP_code}"
+       f"&target_language={target_lang.BCP_code}")
 
     # Send request
     resp = httpx.post(url, json=texts, headers=headers)
@@ -325,8 +333,13 @@ def translate_chunk(db: Session, project_id: UUID, book_name: str, skip: int = 0
 
 
 
-def translate_chapter(db: Session, project_id: UUID, book_name: str, chapter_number: int, verse_numbers: List[int]):
+def translate_chapter(db: Session, project_id: UUID, book_name: str, chapter_number: int, verse_numbers: List[int],model_name: str = "nllb-600M"):
     # 1. Fetch tokens for the specific chapter AND specific verses
+    ALLOWED_MODELS = ["nllb-600M", "nllb_finetuned_eng_nzm"]
+    if model_name not in ALLOWED_MODELS:
+        raise HTTPException(status_code=400, detail=f"Invalid model_name: {model_name}")
+    logger.info(f"Translating chapter {chapter_number} of book '{book_name}' using model: {model_name}")
+
     query = (
         db.query(VerseTokenTranslation)
         .join(Verse, Verse.verse_id == VerseTokenTranslation.verse_id)
@@ -366,8 +379,13 @@ def translate_chapter(db: Session, project_id: UUID, book_name: str, chapter_num
         "Accept": "application/json"
     }
 
-    url = (f"{VACHAN_TRANSLATE_URL}?device=cpu&model_name={VACHAN_MODEL_NAME}"
-           f"&source_language={source_lang.BCP_code}&target_language={target_lang.BCP_code}")
+    # url = (f"{VACHAN_TRANSLATE_URL}?device=cpu&model_name={VACHAN_MODEL_NAME}"
+    #        f"&source_language={source_lang.BCP_code}&target_language={target_lang.BCP_code}")
+    url = (f"{VACHAN_TRANSLATE_URL}?device=cpu"
+       f"&model_name={model_name}"
+       f"&source_language={source_lang.BCP_code}"
+       f"&target_language={target_lang.BCP_code}")
+
 
     # 4. Send translation request
     resp = httpx.post(url, json=texts, headers=headers)

@@ -61,4 +61,5 @@ class WordTokenTranslationResponse(BaseModel):
 
 class WordTokenTranslationRequest(BaseModel):
     word_token_id: UUID
+    model_name: Optional[str] = "nllb-600M"
    

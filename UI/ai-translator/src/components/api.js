@@ -131,11 +131,103 @@ export const textDocumentAPI = {
     const res = await api.put(`/api/project-text-documents/${projectId}/files/${fileId}`, payload);
     return res.data;
   },
-  
-  deleteProject: async (projectId) => {
-    const res = await api.delete(`/api/project-text-documents/${projectId}`); 
+
+  clearFileContent: async (projectId, fileId) => {
+    const res = await api.delete(`/api/project-text-documents/${projectId}/files/${fileId}/clear`);
     return res.data;
   },
+
+  deleteProject: async (projectId) => {
+    const res = await api.delete(`/api/project-text-documents/${projectId}`);
+    return res.data;
+  },
+  // Add this function to your textDocumentAPI object in api.js
+
+  // Add this function to your textDocumentAPI object in api.js
+
+// Add this function to your textDocumentAPI object in api.js
+
+// ---- FIXED uploadFile ----
+uploadFile: async (projectId, formData) => {
+  try {
+    const project = await textDocumentAPI.getProjectById(projectId);
+    const file = formData.get('file');
+
+    // --- Read source text from file ---
+    let sourceText = '';
+    if (file.name.endsWith('.pdf')) {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+      const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        sourceText += content.items.map(item => item.str).join(' ') + '\n';
+      }
+    } else if (file.name.endsWith('.docx')) {
+      const arrayBuffer = await file.arrayBuffer();
+      const mammoth = await import('mammoth');
+      const { value: text } = await mammoth.extractRawText({ arrayBuffer });
+      sourceText = text;
+    } else {
+      sourceText = await file.text();
+    }
+
+    // Use existing project's source/target if available
+    const existingFile = project.files?.find(f => f.source_id && f.target_id);
+    const sourceId = existingFile?.source_id || 'en';
+    const targetId = existingFile?.target_id || 'es';
+
+    const payload = {
+      project_name: project.project_name,
+      files: [
+        {
+          file_name: file.name,
+          source_text: sourceText,
+          target_text: '',
+          source_id: sourceId,
+          target_id: targetId,
+        }
+      ]
+    };
+
+    const token = localStorage.getItem('token');
+    const response = await fetch(
+      `${import.meta.env.VITE_BACKEND_URL}/api/project-text-documents/${projectId}/add-files`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to upload file');
+    }
+
+    const result = await response.json();
+    console.log('Upload response:', result);
+
+    // --- ✅ Extract the uploaded file ---
+    const uploadedFile = result.data?.added_files?.[0];
+    if (!uploadedFile) throw new Error('Uploaded file not returned correctly');
+
+    // Ensure `id` exists
+    if (!uploadedFile.id && uploadedFile._id) uploadedFile.id = uploadedFile._id;
+
+    return uploadedFile;
+
+  } catch (error) {
+    console.error('Error uploading file:', error);
+    throw error;
+  }
+},
+
 };
 
 
@@ -152,6 +244,10 @@ export const languagesAPI = {
   getLanguageById: async (languageId) => {
     if (!languageId) return null;
     return (await api.get(`/languages/id/${languageId}`)).data.data;
+  },
+  getLanguageByBcp: async (bcpCode) => {
+    if (!bcpCode) return null;
+    return (await api.get(`/languages/bcp/${bcpCode}`)).data.data;
   },
 };
 
@@ -349,10 +445,11 @@ export const verseTokensAPI = {
   },
 };
 
-export const translateChapter = async (projectId, bookName, chapterNumber, verseNumbers) => {
+export const translateChapter = async (projectId, bookName, chapterNumber, verseNumbers, model_name = "nllb-600M") => {
   const res = await api.post(
     `/verse_tokens/translate-chapter/${projectId}/${bookName}/${chapterNumber}`,
-    { verse_numbers: verseNumbers }  // 👈 send body only if verses passed
+    { verse_numbers: verseNumbers,model_name: model_name },   // 👈 send body only if verses passed
+    
   );
   return res.data;
 };

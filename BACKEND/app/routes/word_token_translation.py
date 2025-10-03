@@ -24,15 +24,17 @@ def translate_word_token(data: WordTokenTranslationRequest, db: Session = Depend
 @router.post("/generate_batch/{project_id}", response_model=List[WordTokenOut])
 def generate_batch(
     project_id: UUID,
-    book_id: UUID = Query(..., description="Book ID for which to translate tokens"), # ✅ Change book_name to book_id
+    book_id: UUID = Query(..., description="Book ID for which to translate tokens"),
+         model_name: str = Query("nllb-600M", description="Translation model to use"),
     db: Session = Depends(get_db)
 ):
     print(">>> Entered generate_batch route")
     print("Project ID:", project_id)
     print("Book ID:", book_id) # ✅ Log book_id
+    print("Model Name:", model_name)
     
     try:
-        tokens = crud.generate_tokens_batch(db, project_id, book_id)
+        tokens = crud.generate_tokens_batch(db, project_id, book_id, model_name=model_name)
         print("Tokens returned from CRUD:", len(tokens) if tokens else 0)
 
         if not tokens:
@@ -51,13 +53,14 @@ def generate_batch(
 def generate_batch_stream(
     project_id: UUID,
     book_id: UUID = Query(..., description="Book ID for which to translate tokens"), # ✅ Change book_name to book_id
+    model_name: str = Query("nllb-600M", description="Translation model to use"),
     db: Session = Depends(get_db)
 ):
     """
     Stream translations batch by batch for a project + book.
     """
     return StreamingResponse(
-        crud.generate_tokens_batch_stream(db, project_id, book_id),
+        crud.generate_tokens_batch_stream(db, project_id, book_id, model_name=model_name),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

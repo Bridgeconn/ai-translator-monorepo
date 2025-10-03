@@ -32,6 +32,7 @@ import Papa from "papaparse"; // CSV parser
 import { useNavigate } from "react-router-dom";
 import * as pdfjsLib from "pdfjs-dist";
 import { App } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
 pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
 const { TextArea } = Input;
@@ -57,7 +58,7 @@ async function getAccessToken() {
   return resp.data.access_token;
 }
 
-async function requestDocTranslation(token, file, srcLangCode, tgtLangCode) {
+async function requestDocTranslation(token, file, srcLangCode, tgtLangCode, model_name) {
   const formData = new FormData();
   formData.append("file", file);
 
@@ -68,7 +69,7 @@ async function requestDocTranslation(token, file, srcLangCode, tgtLangCode) {
   );
 
   const resp = await vachanApi.post(
-    `/model/text/translate-document?device=cpu&model_name=nllb-600M&source_language=${srcLangCode}&target_language=${tgtLangCode}`,
+    `/model/text/translate-document?device=cpu&model_name=${model_name}&source_language=${srcLangCode}&target_language=${tgtLangCode}`,
     formData,
     {
       headers: {
@@ -188,6 +189,26 @@ export default function QuickTranslationPage() {
       }
     }
   }, []);
+  const modelsInfo = {
+    "nllb_finetuned_eng_nzm": {
+      tasks: "mt, text translation",
+      languageCodeType: "BCP-47",
+      developedBy: "Meta",
+      license: "CC-BY-NC 4.0",
+      languages: "Zeme Naga, English",
+    },
+    "nllb-600M": {
+      tasks: "mt, text translation",
+      languageCodeType: "BCP-47",
+      developedBy: "Meta",
+      license: "CC-BY-NC 4.0",
+      languages: "200 languages",
+    },
+  };
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const showInfo = () => setIsModalVisible(true);
+  const handleClose = () => setIsModalVisible(false);
+
   // ------------------ Additional state for error handling ------------------
   const [saveError, setSaveError] = useState("");
   const [saveSuccess, setSaveSuccess] = useState("");
@@ -203,7 +224,11 @@ export default function QuickTranslationPage() {
   const [newProjectFilename, setNewProjectFilename] = useState("");
   const [creatingProject, setCreatingProject] = useState(false);
   const [createProjectError, setCreateProjectError] = useState("");
-
+  const [selectedModel, setSelectedModel] = useState("nllb-600M");
+  const availableModels = [
+    { label: "nllb-600M", value: "nllb-600M" },
+    { label: "nllb_finetuned_eng_nzm", value: "nllb_finetuned_eng_nzm" }
+  ];
   useEffect(() => {
     if (!saveModalVisible) return;
 
@@ -539,7 +564,8 @@ export default function QuickTranslationPage() {
         token,
         fileToSend,
         sourceLang?.BCP_code,
-        targetLang?.BCP_code
+        targetLang?.BCP_code,
+        selectedModel || "nllb-600M"
       );
       if (signal.aborted) throw new Error("Translation cancelled");
 
@@ -1060,7 +1086,7 @@ export default function QuickTranslationPage() {
         errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       }
       setSaveError(errorMessage);
-      showNotification("error", "Save Failed", errorMessage);
+      // showNotification("error", "Save Failed", errorMessage);
       return;
     }
 
@@ -1069,7 +1095,7 @@ export default function QuickTranslationPage() {
 
     const successMsg = `Translation saved successfully! File "${payload.files[0].file_name}" added to project "${projectName}"`;
     setSaveSuccess(successMsg);
-    showNotification("success", "Save Successful", successMsg);
+    // showNotification("success", "Save Successful", successMsg);
 
     setTimeout(() => {
       setSaveModalVisible(false);
@@ -1104,8 +1130,9 @@ export default function QuickTranslationPage() {
             }}
           >
             <Title level={4}>🌐 Language Settings</Title>
-            <Row gutter={16} align="middle" justify="center">
-              <Col xs={24} md={10}>
+            <Row gutter={16} align="bottom">
+              {/* Source Language - Left side */}
+              <Col xs={24} md={8}>
                 <LanguageSelect
                   value={sourceLang}
                   onChange={setSourceLang}
@@ -1113,7 +1140,16 @@ export default function QuickTranslationPage() {
                   placeholder="Select source language"
                 />
               </Col>
-              <Col xs={24} md={4} style={{ textAlign: "center" }}>
+
+              {/* Swap Button - Center */}
+              <Col
+                xs={24}
+                md={2}
+                style={{
+                  textAlign: "center",
+
+                }}
+              >
                 <Tooltip title="Swap Languages" color="#fff">
                   <Button
                     shape="circle"
@@ -1127,7 +1163,9 @@ export default function QuickTranslationPage() {
                   />
                 </Tooltip>
               </Col>
-              <Col xs={24} md={10}>
+              <Col xs={0} md={6} />
+              {/* Target Language - Right side */}
+              <Col xs={24} md={8} alignItems="right">
                 <LanguageSelect
                   value={targetLang}
                   onChange={setTargetLang}
@@ -1136,6 +1174,7 @@ export default function QuickTranslationPage() {
                 />
               </Col>
             </Row>
+
           </Card>
         </Col>
 
@@ -1247,17 +1286,53 @@ export default function QuickTranslationPage() {
             </div>
           </Card>
         </Col>
-
         {/* Target Panel */}
         <Col xs={24} md={12} style={{ marginTop: 16 }}>
           <Card
             title={<span>Translation</span>}
-            extra={<span style={{ fontWeight: 500 }}>{targetLang?.label}</span>}
+            extra={
+              <Space>
+                <Select
+                  value={selectedModel || undefined}
+                  onChange={setSelectedModel}
+                  disabled={loading}
+                  style={{ minWidth: 120 }}
+                >
+                  {availableModels.map((m) => (
+                    <Select.Option key={m.value} value={m.value}>
+                      {m.label}
+                    </Select.Option>
+                  ))}
+                </Select>
+                <Tooltip
+                  color="#ffffff"
+                  title={
+                    selectedModel ? (
+                      <div style={{ color: 'var(--primary-color)' }}>
+                        <div><strong>Model Name:</strong> {selectedModel}</div>
+                        <div><strong>Tasks:</strong> {modelsInfo[selectedModel].tasks}</div>
+                        <div><strong>Languages:</strong> {modelsInfo[selectedModel].languages}</div>
+                        <div><strong>Language Code Type:</strong> {modelsInfo[selectedModel].languageCodeType}</div>
+                        <div><strong>Developed By:</strong> {modelsInfo[selectedModel].developedBy}</div>
+                        <div><strong>License:</strong> {modelsInfo[selectedModel].license}</div>
+                      </div>
+                    ) : "Select a model to see info"
+                  }
+                >
+                  <Button
+                    shape="circle"
+                    icon={<InfoCircleOutlined />}
+                    disabled={!selectedModel} // disables button when no model selected
+                  />
+                </Tooltip>
+
+              </Space>
+            }
             style={{
               height: "100%",
               display: "flex",
               flexDirection: "column",
-              boxShadow: "0 4px 10px rgba(0,0,0,0.15)", // ✅ shadow effect
+              boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
               borderRadius: "10px",
             }}
             bodyStyle={{ flex: 1, display: "flex", flexDirection: "column" }}
@@ -1287,7 +1362,7 @@ export default function QuickTranslationPage() {
             <div
               style={{
                 marginTop: 12,
-                minHeight: "32px", // Add consistent height to match source card
+                minHeight: "32px",
               }}
             >
               <Row justify="space-between" align="middle">
@@ -1333,30 +1408,43 @@ export default function QuickTranslationPage() {
 
         {/* Translate button centered */}
         <Col span={24} style={{ textAlign: "center", marginTop: 24 }}>
-          <Button
-            type={loading ? "primary" : "primary"}
-            danger={loading}
-            size="medium"
-            icon={loading ? <CloseOutlined /> : <TranslationOutlined />}
-            onClick={() => {
-              if (loading) {
-                //controllerRef.current?.abort(); // cancel translation
-                handleCancelTranslate();
-              } else {
-                handleTranslate(); // start translation
-              }
-            }}
-            style={{
-              padding: "0 32px",
-              borderRadius: "8px",
-              minWidth: "200px",
-              backgroundColor: loading ? "#ff4d4f" : "rgb(44,141,251)", // blue when idle, red when cancel
-              borderColor: loading ? "#ff4d4f" : "rgb(44,141,251)",
-              color: "#fff",
-            }}
+          <Tooltip
+            title={!selectedModel ? "Please select a model first" : ""}
+            color="#fff"
           >
-            {loading ? "Cancel Translation" : "Translate"}
-          </Button>
+            <Button
+              type="primary"
+              danger={loading}
+              size="medium"
+              icon={loading ? <CloseOutlined /> : <TranslationOutlined />}
+              onClick={() => {
+                if (loading) {
+                  handleCancelTranslate();
+                } else {
+                  handleTranslate();
+                }
+              }}
+              disabled={loading || !selectedModel} // disable if loading or no model selected
+              style={{
+                padding: "0 32px",
+                borderRadius: "8px",
+                minWidth: "200px",
+                backgroundColor: loading
+                  ? "#ff4d4f"
+                  : !selectedModel
+                    ? "#d9d9d9"
+                    : "rgb(44,141,251)",
+                borderColor: loading
+                  ? "#ff4d4f"
+                  : !selectedModel
+                    ? "#d9d9d9"
+                    : "rgb(44,141,251)",
+                color: "#fff",
+              }}
+            >
+              {loading ? "Cancel Translation" : "Translate"}
+            </Button>
+          </Tooltip>
 
           {statusMsg && (
             <div style={{ marginTop: 12 }}>
@@ -1364,26 +1452,23 @@ export default function QuickTranslationPage() {
             </div>
           )}
         </Col>
+
       </Row>
       <Modal
         title="Save Translation"
         open={saveModalVisible}
         onOk={handleSaveConfirm}
         onCancel={() => {
-          // Clear modal fields
           setSelectedProject(null);
           setNewProjectName("");
           setFilename("");
           setSaveError("");
           setSaveSuccess("");
-
-          // Close the modal
           setSaveModalVisible(false);
         }}
         confirmLoading={saving}
         okText={saving ? "Saving..." : "Save"}
       >
-        {/* Show error/success messages */}
         {saveError && (
           <Alert
             message="Error"
