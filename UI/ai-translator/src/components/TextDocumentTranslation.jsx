@@ -83,7 +83,7 @@ async function requestDocTranslation(token, file, srcLangCode, tgtLangCode, mode
 
 async function pollJobStatus({ token, jobId }) {
   let attempts = 0;
-  while (attempts < 80) {
+  while (attempts < 200) {
     const resp = await vachanApi.get(`/model/job?job_id=${jobId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -387,6 +387,11 @@ export default function TextDocumentTranslation() {
       let isUSFM = false;
       let usfmStructure = null;
       if (containsUSFMMarkers(sourceText)) {
+        message.warning(
+          " This file contains USFM markers. The translation output may not be accurate.Use verse translation for better results."
+           
+        );
+      
         const extracted = extractUSFMContent(sourceText);
         textToTranslate = extracted.plainText;
         isUSFM = true;
@@ -394,6 +399,7 @@ export default function TextDocumentTranslation() {
       } else {
         textToTranslate = sourceText;
       }
+      
 
       // 3. Prepare file
       const blob = new Blob([textToTranslate], { type: "text/plain" });

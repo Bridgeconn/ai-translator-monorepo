@@ -106,6 +106,8 @@ export default function WordTranslation() {
   const [notificationApi, notificationContextHolder] = notification.useNotification();
   const editedTokensRef = useRef(editedTokens);
   const { message: appMessage } = App.useApp();
+  const eventSourceRef = useRef(null);
+  const translationNotificationKey = useRef(null);
 
     // Book upload states
     const [uploadSummaryOpen, setUploadSummaryOpen] = useState(false);
@@ -410,9 +412,43 @@ export default function WordTranslation() {
   };
 
   // ------------------ Generate Translations ------------------//
+
+  // ------------------ Generate Translations ------------------//
+  const handleCancelTranslation = () => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+      setIsGenerating(false);
+      
+      // Close the ongoing translation notification
+      if (translationNotificationKey.current) {
+        notificationApi.destroy(translationNotificationKey.current);
+        translationNotificationKey.current = null;
+      }
+      
+      // Show cancellation notification
+      notificationApi.warning({
+        message: "Translation Cancelled",
+        description: "Translation cancelled by the user.",
+        placement: "top",
+        duration: 3,
+      });
+    }
+  };
+
   const handleGenerateTranslationsSSEWithPreserveEdits = async () => {
     if (!selectedBook?.book_id) return; // ✅ Check for bookId
     setIsGenerating(true);
+    // Show persistent "Translating..." notification
+  translationNotificationKey.current = `translation-${Date.now()}`;
+  notificationApi.info({
+    key: translationNotificationKey.current,
+    message: "Translating...",
+    description: "Translation is in progress. Please wait...",
+    placement: "top",
+    duration: 0, // Don't auto-close
+    icon: <Spin />,
+  });
     if (hasGenerated) {
       setTokens(prev => {
         const cleared = prev.map(t => ({ ...t, translation: "" }));
@@ -426,6 +462,7 @@ export default function WordTranslation() {
         `${import.meta.env.VITE_BACKEND_URL}/api/generate_batch_stream/${projectId}?book_id=${encodeURIComponent(selectedBook.book_id)}&model_name=${encodeURIComponent(selectedModel)}`
 
       );
+      eventSourceRef.current = eventSource;
       let hasError = false;
       eventSource.onmessage = (event) => {
         let data;
@@ -438,12 +475,23 @@ export default function WordTranslation() {
         if (data.error) {
           hasError = true;
           console.error("[SSE Error]", data.error);
+          
+          // Close the translating notification
+          if (translationNotificationKey.current) {
+            notificationApi.destroy(translationNotificationKey.current);
+            translationNotificationKey.current = null;
+          }
+          
           notificationApi.error({
             message: "Error",
             description: "Translation failed. The server might be down or the network is slow. Please try again.",
             placement: "top",
-          }); setIsGenerating(false);
+            duration: 4,
+          });
+          
+          setIsGenerating(false);
           eventSource.close();
+          eventSourceRef.current = null;
           return;
         }
         if (data.token) {
@@ -514,6 +562,11 @@ export default function WordTranslation() {
         //   }
         // };
         if (data.finished) {
+          if (translationNotificationKey.current) {
+            notificationApi.destroy(translationNotificationKey.current);
+            translationNotificationKey.current = null;
+          }
+        
           if (hasError) {
             notificationApi.error({
               message: "Error",
@@ -530,12 +583,18 @@ export default function WordTranslation() {
           }
           setIsGenerating(false);
           eventSource.close();
+          eventSourceRef.current = null;
         }
       };
 
 
       eventSource.onerror = (err) => {
         console.error("SSE error:", err);
+        // Close the translating notification
+  if (translationNotificationKey.current) {
+    notificationApi.destroy(translationNotificationKey.current);
+    translationNotificationKey.current = null;
+  }
         notificationApi.error({
           message: "Error",
           description: "Translation stream interrupted. Please try again.",
@@ -543,17 +602,25 @@ export default function WordTranslation() {
         });
         setIsGenerating(false); // 🔹 Reset on error
         eventSource.close();
+        eventSourceRef.current = null;
       };
 
     } catch (err) {
       console.error("Failed to start SSE translation:", err);
+      
+      // Close the translating notification
+      if (translationNotificationKey.current) {
+        notificationApi.destroy(translationNotificationKey.current);
+        translationNotificationKey.current = null;
+      }
+      
       notificationApi.error({
         message: "Error",
         description: "Failed to start translation stream. Please try again.",
         placement: "top",
+        duration: 4,
       });
-      setIsGenerating(false); // 🔹 Reset on failure
-
+      setIsGenerating(false);
     }
   };
 
@@ -1144,42 +1211,59 @@ export default function WordTranslation() {
                     </div>
 
                     {hasGenerated ? (
-                      <Popconfirm
-                        disabled={isGenerating}
-                        title="Regenerate Translations? All regenerated translations will overwrite unsaved edits."
-                        icon={<ExclamationCircleOutlined />}
-                        onConfirm={() => {
-                          if (Object.values(editedTokens).some(Boolean)) {
-                            notificationApi.warning({
-                              message: "Warning",
-                              description: "you have unsaved edits. Please save them before regenerating translations.",
-                              placement: "top",
-                            });
-                          }
-                          handleGenerateTranslationsSSEWithPreserveEdits();
-                        }}
-                        okText="Yes, Regenerate"
-                        cancelText="Cancel"
-                      >
-                        <Tooltip title={!selectedModel ? "Please select a model first" : ""}>
-                        <Button type="primary" loading={isGenerating}disabled={!selectedModel || isGenerating}
-                        >
-                          {isGenerating ? "Regenerating..." : "Regenerate Translations"}
-                        </Button>
-                        </Tooltip>
-                      </Popconfirm>
-                    ) : (
-                      <Tooltip title={!selectedModel ? "Please select a model first" : ""}>
-                      <Button
-                        type="primary"
-                        size="large"
-                        onClick={handleGenerateTranslationsSSEWithPreserveEdits}
-                        loading={isGenerating}
-                        disabled={!selectedModel || isGenerating}
-                      >{isGenerating ? "Generating..." : "Generate Translations"}
-                      </Button>
-                      </Tooltip>
-                    )}
+  isGenerating ? (
+    <Button 
+      danger 
+      size="large"
+      onClick={handleCancelTranslation}
+    >
+      Cancel Translation
+    </Button>
+  ) : (
+    <Popconfirm
+      disabled={isGenerating}
+      title="Regenerate Translations? All regenerated translations will overwrite unsaved edits."
+      icon={<ExclamationCircleOutlined />}
+      onConfirm={() => {
+        if (Object.values(editedTokens).some(Boolean)) {
+          notificationApi.warning({
+            message: "Warning",
+            description: "you have unsaved edits. Please save them before regenerating translations.",
+            placement: "top",
+          });
+        }
+        handleGenerateTranslationsSSEWithPreserveEdits();
+      }}
+      okText="Yes, Regenerate"
+      cancelText="Cancel"
+    >
+      <Tooltip title={!selectedModel ? "Please select a model first" : ""}>
+        <Button type="primary" disabled={!selectedModel}>
+          Regenerate Translations
+        </Button>
+      </Tooltip>
+    </Popconfirm>
+  )
+) : isGenerating ? (
+  <Button 
+    danger 
+    size="large"
+    onClick={handleCancelTranslation}
+  >
+    Cancel Translation
+  </Button>
+) : (
+  <Tooltip title={!selectedModel ? "Please select a model first" : ""}>
+    <Button
+      type="primary"
+      size="large"
+      onClick={handleGenerateTranslationsSSEWithPreserveEdits}
+      disabled={!selectedModel}
+    >
+      Generate Translations
+    </Button>
+  </Tooltip>
+)}
                   </>
                 ) : (
                   <>
