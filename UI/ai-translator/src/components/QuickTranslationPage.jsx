@@ -882,7 +882,7 @@ export default function QuickTranslationPage() {
           errorMessage = `HTTP ${response.status}: ${response.statusText}`;
         }
         setCreateProjectError(errorMessage);
-        showNotification("error", "Create Project Failed", errorMessage);
+        // showNotification("error", "Create Project Failed", errorMessage);
         setCreatingProject(false);
         return;
       }
