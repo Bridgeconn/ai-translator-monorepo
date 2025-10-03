@@ -793,7 +793,7 @@ export default function QuickTranslationPage() {
 
     setSaveModalVisible(true);
     if (!filename && !uploadedFile) {
-      setFilename("manual-input.txt");
+      // setFilename("manual-input.txt");
     }
   };
 
@@ -1468,6 +1468,9 @@ export default function QuickTranslationPage() {
         }}
         confirmLoading={saving}
         okText={saving ? "Saving..." : "Save"}
+        okButtonProps={{
+          disabled: !selectedProject || !filename
+        }}
       >
         {saveError && (
           <Alert
@@ -1510,12 +1513,17 @@ export default function QuickTranslationPage() {
               </Option>
             ))}
           </Select>
+          <Tooltip title="Create new project" color="#fff">
           <Button
             type="primary"
             icon={<PlusOutlined />}
-            onClick={() => setCreateProjectModalVisible(true)}
+            onClick={() => {
+              setSaveModalVisible(false);  // Hide the save modal
+              setCreateProjectModalVisible(true);
+            }}
             disabled={saving}
           ></Button>
+          </Tooltip>
         </div>
 
         <Input
@@ -1537,6 +1545,7 @@ export default function QuickTranslationPage() {
           setNewProjectName("");
           setNewProjectFilename("");
           setCreateProjectError("");
+          setSaveModalVisible(true);  // Show the save modal again
         }}
         confirmLoading={creatingProject}
         okText={creatingProject ? "Creating..." : "Create"}
