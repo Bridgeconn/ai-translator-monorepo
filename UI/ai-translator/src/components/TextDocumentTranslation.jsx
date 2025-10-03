@@ -48,7 +48,7 @@ const MODEL_INFO = {
     License: "CC-BY-NC 4.0",
     Languages: "200 languages",
   },
-  "nllb_finetuned_eng_nzm": {
+  nllb_finetuned_eng_nzm: {
     Model: "nllb_finetuned_eng_nzm",
     Tasks: "mt, text translation",
     "Language Code Type": "BCP-47",
@@ -70,7 +70,13 @@ async function getAccessToken() {
   return resp.data.access_token;
 }
 
-async function requestDocTranslation(token, file, srcLangCode, tgtLangCode, model_name) {
+async function requestDocTranslation(
+  token,
+  file,
+  srcLangCode,
+  tgtLangCode,
+  model_name
+) {
   const formData = new FormData();
   formData.append("file", file);
 
@@ -134,7 +140,9 @@ function extractUSFMContent(usfmText) {
 }
 
 function reconstructUSFM(structure, csvData) {
-  const translations = csvData.map((row) => row.Translation?.trim()).filter(Boolean);
+  const translations = csvData
+    .map((row) => row.Translation?.trim())
+    .filter(Boolean);
   return structure
     .map((el) =>
       el.type === "translatable"
@@ -145,7 +153,9 @@ function reconstructUSFM(structure, csvData) {
 }
 
 function simpleTranslation(sourceText, csvData) {
-  const translations = csvData.map((row) => row.Translation?.trim()).filter(Boolean);
+  const translations = csvData
+    .map((row) => row.Translation?.trim())
+    .filter(Boolean);
   const lines = sourceText.split("\n");
   let idx = 0;
   return lines
@@ -176,12 +186,10 @@ export default function TextDocumentTranslation() {
     `sourceEdit_${projectId}_${fileId}`;
   const getSelectedFileKey = (projectId) => `selectedFile_${projectId}`;
   const getTempSourceKey = (projectId) => `tempSource_${projectId}`;
-  const [selectedModel, setSelectedModel] = useState("nllb-600M"); 
+  const [selectedModel, setSelectedModel] = useState("nllb-600M");
 
-  const { message } = App.useApp();  
+  const { message } = App.useApp();
   const [modal, modalContextHolder] = Modal.useModal();
-  
-
 
   // ------------------ Fetch Project + Files ------------------
   useEffect(() => {
@@ -374,7 +382,9 @@ export default function TextDocumentTranslation() {
         try {
           await textDocumentAPI.deleteFile(projectId, selectedFile.id);
           message.success("File deleted successfully!");
-          const updatedFiles = projectFiles.filter(f => f.id !== selectedFile.id);
+          const updatedFiles = projectFiles.filter(
+            (f) => f.id !== selectedFile.id
+          );
           setProjectFiles(updatedFiles);
           setSelectedFile(null);
           setSourceText("");
@@ -386,7 +396,6 @@ export default function TextDocumentTranslation() {
       },
     });
   };
-  
 
   // ------------------  Upload handler ------------------
   const handleFileUpload = (file) => {
@@ -541,7 +550,9 @@ export default function TextDocumentTranslation() {
           style={{ marginBottom: 8, fontSize: 14 }}
         />
 
-        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: "#1f2937" }}>
+        <h2
+          style={{ margin: 0, fontSize: 24, fontWeight: 600, color: "#1f2937" }}
+        >
           Document Translation ({sourceLangName} - {targetLangName})
         </h2>
       </div>
@@ -621,24 +632,32 @@ export default function TextDocumentTranslation() {
             }}
           >
             <Button
-              icon={<PlusOutlined />}
+              icon={
+                <UploadOutlined
+                  style={{ color: "#1890ff", cursor: "pointer", fontSize: 20 }}
+                />
+              }
               title="add a new file"
               style={{
                 marginLeft: 8,
                 //backgroundColor: 'rgb(44, 141, 251)',
-                borderColor: "rgb(44, 141, 251)",
+                // borderColor: "rgb(44, 141, 251)",
               }}
             />
           </Upload>
-            {/* Delete File Button */}
-            <Tooltip title="Delete file">
-    <Button
-      icon={<DeleteOutlined style={{ color: "red", cursor: "pointer" }}/>}
-      onClick={handleDeleteFile}
-      disabled={!selectedFile}
-      danger
-    />
-  </Tooltip>
+          {/* Delete File Button */}
+          <Tooltip title="Delete file">
+            <Button
+              icon={
+                <DeleteOutlined
+                  style={{ color: "red", cursor: "pointer", fontSize: 20 }}
+                />
+              }
+              onClick={handleDeleteFile}
+              disabled={!selectedFile}
+              danger
+            />
+          </Tooltip>
         </div>
       </div>
 
@@ -646,7 +665,13 @@ export default function TextDocumentTranslation() {
       {selectedFile && (
         <Card
           title={
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
               {/* Left: Heading */}
               <h3 style={{ margin: 0 }}>Translation Editor</h3>
 
@@ -657,20 +682,23 @@ export default function TextDocumentTranslation() {
                   style={{ width: 160 }}
                   value={selectedModel}
                   onChange={(value) => setSelectedModel(value)}
-                > <Option value="nllb-600M">nllb-600M</Option>
-                  <Option value="nllb_finetuned_eng_nzm">nllb_finetuned_eng_nzm</Option>
-
+                >
+                  {" "}
+                  <Option value="nllb-600M">nllb-600M</Option>
+                  <Option value="nllb_finetuned_eng_nzm">
+                    nllb_finetuned_eng_nzm
+                  </Option>
                 </Select>
                 <Tooltip
                   title={
                     selectedModel
                       ? Object.entries(MODEL_INFO[selectedModel]).map(
-                        ([key, value]) => (
-                          <div key={key}>
-                            <strong>{key}:</strong> {value}
-                          </div>
+                          ([key, value]) => (
+                            <div key={key}>
+                              <strong>{key}:</strong> {value}
+                            </div>
+                          )
                         )
-                      )
                       : "Select a model to see info"
                   }
                   color="#fff"
@@ -682,7 +710,6 @@ export default function TextDocumentTranslation() {
                     disabled={!selectedModel} // disable if no model selected
                   />
                 </Tooltip>
-
               </div>
             </div>
           }
@@ -837,41 +864,38 @@ export default function TextDocumentTranslation() {
               >
                 <h3 style={{ margin: 0 }}>Target</h3>
                 <div style={{ display: "flex", gap: 8 }}>
-                    <>
+                  <>
                     <Tooltip
-                        title="Save"
-                        color="#fff"
-                        style={{ color: "#000" }}
-                      >
-                        <Button
-                          type="default"
-                          icon={<SaveOutlined />}
-                          onClick={handleSaveDraft}
-                          size="middle"
-                        />
-                      </Tooltip>
-                      <Tooltip
-                        title="Copy"
-                        color="#fff"
-                        style={{ color: "#000" }}
-                      >
-                        <Button
-                          type="default"
-                          icon={<CopyOutlined />}
-                          onClick={() => {
-                            navigator.clipboard.writeText(targetText || "");
-                            message.success("Copied to clipboard!");
-                          }}
-                          size="middle"
-                        />
-                      </Tooltip>
-
-                      <DownloadDraftButton
-                        content={targetText}
-                  
+                      title="Save"
+                      color="#fff"
+                      style={{ color: "#000" }}
+                    >
+                      <Button
+                        type="default"
+                        icon={<SaveOutlined />}
+                        onClick={handleSaveDraft}
+                        size="middle"
                       />
-                    </>
-                   {/* : (
+                    </Tooltip>
+                    <Tooltip
+                      title="Copy"
+                      color="#fff"
+                      style={{ color: "#000" }}
+                    >
+                      <Button
+                        type="default"
+                        icon={<CopyOutlined />}
+                        onClick={() => {
+                          navigator.clipboard.writeText(targetText || "");
+                          message.success("Copied to clipboard!");
+                        }}
+                        size="middle"
+                      />
+                    </Tooltip>
+
+                    <DownloadDraftButton content={targetText} />
+                  </>
+                  {/* : (
                     <div>
                       <Button
                         type="primary"
@@ -904,22 +928,21 @@ export default function TextDocumentTranslation() {
           </Row>
           {/*  Translate button centered below both panels */}
           <Row justify="center" style={{ marginTop: 16 }}>
-  <Tooltip
-    title={!selectedModel ? "Please select a model first" : ""}
-    color="#fff"
-  >
-    <Button
-      type="primary"
-      icon={<TranslationOutlined />}
-      onClick={handleTranslate}
-      loading={loading}
-      disabled={!selectedModel} // <-- disable if no model selected
-    >
-      {loading ? "Translating..." : "Translate"}
-    </Button>
-  </Tooltip>
-</Row>
-
+            <Tooltip
+              title={!selectedModel ? "Please select a model first" : ""}
+              color="#fff"
+            >
+              <Button
+                type="primary"
+                icon={<TranslationOutlined />}
+                onClick={handleTranslate}
+                loading={loading}
+                disabled={!selectedModel} // <-- disable if no model selected
+              >
+                {loading ? "Translating..." : "Translate"}
+              </Button>
+            </Tooltip>
+          </Row>
         </Card>
       )}
 

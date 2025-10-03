@@ -1038,18 +1038,19 @@ export default function WordTranslation() {
               type="text"
               //shape="circle"
               icon={<UploadOutlined 
-                style={{ color: "#1890ff", cursor: "pointer" }}
+                style={{ color: "#1890ff", cursor: "pointer", fontSize: 20 }}
               />}
               onClick={handleUploadBooks} 
               title="Upload Books"
               style={{
                 //backgroundColor: 'rgb(44, 141, 251)',
-                borderColor: 'rgb(44, 141, 251)',
+                //borderColor: 'rgb(44, 141, 251)',
+                
               }}
             />
             <Button
   type="text"
-  icon={<DeleteOutlined style={{ color: "red", cursor: "pointer" , }} />}
+  icon={<DeleteOutlined style={{ color: "red", cursor: "pointer" , fontSize: 20}} />}
   onClick={handleDeleteBook}
   title="Delete Selected Book"
   disabled={!selectedBook}

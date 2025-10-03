@@ -72,7 +72,7 @@ def create_project(db: Session, project: ProjectCreate, user_id: UUID, files: Li
         try:
             if not files or len(files) == 0:
                 # Create a default empty file if no files provided
-                files = [{"file_name": "sample.txt", "source_text": "hey how are you", "target_text": ""}]
+                files = [{"file_name": "sample.txt", "source_text": "sample test data", "target_text": ""}]
     
             for file_data in files:
                 if isinstance(file_data, ProjectFileData):
