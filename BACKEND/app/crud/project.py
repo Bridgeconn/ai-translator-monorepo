@@ -72,7 +72,7 @@ def create_project(db: Session, project: ProjectCreate, user_id: UUID, files: Li
         try:
             if not files or len(files) == 0:
                 # Create a default empty file if no files provided
-                files = [{"file_name": "default_file.txt", "source_text": "", "target_text": ""}]
+                files = [{"file_name": "sample.txt", "source_text": "hey how are you", "target_text": ""}]
     
             for file_data in files:
                 if isinstance(file_data, ProjectFileData):
@@ -86,7 +86,7 @@ def create_project(db: Session, project: ProjectCreate, user_id: UUID, files: Li
                     project_name=project.name,
                     project_type="text_document",
                     translation_type="text_document",
-                    file_name=file_dict.get("file_name", "default_file.txt"),
+                    file_name=file_dict.get("file_name", "sample.txt"),
                     source_id=source_bcp_code,  # ✅ stored as BCP code
                     target_id=target_bcp_code,  # ✅ stored as BCP code
                     source_text=file_dict.get("source_text", ""),
