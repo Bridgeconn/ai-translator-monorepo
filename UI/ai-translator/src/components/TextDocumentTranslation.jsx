@@ -387,6 +387,10 @@ export default function TextDocumentTranslation() {
       let isUSFM = false;
       let usfmStructure = null;
       if (containsUSFMMarkers(sourceText)) {
+        message.warning(
+          " This file contains USFM markers. The translation output may not be accurate."
+        );
+      
         const extracted = extractUSFMContent(sourceText);
         textToTranslate = extracted.plainText;
         isUSFM = true;
@@ -394,6 +398,7 @@ export default function TextDocumentTranslation() {
       } else {
         textToTranslate = sourceText;
       }
+      
 
       // 3. Prepare file
       const blob = new Blob([textToTranslate], { type: "text/plain" });

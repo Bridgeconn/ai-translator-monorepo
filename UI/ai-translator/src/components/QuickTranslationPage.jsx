@@ -168,6 +168,8 @@ export default function QuickTranslationPage() {
   const navigate = useNavigate();
   const controllerRef = useRef(null);
 
+  
+
   // Restore draft if available
   useEffect(() => {
     const draft = localStorage.getItem("quickTranslationDraft");
@@ -521,21 +523,29 @@ export default function QuickTranslationPage() {
           const fileContent = await uploadedFile.text();
           if (signal.aborted) throw new Error("Translation cancelled");
 
-          if (
-            uploadedFile.name.endsWith(".usfm") ||
-            containsUSFMMarkers(fileContent)
-          ) {
+          if (containsUSFMMarkers(sourceText)) {
+            showNotification(
+              "warning",
+              "USFM Markers Detected",
+              "This text contains USFM markers. The translation output may not be accurate."
+            );
+          
             isUSFMContent = true;
-            const extracted = extractUSFMContent(fileContent);
+            const extracted = extractUSFMContent(sourceText);
             usfmStructure = extracted.structure;
             textToTranslate = normalizeText(extracted.plainText);
-          } else {
+          }
+          
+           else {
             textToTranslate = normalizeText(fileContent);
           }
         }
       } else {
         // Pasted text
         if (containsUSFMMarkers(sourceText)) {
+          message.warning(
+            " This file contains USFM markers. The translation output may not be accurate."
+          )
           isUSFMContent = true;
           const extracted = extractUSFMContent(sourceText);
           usfmStructure = extracted.structure;
@@ -708,7 +718,7 @@ export default function QuickTranslationPage() {
     };
   }
 
-  // ✅ Helper: rebuild USFM
+  // Helper: rebuild USFM
   function reconstructUSFM(structure, csvData) {
     const translations = csvData
       .map((row) => row.Translation?.trim())
