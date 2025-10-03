@@ -159,7 +159,7 @@ export default function QuickActions() {
       </Text>
 
       <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-        <Tooltip title="A Source is folder that contains Bible books that you want to translate.">
+        {/* <Tooltip title="A Source is folder that contains Bible books that you want to translate.">
           <Button
             type="primary"
             icon={<FileTextFilled />}
@@ -174,7 +174,7 @@ export default function QuickActions() {
           >
             Add New Source <InfoCircleOutlined style={{ marginLeft: 8 }} />
           </Button>
-        </Tooltip>
+        </Tooltip> */}
 
 
         <Tooltip title="A Project is where you link a source folder and target language to start translation of Bible books.">

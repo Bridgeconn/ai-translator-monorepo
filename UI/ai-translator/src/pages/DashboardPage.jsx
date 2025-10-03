@@ -49,15 +49,19 @@ const Dashboard = () => {
       const res = await api.get("/sources/", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const srcs = res.data.data || res.data;
-      return srcs.map((s) => ({
-        id: s.source_id,
-        name: s.language_name + " " + s.version_name,
-        type: "source",
-        created_at: s.created_at,
-      }));
+      return res.data.data || res.data;  // don't strip fields here
     },
   });
+  
+  // In the dashboard, transform sources for display
+  const sourcesForDashboard = sources.map((s) => ({
+    id: s.source_id,
+    name: `${s.language_name}`,   // only language for dashboard
+    type: "source",
+    created_at: s.created_at,
+  }));
+  
+  
 
   /* ---------------- Derived Data ---------------- */
   const normalProjects = projects.map((p) => ({
@@ -83,10 +87,10 @@ const Dashboard = () => {
   const totalSources = sources.length;
 
   // Combine recent activity: projects + sources (most recent first)
-  const recentActivities = [...combinedProjects, ...sources]
+  const recentActivities = [...combinedProjects, ...sourcesForDashboard ]
     .filter((item) => item.created_at)
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    .slice(0, 6);
+    .slice(0, 3);
 
   /* ---------------- Styles ---------------- */
   const cardStyle = {
