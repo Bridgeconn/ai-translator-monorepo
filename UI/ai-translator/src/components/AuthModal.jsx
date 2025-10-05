@@ -27,6 +27,8 @@ export default function AuthModal() {
   const [loginForm] = Form.useForm();
   const [registerForm] = Form.useForm();
   const [notificationApi, contextHolder] = notification.useNotification();
+  const [isForgot, setIsForgot] = useState(false);
+  const [forgotForm] = Form.useForm();
 
   useEffect(() => {
     if (isOpen) {
@@ -117,7 +119,30 @@ export default function AuthModal() {
       });
     },
   });
-
+  const forgotPasswordMutation = useMutation({
+    mutationFn: (email) => authAPI.forgotPassword(email),
+    onSuccess: () => {
+      notificationApi.info({
+        message: "Password Reset",
+        description: "If that email exists, a reset link has been sent.",
+        placement: "top",
+      });
+      forgotForm.resetFields();
+      setIsForgot(false);
+      setIsRegister(false); // back to login
+    },
+    onError: () => {
+      // Show generic message to avoid exposing emails
+      notificationApi.info({
+        message: "Password Reset",
+        description: "If that email exists, a reset link has been sent.",
+        placement: "top",
+      });
+      setIsForgot(false);
+      setIsRegister(false);
+    },
+  });
+  
   const handleLogin = (values) => {
     console.log("handleLogin called with:", values);
     loginMutation.mutate(values);
@@ -129,6 +154,10 @@ export default function AuthModal() {
     registerMutation.mutate(values);
     return false;
   };
+  const handleForgot = (values) => {
+    forgotPasswordMutation.mutate(values.email);
+  };
+  
 
   const handleModalClose = () => {
     loginForm.resetFields();
@@ -151,7 +180,6 @@ export default function AuthModal() {
       borderRadius: 8,
     },
   };
-
   return (
     <>
       {contextHolder}
@@ -162,11 +190,77 @@ export default function AuthModal() {
         width={460}
         centered
         destroyOnClose
+        maskStyle={{
+            backdropFilter: "blur(8px)", // <-- makes the background blurry
+            backgroundColor: "rgba(0,0,0,0.3)", // optional: darkens the background a bit
+          }}
         closeIcon={
           <span style={{ fontSize: 20, color: "rgba(0,0,0,0.45)" }}>×</span>
         }
       >
-        {!isRegister ? (
+        {isForgot ? (
+          <div style={{ padding: "8px 0" }}>
+            <Title
+              level={2}
+              style={{
+                textAlign: "center",
+                marginBottom: 32,
+                fontWeight: 700,
+                color: "rgba(0,0,0,0.88)",
+              }}
+            >
+              Forgot Password
+            </Title>
+  
+            <Form
+              form={forgotForm}
+              layout="vertical"
+              onFinish={handleForgot}
+              requiredMark={false}
+            >
+              <Form.Item
+                label="Email"
+                name="email"
+                rules={[
+                  { required: true, message: "Please enter your email" },
+                  { type: "email", message: "Please enter a valid email" },
+                ]}
+              >
+                <Input
+                  prefix={<MailOutlined />}
+                  placeholder="you@example.com"
+                  style={styles.input}
+                />
+              </Form.Item>
+  
+              <Form.Item>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  block
+                  loading={forgotPasswordMutation.isPending}
+                  style={styles.submitBtn}
+                >
+                  Send Reset Link
+                </Button>
+              </Form.Item>
+            </Form>
+  
+            <Divider style={{ margin: "24px 0" }} />
+  
+            <div style={{ textAlign: "center" }}>
+              <Text style={{ color: "rgba(0,0,0,0.65)" }}>
+                Remembered your password?{" "}
+              </Text>
+              <a
+                onClick={() => setIsForgot(false)}
+                style={{ color: "#1890ff", fontWeight: 600, cursor: "pointer" }}
+              >
+                Sign In
+              </a>
+            </div>
+          </div>
+        ) : !isRegister ? (
           <div style={{ padding: "8px 0" }}>
             <Title
               level={2}
@@ -179,7 +273,7 @@ export default function AuthModal() {
             >
               Login
             </Title>
-
+            
             <Form
               form={loginForm}
               onFinish={handleLogin}
@@ -201,7 +295,7 @@ export default function AuthModal() {
                   autoComplete="username"
                 />
               </Form.Item>
-
+  
               <Form.Item
                 label="Password"
                 name="password"
@@ -216,7 +310,17 @@ export default function AuthModal() {
                   autoComplete="current-password"
                 />
               </Form.Item>
-
+  
+              {/* Forgot password link */}
+              <div style={{ textAlign: "right", marginBottom: 16 }}>
+                <a
+                  onClick={() => setIsForgot(true)}
+                  style={{ cursor: "pointer" }}
+                >
+                  Forgot password?
+                </a>
+              </div>
+  
               <Form.Item style={{ marginTop: 24, marginBottom: 0 }}>
                 <Button
                   type="primary"
@@ -229,9 +333,9 @@ export default function AuthModal() {
                 </Button>
               </Form.Item>
             </Form>
-
+  
             <Divider style={{ margin: "24px 0" }} />
-
+  
             <div style={{ textAlign: "center" }}>
               <Text style={{ color: "rgba(0,0,0,0.65)" }}>
                 Don't have an account?{" "}
@@ -261,7 +365,7 @@ export default function AuthModal() {
             >
               Register
             </Title>
-
+  
             <Form
               form={registerForm}
               onFinish={handleRegister}
@@ -287,7 +391,7 @@ export default function AuthModal() {
                   style={styles.input}
                 />
               </Form.Item>
-
+  
               <Form.Item
                 label="Email"
                 name="email"
@@ -302,7 +406,7 @@ export default function AuthModal() {
                   style={styles.input}
                 />
               </Form.Item>
-
+  
               <Form.Item
                 label="Password"
                 name="password"
@@ -320,7 +424,7 @@ export default function AuthModal() {
                   style={styles.input}
                 />
               </Form.Item>
-
+  
               <Form.Item style={{ marginTop: 24, marginBottom: 0 }}>
                 <Button
                   type="primary"
@@ -333,9 +437,9 @@ export default function AuthModal() {
                 </Button>
               </Form.Item>
             </Form>
-
+  
             <Divider style={{ margin: "24px 0" }} />
-
+  
             <div style={{ textAlign: "center" }}>
               <Text style={{ color: "rgba(0,0,0,0.65)" }}>
                 Already have an account?{" "}
@@ -356,4 +460,4 @@ export default function AuthModal() {
       </Modal>
     </>
   );
-}
+};  
