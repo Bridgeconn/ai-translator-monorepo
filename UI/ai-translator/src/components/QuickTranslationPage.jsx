@@ -89,7 +89,7 @@ async function pollJobStatus({
   jobId,
   onStatusUpdate,
   notification,
-  maxAttempts = 80,
+  maxAttempts = 200,
   interval = 3000,
   signal,
 }) {
@@ -167,6 +167,8 @@ export default function QuickTranslationPage() {
   const { notification } = App.useApp();
   const navigate = useNavigate();
   const controllerRef = useRef(null);
+
+  
 
   // Restore draft if available
   useEffect(() => {
@@ -451,7 +453,7 @@ export default function QuickTranslationPage() {
       return;
     }
 
-    // ✅ Create AbortController right away so user can cancel anytime
+    //  Create AbortController right away so user can cancel anytime
     controllerRef.current = new AbortController();
     const signal = controllerRef.current.signal;
 
@@ -521,21 +523,29 @@ export default function QuickTranslationPage() {
           const fileContent = await uploadedFile.text();
           if (signal.aborted) throw new Error("Translation cancelled");
 
-          if (
-            uploadedFile.name.endsWith(".usfm") ||
-            containsUSFMMarkers(fileContent)
-          ) {
+          if (containsUSFMMarkers(sourceText)) {
+            showNotification(
+              "warning",
+              "USFM Markers Detected",
+              "This text contains USFM markers. The translation output may not be accurate. Use verse translation for better results."
+            );
+          
             isUSFMContent = true;
-            const extracted = extractUSFMContent(fileContent);
+            const extracted = extractUSFMContent(sourceText);
             usfmStructure = extracted.structure;
             textToTranslate = normalizeText(extracted.plainText);
-          } else {
+          }
+          
+           else {
             textToTranslate = normalizeText(fileContent);
           }
         }
       } else {
         // Pasted text
         if (containsUSFMMarkers(sourceText)) {
+          message.warning(
+            " This file contains USFM markers. The translation output may not be accurate."
+          )
           isUSFMContent = true;
           const extracted = extractUSFMContent(sourceText);
           usfmStructure = extracted.structure;
@@ -708,7 +718,7 @@ export default function QuickTranslationPage() {
     };
   }
 
-  // ✅ Helper: rebuild USFM
+  // Helper: rebuild USFM
   function reconstructUSFM(structure, csvData) {
     const translations = csvData
       .map((row) => row.Translation?.trim())
@@ -793,7 +803,7 @@ export default function QuickTranslationPage() {
 
     setSaveModalVisible(true);
     if (!filename && !uploadedFile) {
-      setFilename("manual-input.txt");
+      // setFilename("manual-input.txt");
     }
   };
 
@@ -882,7 +892,7 @@ export default function QuickTranslationPage() {
           errorMessage = `HTTP ${response.status}: ${response.statusText}`;
         }
         setCreateProjectError(errorMessage);
-        showNotification("error", "Create Project Failed", errorMessage);
+        // showNotification("error", "Create Project Failed", errorMessage);
         setCreatingProject(false);
         return;
       }
@@ -1424,7 +1434,7 @@ export default function QuickTranslationPage() {
                   handleTranslate();
                 }
               }}
-              disabled={loading || !selectedModel} // disable if loading or no model selected
+              disabled={!selectedModel} // disable if loading or no model selected
               style={{
                 padding: "0 32px",
                 borderRadius: "8px",
@@ -1468,6 +1478,9 @@ export default function QuickTranslationPage() {
         }}
         confirmLoading={saving}
         okText={saving ? "Saving..." : "Save"}
+        okButtonProps={{
+          disabled: !selectedProject || !filename
+        }}
       >
         {saveError && (
           <Alert
@@ -1510,12 +1523,17 @@ export default function QuickTranslationPage() {
               </Option>
             ))}
           </Select>
+          <Tooltip title="Create new project" color="#fff">
           <Button
             type="primary"
             icon={<PlusOutlined />}
-            onClick={() => setCreateProjectModalVisible(true)}
+            onClick={() => {
+              setSaveModalVisible(false);  // Hide the save modal
+              setCreateProjectModalVisible(true);
+            }}
             disabled={saving}
           ></Button>
+          </Tooltip>
         </div>
 
         <Input
@@ -1537,6 +1555,7 @@ export default function QuickTranslationPage() {
           setNewProjectName("");
           setNewProjectFilename("");
           setCreateProjectError("");
+          setSaveModalVisible(true);  // Show the save modal again
         }}
         confirmLoading={creatingProject}
         okText={creatingProject ? "Creating..." : "Create"}
