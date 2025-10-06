@@ -47,7 +47,9 @@ def verify_password_reset_token(db: Session, plaintext_token: str) -> User | Non
     if not token_obj:
         return None
 
-    return token_obj.user
+    # return token_obj.user
+    user = db.query(User).filter(User.user_id == token_obj.user_id).first()
+    return user
 
 
 def mark_token_used(db: Session, plaintext_token: str) -> None:
