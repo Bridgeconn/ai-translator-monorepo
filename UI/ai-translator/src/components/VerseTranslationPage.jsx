@@ -39,7 +39,7 @@ import { InfoCircleOutlined } from "@ant-design/icons";
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 const { Option } = Select;
-import { useRef } from "react";
+
 
 /* ---------------- Upload Progress Modal ---------------- */
 function UploadProgressModal({ visible, uploading = [], uploaded = [], skipped = [], total = 0, onClose }) {
@@ -629,7 +629,7 @@ const [totalBooks, setTotalBooks] = useState(0);
       message.info("Please select a specific book to translate.");
       return;
     }
-    setTranslationAttempted(true);
+    // setTranslationAttempted(true);
     setCancelTranslation(false);
     setLoadingTranslate(true);
 
@@ -710,7 +710,7 @@ const [totalBooks, setTotalBooks] = useState(0);
   
   setLoadingTranslate(true);
   setCancelTranslation(false);
-  setTranslationAttempted(true); // Create a new AbortController
+  // setTranslationAttempted(true); // Create a new AbortController
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
