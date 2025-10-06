@@ -1,17 +1,87 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Row, Col, Select, Card, Input, Typography, Button, message, Breadcrumb, Popconfirm, Modal, notification } from 'antd';
-import { CopyOutlined, DownloadOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { Row, Col, Select, Card, Input, Typography, Button, message, Breadcrumb, Popconfirm, Modal,notification,App,Tag,Spin,Tooltip,Progress,} from 'antd';
+import { CopyOutlined, DownloadOutlined, ExclamationCircleOutlined,UploadOutlined,InfoCircleOutlined,DeleteOutlined} from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { projectsAPI, wordTokenAPI, booksAPI, languagesAPI, sourcesAPI, draftAPI } from './api.js';
 import { useParams, Link } from 'react-router-dom';
-import { Tooltip } from 'antd';
-import { InfoCircleOutlined } from '@ant-design/icons';
-import { Progress } from 'antd';
+import api from '../api';
+
 
 const { Option } = Select;
 const { Text } = Typography;
 const { TextArea } = Input;
 
+// Upload Summary Toast Component (copied from SourcesListPage)
+/* ---------------- Upload Progress Modal ---------------- */
+function UploadProgressModal({ visible, uploading = [], uploaded = [], skipped = [], total = 0, onClose }) {
+  if (!visible) return null;
+
+  const isComplete = uploaded.length + skipped.length === total;
+
+  return (
+    <Modal
+      open={visible}
+      title="Book upload status"
+      footer={null}
+      closable={isComplete}
+      onCancel={isComplete ? onClose : undefined}
+      maskClosable={false}
+    >
+      <div style={{ marginBottom: 16 }}>
+        <Text strong>
+          Uploaded: {uploaded.length + skipped.length}/{total}
+        </Text>
+      </div>
+
+      {uploading.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <Text type="secondary">Currently uploading:</Text>
+          <div style={{ marginTop: 8 }}>
+            {uploading.map((code) => (
+              <Tag color="blue" key={`uploading-${code}`} style={{ marginBottom: 6 }}>
+                {code} <Spin size="small" style={{ marginLeft: 8 }} />
+              </Tag>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {uploaded.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <Text type="secondary">✅ Uploaded ({uploaded.length}):</Text>
+          <div style={{ marginTop: 8 }}>
+            {uploaded.map((code) => (
+              <Tag color="green" key={`uploaded-${code}`} style={{ marginBottom: 6 }}>
+                {code}
+              </Tag>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {skipped.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <Text type="secondary">⚠️ Skipped (already exists) ({skipped.length}):</Text>
+          <div style={{ marginTop: 8 }}>
+            {skipped.map((code) => (
+              <Tag color="gold" key={`skipped-${code}`} style={{ marginBottom: 6 }}>
+                {code}
+              </Tag>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {isComplete && (
+        <div style={{ textAlign: "right", marginTop: 16 }}>
+          <Button type="primary" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+      )}
+    </Modal>
+  );
+}
 export default function WordTranslation() {
   const { projectId } = useParams();
   const [selectedBook, setSelectedBook] = useState(null);
@@ -35,6 +105,23 @@ export default function WordTranslation() {
   const [messageApi, messageContextHolder] = message.useMessage();
   const [notificationApi, notificationContextHolder] = notification.useNotification();
   const editedTokensRef = useRef(editedTokens);
+  const [modal, modalContextHolder] = Modal.useModal();
+  const { message: appMessage } = App.useApp();
+  const eventSourceRef = useRef(null);
+  const translationNotificationKey = useRef(null);
+
+    // Book upload states
+    const [uploadSummaryOpen, setUploadSummaryOpen] = useState(false);
+    const [uploadSummaryData, setUploadSummaryData] = useState({ uploaded: [], skipped: [] });
+    const hiddenUploadInputRef = useRef(null);
+    //Modal states
+    const [uploadProgressOpen, setUploadProgressOpen] = useState(false);
+    
+    // Upload tracking
+    const [uploadingBooks, setUploadingBooks] = useState([]);
+    const [uploadedBooks, setUploadedBooks] = useState([]);
+    const [skippedBooks, setSkippedBooks] = useState([]);
+    const [totalBooks, setTotalBooks] = useState(0);
   const [selectedModel, setSelectedModel] = useState("nllb-600M");
 
   const MODEL_INFO = {
@@ -84,6 +171,118 @@ export default function WordTranslation() {
     enabled: !!projectId,
   });
 
+    // Book upload utility functions (adapted from SourcesListPage)
+    const getExistingBooks = async (sourceId) => {
+      try {
+        const res = await api.get(`/books/by_source/${sourceId}`);
+        return Array.isArray(res.data?.data) ? res.data.data : res.data || [];
+      } catch (err) {
+        if (err?.response?.status === 404) return [];
+        throw err;
+      }
+    };
+  
+    const guessUSFMCode = (file) =>
+      new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const txt = String(reader.result || "");
+            const m = txt.match(/\\id\s+([^\s]+)/i);
+            if (m && m[1]) {
+              return resolve(m[1].replace(/[^0-9A-Za-z]/g, "").toUpperCase());
+            }
+          } catch {}
+          const name = file.name.split(".")[0] || file.name;
+          resolve(name.replace(/[^0-9A-Za-z]/g, "").toUpperCase());
+        };
+        reader.readAsText(file);
+      });
+  
+      const uploadBooksForSource = async (sourceId, files) => {
+        if (!sourceId || !files?.length) return { uploaded: [], skipped: [] };
+      
+        const existing = await getExistingBooks(sourceId);
+        const existingCodes = new Set((existing || []).map((b) => b.book_code));
+        const uploaded = [];
+        const skipped = [];
+      
+        setTotalBooks(files.length);
+        setUploadingBooks([]);   // start empty
+        setUploadedBooks([]);
+        setSkippedBooks([]);
+        setUploadProgressOpen(true);
+      
+        for (const file of files) {
+          const code = await guessUSFMCode(file);
+      
+          // mark as uploading (by code)
+          setUploadingBooks((prev) => [...prev, code]);
+      
+          if (existingCodes.has(code)) {
+            skipped.push(code);
+            setSkippedBooks((prev) => [...prev, code]);
+            setUploadingBooks((prev) => prev.filter((c) => c !== code));
+            continue;
+          }
+      
+          const formData = new FormData();
+          formData.append("file", file);
+      
+          try {
+            await api.post(`/books/upload_books/?source_id=${sourceId}`, formData, {
+              headers: { "Content-Type": "multipart/form-data" },
+            });
+            uploaded.push(code);
+            setUploadedBooks((prev) => [...prev, code]);
+            existingCodes.add(code);
+          } catch {
+            skipped.push(code);
+            setSkippedBooks((prev) => [...prev, code]);
+          } finally {
+            // remove from uploading
+            setUploadingBooks((prev) => prev.filter((c) => c !== code));
+          }
+        }
+      
+        return { uploaded, skipped };
+      };
+      
+      
+  
+    // Handle book upload
+    const handleUploadBooks = () => {
+      if (!project?.source_id) {
+        appMessage.error('No source found for this project');
+        return;
+      }
+      
+      if (hiddenUploadInputRef.current) {
+        hiddenUploadInputRef.current.value = "";
+        hiddenUploadInputRef.current.click();
+      }
+    };
+  
+    const onUploadFilesChosen = async (e) => {
+      try {
+        const files = Array.from(e.target.files || []);
+        if (!files.length || !project?.source_id) return;
+    
+        await uploadBooksForSource(project.source_id, files);
+    
+        // 🔹 Refresh projectBooks list after upload
+        const refreshed = await booksAPI.getBooksBySourceId(project.source_id);
+        setProjectBooks(refreshed);
+    
+      } catch (error) {
+        console.error("Upload failed:", error);
+        appMessage.error("Upload failed, please try again.");
+      } finally {
+        e.target.value = ""; // reset input
+      }
+    };
+    
+    
   // Fetch books for the project
   useEffect(() => {
     const fetchBooks = async () => {
@@ -127,6 +326,64 @@ export default function WordTranslation() {
     fetchLanguages();
   }, [project]);
 
+  const handleDeleteBook = () => {
+    console.log("handleDeleteBook called");
+    console.log("selectedBook:", selectedBook);
+    console.log("project.source_id:", project?.source_id);
+
+    if (!selectedBook) {
+      messageApi.warning("No book selected to delete");
+      return;
+    }
+
+    if (!project?.source_id) {
+      messageApi.error("Cannot delete book: No source ID found");
+      return;
+    }
+  
+    modal.confirm({
+      title: `Delete Book: ${selectedBook.book_name}?`,
+      icon: <ExclamationCircleOutlined />,
+      content: "This will permanently delete the book and all its content (chapters, verses).",
+      okText: "Delete",
+      okType: "danger",
+      cancelText: "Cancel",
+      onOk: async () => {
+        try {
+          console.log("Confirming delete for book_id:", selectedBook.book_id);
+          
+          // Call the delete API
+          const response = await booksAPI.deleteBook(selectedBook.book_id);
+          console.log("Delete response:", response);
+          
+          messageApi.success(`Book "${selectedBook.book_name}" deleted successfully`);
+  
+          // Refresh the books list from source
+          const refreshedBooks = await booksAPI.getBooksBySourceId(project.source_id);
+          console.log("Refreshed books after delete:", refreshedBooks);
+          setProjectBooks(refreshedBooks);
+          
+          // Reset selectedBook and related states
+          setSelectedBook(null);
+          setTokens([]);
+          setDraftContent("");
+          setOriginalDraft("");
+          setEditedTokens({});
+          setTranslatedCount(0);
+          setHasGenerated(false);
+  
+        } catch (err) {
+          console.error("Failed to delete book:", err);
+          console.error("Error details:", err.response);
+          messageApi.error(`Failed to delete book: ${err.response?.data?.detail || err.message || "Unknown error"}`);
+        }
+      },
+      onCancel: () => {
+        console.log("Delete cancelled");
+      }
+    });
+  };
+  
   // ------------------ Fetch or Generate tokens ------------------
   const fetchTokens = async (bookId) => {
     if (!bookId) return;
@@ -214,9 +471,43 @@ export default function WordTranslation() {
   };
 
   // ------------------ Generate Translations ------------------//
+
+  // ------------------ Generate Translations ------------------//
+  const handleCancelTranslation = () => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+      setIsGenerating(false);
+      
+      // Close the ongoing translation notification
+      if (translationNotificationKey.current) {
+        notificationApi.destroy(translationNotificationKey.current);
+        translationNotificationKey.current = null;
+      }
+      
+      // Show cancellation notification
+      notificationApi.warning({
+        message: "Translation Cancelled",
+        description: "Translation cancelled by the user.",
+        placement: "top",
+        duration: 3,
+      });
+    }
+  };
+
   const handleGenerateTranslationsSSEWithPreserveEdits = async () => {
     if (!selectedBook?.book_id) return; // ✅ Check for bookId
     setIsGenerating(true);
+    // Show persistent "Translating..." notification
+  translationNotificationKey.current = `translation-${Date.now()}`;
+  notificationApi.info({
+    key: translationNotificationKey.current,
+    message: "Translating...",
+    description: "Translation is in progress. Please wait...",
+    placement: "top",
+    duration: 0, // Don't auto-close
+    icon: <Spin />,
+  });
     if (hasGenerated) {
       setTokens(prev => {
         const cleared = prev.map(t => ({ ...t, translation: "" }));
@@ -230,6 +521,7 @@ export default function WordTranslation() {
         `${import.meta.env.VITE_BACKEND_URL}/api/generate_batch_stream/${projectId}?book_id=${encodeURIComponent(selectedBook.book_id)}&model_name=${encodeURIComponent(selectedModel)}`
 
       );
+      eventSourceRef.current = eventSource;
       let hasError = false;
       eventSource.onmessage = (event) => {
         let data;
@@ -242,12 +534,23 @@ export default function WordTranslation() {
         if (data.error) {
           hasError = true;
           console.error("[SSE Error]", data.error);
+          
+          // Close the translating notification
+          if (translationNotificationKey.current) {
+            notificationApi.destroy(translationNotificationKey.current);
+            translationNotificationKey.current = null;
+          }
+          
           notificationApi.error({
             message: "Error",
             description: "Translation failed. The server might be down or the network is slow. Please try again.",
             placement: "top",
-          }); setIsGenerating(false);
+            duration: 4,
+          });
+          
+          setIsGenerating(false);
           eventSource.close();
+          eventSourceRef.current = null;
           return;
         }
         if (data.token) {
@@ -318,6 +621,11 @@ export default function WordTranslation() {
         //   }
         // };
         if (data.finished) {
+          if (translationNotificationKey.current) {
+            notificationApi.destroy(translationNotificationKey.current);
+            translationNotificationKey.current = null;
+          }
+        
           if (hasError) {
             notificationApi.error({
               message: "Error",
@@ -334,12 +642,18 @@ export default function WordTranslation() {
           }
           setIsGenerating(false);
           eventSource.close();
+          eventSourceRef.current = null;
         }
       };
 
 
       eventSource.onerror = (err) => {
         console.error("SSE error:", err);
+        // Close the translating notification
+  if (translationNotificationKey.current) {
+    notificationApi.destroy(translationNotificationKey.current);
+    translationNotificationKey.current = null;
+  }
         notificationApi.error({
           message: "Error",
           description: "Translation stream interrupted. Please try again.",
@@ -347,17 +661,25 @@ export default function WordTranslation() {
         });
         setIsGenerating(false); // 🔹 Reset on error
         eventSource.close();
+        eventSourceRef.current = null;
       };
 
     } catch (err) {
       console.error("Failed to start SSE translation:", err);
+      
+      // Close the translating notification
+      if (translationNotificationKey.current) {
+        notificationApi.destroy(translationNotificationKey.current);
+        translationNotificationKey.current = null;
+      }
+      
       notificationApi.error({
         message: "Error",
         description: "Failed to start translation stream. Please try again.",
         placement: "top",
+        duration: 4,
       });
-      setIsGenerating(false); // 🔹 Reset on failure
-
+      setIsGenerating(false);
     }
   };
 
@@ -720,7 +1042,27 @@ export default function WordTranslation() {
     <div style={{ padding: '4px', position: 'relative', height: "100vh", display: "flex", flexDirection: "column" }}>
       {/* {contextHolder} */}
       {messageContextHolder}
-      {notificationContextHolder}
+  {notificationContextHolder}
+  {modalContextHolder}
+    {/* Upload Summary Toast */}
+    <UploadProgressModal
+  visible={uploadProgressOpen}
+  uploading={uploadingBooks}
+  uploaded={uploadedBooks}
+  skipped={skippedBooks}
+  total={totalBooks}
+  onClose={() => setUploadProgressOpen(false)}
+/>
+
+        {/* Hidden file input for book upload */}
+        <input
+        type="file"
+        ref={hiddenUploadInputRef}
+        style={{ display: "none" }}
+        multiple
+        accept=".usfm"
+        onChange={onUploadFilesChosen}
+      />
       <div style={{
         marginBottom: 24,
       }}>
@@ -739,24 +1081,51 @@ export default function WordTranslation() {
         </h2>
       </div>
 
-      {/* Book Selector */}
-      <div style={{ marginBottom: 12 }}>
-        <Text strong style={{ display: 'block', marginBottom: 4, fontSize: 14 }}>
-          Select Book
-        </Text>
-        <Select
-          className="custom-book-dropdown"
-          placeholder="Select a book"
-          style={{ width: 150, borderRadius: 8, fontSize: 16 }}
-          onChange={handleBookChange}
-          value={selectedBook?.book_id}
-        >
-          {projectBooks.map((book) => (
-            <Option key={book.book_id} value={book.book_id}>
-              {book.book_name}
-            </Option>
-          ))}
-        </Select>
+     {/* Book Selector with Upload Button */}
+     <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div>
+          <Text strong style={{ display: 'block', marginBottom: 4, fontSize: 14 }}>
+            Select Book
+          </Text>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Select
+              className="custom-book-dropdown"
+              placeholder="Select a book"
+              style={{ width: 150, borderRadius: 8, fontSize: 16 }}
+              onChange={handleBookChange}
+              value={selectedBook?.book_id}
+            >
+              {projectBooks.map((book) => (
+                <Option key={book.book_id} value={book.book_id}>
+                  {book.book_name}
+                </Option>
+              ))}
+            </Select>
+            <Button
+              type="text"
+              //shape="circle"
+              icon={<UploadOutlined 
+                style={{ color: "#1890ff", cursor: "pointer", fontSize: 20 }}
+              />}
+              onClick={handleUploadBooks} 
+              title="Upload Books"
+              style={{
+                //backgroundColor: 'rgb(44, 141, 251)',
+                //borderColor: 'rgb(44, 141, 251)',
+                
+              }}
+            />
+            <Button
+  type="text"
+  icon={<DeleteOutlined style={{ color: "red", cursor: "pointer" , fontSize: 20}} />}
+  onClick={handleDeleteBook}
+  title="Delete Selected Book"
+  disabled={!selectedBook}
+  danger
+/>
+
+          </div>
+        </div>
       </div>
       {/* Progress Bar */}
       {selectedBook && tokens.length > 0 && (
@@ -912,42 +1281,59 @@ export default function WordTranslation() {
                     </div>
 
                     {hasGenerated ? (
-                      <Popconfirm
-                        disabled={isGenerating}
-                        title="Regenerate Translations? All regenerated translations will overwrite unsaved edits."
-                        icon={<ExclamationCircleOutlined />}
-                        onConfirm={() => {
-                          if (Object.values(editedTokens).some(Boolean)) {
-                            notificationApi.warning({
-                              message: "Warning",
-                              description: "you have unsaved edits. Please save them before regenerating translations.",
-                              placement: "top",
-                            });
-                          }
-                          handleGenerateTranslationsSSEWithPreserveEdits();
-                        }}
-                        okText="Yes, Regenerate"
-                        cancelText="Cancel"
-                      >
-                        <Tooltip title={!selectedModel ? "Please select a model first" : ""}>
-                        <Button type="primary" loading={isGenerating}disabled={!selectedModel || isGenerating}
-                        >
-                          {isGenerating ? "Regenerating..." : "Regenerate Translations"}
-                        </Button>
-                        </Tooltip>
-                      </Popconfirm>
-                    ) : (
-                      <Tooltip title={!selectedModel ? "Please select a model first" : ""}>
-                      <Button
-                        type="primary"
-                        size="large"
-                        onClick={handleGenerateTranslationsSSEWithPreserveEdits}
-                        loading={isGenerating}
-                        disabled={!selectedModel || isGenerating}
-                      >{isGenerating ? "Generating..." : "Generate Translations"}
-                      </Button>
-                      </Tooltip>
-                    )}
+  isGenerating ? (
+    <Button 
+      danger 
+      size="large"
+      onClick={handleCancelTranslation}
+    >
+      Cancel Translation
+    </Button>
+  ) : (
+    <Popconfirm
+      disabled={isGenerating}
+      title="Regenerate Translations? All regenerated translations will overwrite unsaved edits."
+      icon={<ExclamationCircleOutlined />}
+      onConfirm={() => {
+        if (Object.values(editedTokens).some(Boolean)) {
+          notificationApi.warning({
+            message: "Warning",
+            description: "you have unsaved edits. Please save them before regenerating translations.",
+            placement: "top",
+          });
+        }
+        handleGenerateTranslationsSSEWithPreserveEdits();
+      }}
+      okText="Yes, Regenerate"
+      cancelText="Cancel"
+    >
+      <Tooltip title={!selectedModel ? "Please select a model first" : ""}>
+        <Button type="primary" disabled={!selectedModel}>
+          Regenerate Translations
+        </Button>
+      </Tooltip>
+    </Popconfirm>
+  )
+) : isGenerating ? (
+  <Button 
+    danger 
+    size="large"
+    onClick={handleCancelTranslation}
+  >
+    Cancel Translation
+  </Button>
+) : (
+  <Tooltip title={!selectedModel ? "Please select a model first" : ""}>
+    <Button
+      type="primary"
+      size="large"
+      onClick={handleGenerateTranslationsSSEWithPreserveEdits}
+      disabled={!selectedModel}
+    >
+      Generate Translations
+    </Button>
+  </Tooltip>
+)}
                   </>
                 ) : (
                   <>

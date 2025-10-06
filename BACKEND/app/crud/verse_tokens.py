@@ -53,8 +53,8 @@ required_env_vars = [
 # if missing_vars:
 #     raise RuntimeError(f"Missing required environment variables: {', '.join(missing_vars)}")
 
-MAX_RETRIES = 15
-POLL_INTERVAL = 4  # seconds
+MAX_RETRIES = 200
+POLL_INTERVAL = 3  # seconds
 
 
 # --------------------------------------------------

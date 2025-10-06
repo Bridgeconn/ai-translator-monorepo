@@ -13,9 +13,20 @@ import {
   Tooltip,
   App,
   Upload,
+  Modal,
 } from "antd";
 import { languagesAPI } from "./api.js";
-import { EditOutlined, CopyOutlined, UploadOutlined, CloseOutlined, TranslationOutlined, } from "@ant-design/icons";
+import {
+  EditOutlined,
+  CopyOutlined,
+  UploadOutlined,
+  CloseOutlined,
+  TranslationOutlined,
+  PlusOutlined,
+  SaveOutlined,
+  DeleteOutlined,
+  ExclamationCircleOutlined,
+} from "@ant-design/icons";
 import { useParams, Link } from "react-router-dom";
 import { textDocumentAPI } from "./api.js";
 import DownloadDraftButton from "./DownloadDraftButton";
@@ -26,8 +37,8 @@ import vachanApi from "../api/vachan";
 import Papa from "papaparse";
 
 const { Option } = Select;
-const { Text } = Typography;
 const { TextArea } = Input;
+const { Text: TypographyText } = Typography;
 const MODEL_INFO = {
   "nllb-600M": {
     Model: "nllb-600M",
@@ -37,7 +48,7 @@ const MODEL_INFO = {
     License: "CC-BY-NC 4.0",
     Languages: "200 languages",
   },
-  "nllb_finetuned_eng_nzm": {
+  nllb_finetuned_eng_nzm: {
     Model: "nllb_finetuned_eng_nzm",
     Tasks: "mt, text translation",
     "Language Code Type": "BCP-47",
@@ -59,7 +70,13 @@ async function getAccessToken() {
   return resp.data.access_token;
 }
 
-async function requestDocTranslation(token, file, srcLangCode, tgtLangCode, model_name) {
+async function requestDocTranslation(
+  token,
+  file,
+  srcLangCode,
+  tgtLangCode,
+  model_name
+) {
   const formData = new FormData();
   formData.append("file", file);
 
@@ -74,7 +91,7 @@ async function requestDocTranslation(token, file, srcLangCode, tgtLangCode, mode
 
 async function pollJobStatus({ token, jobId }) {
   let attempts = 0;
-  while (attempts < 80) {
+  while (attempts < 200) {
     const resp = await vachanApi.get(`/model/job?job_id=${jobId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -123,7 +140,9 @@ function extractUSFMContent(usfmText) {
 }
 
 function reconstructUSFM(structure, csvData) {
-  const translations = csvData.map((row) => row.Translation?.trim()).filter(Boolean);
+  const translations = csvData
+    .map((row) => row.Translation?.trim())
+    .filter(Boolean);
   return structure
     .map((el) =>
       el.type === "translatable"
@@ -134,7 +153,9 @@ function reconstructUSFM(structure, csvData) {
 }
 
 function simpleTranslation(sourceText, csvData) {
-  const translations = csvData.map((row) => row.Translation?.trim()).filter(Boolean);
+  const translations = csvData
+    .map((row) => row.Translation?.trim())
+    .filter(Boolean);
   const lines = sourceText.split("\n");
   let idx = 0;
   return lines
@@ -154,17 +175,21 @@ export default function TextDocumentTranslation() {
   const [targetText, setTargetText] = useState("");
   const [loading, setLoading] = useState(false);
   const [isEdited, setIsEdited] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(true);
+  const [isSourceEditing, setIsSourceEditing] = useState(false);
   const [isSourceEdited, setIsSourceEdited] = useState(false);
-  const [sourceLangName, setSourceLangName] = useState('');
-  const [targetLangName, setTargetLangName] = useState('');
+  const [sourceLangName, setSourceLangName] = useState("");
+  const [targetLangName, setTargetLangName] = useState("");
+  const [clearModalVisible, setClearModalVisible] = useState(false);
 
-  const getSourceKey = (projectId, fileId) => `sourceEdit_${projectId}_${fileId}`;
+  const getSourceKey = (projectId, fileId) =>
+    `sourceEdit_${projectId}_${fileId}`;
   const getSelectedFileKey = (projectId) => `selectedFile_${projectId}`;
   const getTempSourceKey = (projectId) => `tempSource_${projectId}`;
-  const [selectedModel, setSelectedModel] = useState("nllb-600M"); 
+  const [selectedModel, setSelectedModel] = useState("nllb-600M");
 
   const { message } = App.useApp();
+  const [modal, modalContextHolder] = Modal.useModal();
 
   // ------------------ Fetch Project + Files ------------------
   useEffect(() => {
@@ -184,19 +209,29 @@ export default function TextDocumentTranslation() {
 
           // Fetch initial language names
           try {
-            const srcLang = await languagesAPI.getLanguageByBcp(firstFile.source_id);
-            const tgtLang = await languagesAPI.getLanguageByBcp(firstFile.target_id);
+            const srcLang = await languagesAPI.getLanguageByBcp(
+              firstFile.source_id
+            );
+            const tgtLang = await languagesAPI.getLanguageByBcp(
+              firstFile.target_id
+            );
             setSourceLangName(srcLang?.name || firstFile.source_id);
             setTargetLangName(tgtLang?.name || firstFile.target_id);
           } catch (err) {
-            console.error('Failed to fetch initial languages:', err);
+            console.error("Failed to fetch initial languages:", err);
             setSourceLangName(firstFile.source_id);
             setTargetLangName(firstFile.target_id);
           }
         }
         // Auto-select saved file after loading files
-        const savedSelectedId = localStorage.getItem(getSelectedFileKey(projectId));
-        if (savedSelectedId && proj.files && proj.files.some(f => f.id === savedSelectedId)) {
+        const savedSelectedId = localStorage.getItem(
+          getSelectedFileKey(projectId)
+        );
+        if (
+          savedSelectedId &&
+          proj.files &&
+          proj.files.some((f) => f.id === savedSelectedId)
+        ) {
           handleFileChange(savedSelectedId);
         } else {
           // Load temp source if no file selected
@@ -216,18 +251,13 @@ export default function TextDocumentTranslation() {
 
   // ------------------ Handle File Selection ------------------
   const handleFileChange = async (fileId) => {
-    // Clear previous localStorage if switching files
-    if (selectedFile) {
-      localStorage.removeItem(getSourceKey(projectId, selectedFile.id));
-    }
     const file = projectFiles.find((f) => f.id === fileId);
     if (!file) return;
     setSelectedFile(file);
-    const savedSource = localStorage.getItem(getSourceKey(projectId, fileId));
-    setSourceText(savedSource || file.source_text || "");
+    setSourceText(file.source_text || "");
     setTargetText(file.target_text || "");
     setIsEdited(false);
-    setIsSourceEdited(!!savedSource);
+    setIsSourceEditing(false);
 
     // Fetch language names for selected file
     try {
@@ -236,7 +266,7 @@ export default function TextDocumentTranslation() {
       setSourceLangName(srcLang?.name || file.source_id);
       setTargetLangName(tgtLang?.name || file.target_id);
     } catch (err) {
-      console.error('Failed to fetch languages:', err);
+      console.error("Failed to fetch languages:", err);
       setSourceLangName(file.source_id);
       setTargetLangName(file.target_id);
     }
@@ -255,9 +285,15 @@ export default function TextDocumentTranslation() {
       await textDocumentAPI.updateFile(projectId, selectedFile.id, {
         target_text: targetText,
       });
+      setSelectedFile((prev) => ({ ...prev, target_text: targetText }));
+      setProjectFiles((prev) =>
+        prev.map((f) =>
+          f.id === selectedFile.id ? { ...f, target_text: targetText } : f
+        )
+      );
       message.success("Translation saved!");
       setIsEdited(false);
-      setIsEditing(false); // exit edit mode after save
+      // setIsEditing(false);
     } catch (err) {
       console.error(err);
       message.error("Failed to save translation");
@@ -266,11 +302,99 @@ export default function TextDocumentTranslation() {
     }
   };
 
-  const handleDiscardDraft = () => {
-    setTargetText(selectedFile?.target_text || "");
-    setIsEdited(false);
-    setIsEditing(false); // exit edit mode
-    message.info("Reverted to saved translation");
+  // ------------------ Source Editing ------------------
+  const handleSaveSource = async () => {
+    if (!selectedFile) return;
+    try {
+      setLoading(true);
+      await textDocumentAPI.updateFile(projectId, selectedFile.id, {
+        source_text: sourceText,
+      });
+      setSelectedFile((prev) => ({ ...prev, source_text: sourceText }));
+      setProjectFiles((prev) =>
+        prev.map((f) =>
+          f.id === selectedFile.id ? { ...f, source_text: sourceText } : f
+        )
+      );
+      message.success("Source Updated");
+      setIsSourceEditing(false);
+    } catch (err) {
+      console.error(err);
+      message.error("Failed to save source");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDiscardSource = () => {
+    setSourceText(selectedFile?.source_text || "");
+    setIsSourceEditing(false);
+  };
+
+  // const handleDiscardDraft = () => {
+  //   setTargetText(selectedFile?.target_text || "");
+  //   setIsEdited(false);
+  //   setIsEditing(false);
+  //   message.info("Reverted to saved translation");
+  // };
+
+  const handleClearConfirm = async () => {
+    try {
+      if (selectedFile) {
+        await textDocumentAPI.clearFileContent(projectId, selectedFile.id);
+      }
+      setSourceText("");
+      setTargetText("");
+      if (selectedFile) {
+        setProjectFiles((prev) =>
+          prev.map((f) =>
+            f.id === selectedFile.id
+              ? { ...f, source_text: "", target_text: "" }
+              : f
+          )
+        );
+      }
+      if (!selectedFile) {
+        localStorage.removeItem(getTempSourceKey(projectId));
+      }
+      setIsSourceEdited(false);
+      setIsSourceEditing(false);
+      setIsEdited(false);
+      // setIsEditing(false);
+      message.success("Content cleared successfully");
+    } catch (err) {
+      console.error(err);
+      message.error("Failed to clear content");
+    } finally {
+      setClearModalVisible(false);
+    }
+  };
+  const handleDeleteFile = () => {
+    if (!selectedFile) return;
+    modal.confirm({
+      title: "Delete File",
+      icon: <ExclamationCircleOutlined />,
+      content: `Are you sure you want to delete "${selectedFile.file_name}"?`,
+      okText: "Delete",
+      okType: "danger",
+      cancelText: "Cancel",
+      onOk: async () => {
+        try {
+          await textDocumentAPI.deleteFile(projectId, selectedFile.id);
+          message.success("File deleted successfully!");
+          const updatedFiles = projectFiles.filter(
+            (f) => f.id !== selectedFile.id
+          );
+          setProjectFiles(updatedFiles);
+          setSelectedFile(null);
+          setSourceText("");
+          setTargetText("");
+        } catch (err) {
+          console.error(err);
+          message.error("Failed to delete file");
+        }
+      },
+    });
   };
 
   // ------------------  Upload handler ------------------
@@ -303,6 +427,11 @@ export default function TextDocumentTranslation() {
       let isUSFM = false;
       let usfmStructure = null;
       if (containsUSFMMarkers(sourceText)) {
+        message.warning(
+          " This file contains USFM markers. The translation output may not be accurate.Use verse translation for better results."
+           
+        );
+      
         const extracted = extractUSFMContent(sourceText);
         textToTranslate = extracted.plainText;
         isUSFM = true;
@@ -310,17 +439,22 @@ export default function TextDocumentTranslation() {
       } else {
         textToTranslate = sourceText;
       }
+      
 
       // 3. Prepare file
       const blob = new Blob([textToTranslate], { type: "text/plain" });
-      const fileToSend = new File([blob], "content.txt", { type: "text/plain" });
+      const fileToSend = new File([blob], "content.txt", {
+        type: "text/plain",
+      });
 
       //  Use source/target language from selected file or project default
       let srcCode = selectedFile?.source_id || project?.source_language?.code;
       let tgtCode = selectedFile?.target_id || project?.target_language?.code;
 
       if (!srcCode || !tgtCode) {
-        message.error("Source or target language is not set for this project/file.");
+        message.error(
+          "Source or target language is not set for this project/file."
+        );
         return;
       }
 
@@ -335,7 +469,6 @@ export default function TextDocumentTranslation() {
       );
 
       message.info("⏳ Translating... please wait");
-
 
       // 5. Poll until finished
       await pollJobStatus({ token, jobId });
@@ -362,11 +495,13 @@ export default function TextDocumentTranslation() {
         try {
           await textDocumentAPI.updateFile(projectId, selectedFile.id, {
             source_text: sourceText, // Save the edited source text
-            target_text: translatedText
+            target_text: translatedText,
           });
         } catch (err) {
           console.error(err);
-          message.warning("Translation completed but failed to save automatically.");
+          message.warning(
+            "Translation completed but failed to save automatically."
+          );
         }
       }
     } catch (err) {
@@ -389,6 +524,7 @@ export default function TextDocumentTranslation() {
         flexDirection: "column",
       }}
     >
+      {modalContextHolder}
       {/* Header */}
       <div
         style={{
@@ -403,44 +539,145 @@ export default function TextDocumentTranslation() {
           items={[
             {
               title: (
-                <Link to="/projects" style={{ color: "#2c8dfb", fontWeight: 500 }}>
+                <Link
+                  to="/projects"
+                  style={{ color: "#2c8dfb", fontWeight: 500 }}
+                >
                   Projects
                 </Link>
               ),
             },
-            { title: <span style={{ fontWeight: 500 }}>{project?.project_name}</span> },
+            {
+              title: (
+                <span style={{ fontWeight: 500 }}>{project?.project_name}</span>
+              ),
+            },
           ]}
           style={{ marginBottom: 8, fontSize: 14 }}
         />
 
-        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: "#1f2937" }}>
+        <h2
+          style={{ margin: 0, fontSize: 24, fontWeight: 600, color: "#1f2937" }}
+        >
           Document Translation ({sourceLangName} - {targetLangName})
         </h2>
       </div>
 
-      {/* File Selector */}
+      {/* File Selector with Upload Button */}
       <div style={{ marginBottom: 12 }}>
-        <Text strong style={{ display: "block", marginBottom: 4, fontSize: 14 }}>
-          Select File
-        </Text>
-        <Select
-          placeholder="Select a file"
-          style={{ width: 200 }}
-          onChange={handleFileChange}
-          value={selectedFile?.id}
+        <TypographyText
+          strong
+          style={{ display: "block", marginBottom: 4, fontSize: 14 }}
         >
-          {projectFiles.map((f) => (
-            <Option key={f.id} value={f.id}>
-              {f.file_name}
-            </Option>
-          ))}
-        </Select>
+          Select File
+        </TypographyText>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Select
+            placeholder="Select a file"
+            style={{ width: 200 }}
+            onChange={handleFileChange}
+            value={selectedFile?.id || undefined} // avoid null warning
+          >
+            {projectFiles.map((f) => (
+              <Option key={f.id} value={f.id}>
+                {f.file_name}
+              </Option>
+            ))}
+          </Select>
+
+          {/* Plus Icon for uploading a new file */}
+          <Upload
+            showUploadList={false}
+            accept=".docx,.pdf,.txt,.usfm"
+            beforeUpload={(file) => {
+              const allowedTypes = [
+                "application/pdf",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "text/plain",
+                "application/usfm",
+                "text/usfm",
+              ];
+              const allowedExtensions = [".pdf", ".docx", ".txt", ".usfm"];
+
+              const fileExt = file.name
+                .slice(file.name.lastIndexOf("."))
+                .toLowerCase();
+              if (!allowedExtensions.includes(fileExt)) {
+                message.error(`${file.name} is not a supported file type`);
+                return Upload.LIST_IGNORE; // prevents upload
+              }
+              return true; // allow upload
+            }}
+            customRequest={async ({ file, onSuccess, onError }) => {
+              try {
+                const formData = new FormData();
+                formData.append("file", file);
+
+                const uploadedFile = await textDocumentAPI.uploadFile(
+                  projectId,
+                  formData
+                );
+
+                setProjectFiles((prev) => [...prev, uploadedFile]);
+                setSelectedFile(uploadedFile);
+                setSourceText(uploadedFile.source_text || "");
+                setTargetText(uploadedFile.target_text || "");
+
+                message.success(`${file.name} uploaded successfully!`);
+                onSuccess(null, file);
+              } catch (err) {
+                console.error(err);
+                const errorMsg =
+                  err?.response?.data?.detail ||
+                  err?.message ||
+                  "Unknown error";
+                message.error(`${errorMsg}`);
+                onError(err);
+              }
+            }}
+          >
+            <Button
+              icon={
+                <UploadOutlined
+                  style={{ color: "#1890ff", cursor: "pointer", fontSize: 20 }}
+                />
+              }
+              title="add a new file"
+              style={{
+                marginLeft: 8,
+                //backgroundColor: 'rgb(44, 141, 251)',
+                // borderColor: "rgb(44, 141, 251)",
+              }}
+            />
+          </Upload>
+          {/* Delete File Button */}
+          <Tooltip title="Delete file">
+            <Button
+              icon={
+                <DeleteOutlined
+                  style={{ color: "red", cursor: "pointer", fontSize: 20 }}
+                />
+              }
+              onClick={handleDeleteFile}
+              disabled={!selectedFile}
+              danger
+            />
+          </Tooltip>
+        </div>
       </div>
 
+      {/* Translation Editor */}
       {selectedFile && (
         <Card
           title={
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
               {/* Left: Heading */}
               <h3 style={{ margin: 0 }}>Translation Editor</h3>
 
@@ -451,20 +688,23 @@ export default function TextDocumentTranslation() {
                   style={{ width: 160 }}
                   value={selectedModel}
                   onChange={(value) => setSelectedModel(value)}
-                > <Option value="nllb-600M">nllb-600M</Option>
-                  <Option value="nllb_finetuned_eng_nzm">nllb_finetuned_eng_nzm</Option>
-
+                >
+                  {" "}
+                  <Option value="nllb-600M">nllb-600M</Option>
+                  <Option value="nllb_finetuned_eng_nzm">
+                    nllb_finetuned_eng_nzm
+                  </Option>
                 </Select>
                 <Tooltip
                   title={
                     selectedModel
                       ? Object.entries(MODEL_INFO[selectedModel]).map(
-                        ([key, value]) => (
-                          <div key={key}>
-                            <strong>{key}:</strong> {value}
-                          </div>
+                          ([key, value]) => (
+                            <div key={key}>
+                              <strong>{key}:</strong> {value}
+                            </div>
+                          )
                         )
-                      )
                       : "Select a model to see info"
                   }
                   color="#fff"
@@ -476,7 +716,6 @@ export default function TextDocumentTranslation() {
                     disabled={!selectedModel} // disable if no model selected
                   />
                 </Tooltip>
-
               </div>
             </div>
           }
@@ -485,142 +724,184 @@ export default function TextDocumentTranslation() {
           <Row gutter={16} style={{ flex: 1 }}>
             {/* Source */}
             <Col span={12} style={{ maxHeight: "70vh", overflowY: "auto" }}>
-              <h3>Source</h3>
-              <TextArea
-                rows={20}
-                value={sourceText}
-                onChange={(e) => {
-                  setSourceText(e.target.value);
-                  setIsSourceEdited(true);
-                  const key = selectedFile ? getSourceKey(projectId, selectedFile.id) : getTempSourceKey(projectId);
-                  localStorage.setItem(key, e.target.value);
-                }}
-                placeholder="Enter or upload text to translate..."
-                style={{ marginBottom: 8 }}
-              />
               {/* Upload + Clear buttons */}
               <div
+                onClick={() => !isSourceEditing && setIsSourceEditing(true)}
                 style={{
-                  marginTop: 12,
+                  cursor: isSourceEditing ? "default" : "pointer",
+                  height: "100%",
                   display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  minHeight: "32px",
+                  flexDirection: "column",
                 }}
               >
-                {/* Left side - Upload section */}
                 <div
                   style={{
                     display: "flex",
-                    flexDirection: "column",
-                    alignItems: "flex-start",
+                    justifyContent: "space-between",
+                    alignItems: "center",
                   }}
                 >
-                  <Upload
-                    beforeUpload={handleFileUpload}
-                    showUploadList={false}
-                    accept=".txt,.usfm,.docx,.pdf"
-                  >
-                    <Tooltip
-                      title="Upload upto 2 MB(.txt, .usfm, .docx, .pdf )"
-                      color="#fff"
-                    >
+                  <h3 style={{ margin: 0 }}>Source</h3>
+                  {isSourceEditing && (
+                    <div>
                       <Button
-                        icon={<UploadOutlined />}
-                        style={{
-                          background: "rgb(44 151 222 / 85%)",
-                          border: "1px solid #e5e7eb",
-                          borderRadius: "6px",
-                          color: "#000",
-                          padding: "6px 14px",
-                        }}
-                      />
-                    </Tooltip>
-                  </Upload>
-                  <Typography.Text
-                    type="secondary"
-                    style={{
-                      fontSize: "12px",
-                      marginTop: "4px",
-                      display: "block",
-                    }}
-                  >
-                    <strong>Drop .txt, .usfm, .docx, .pdf up to 2 MB</strong>
-                  </Typography.Text>
+                        type="primary"
+                        onClick={handleSaveSource}
+                        style={{ marginRight: 8 }}
+                        size="small"
+                        loading={loading}
+                      >
+                        Save
+                      </Button>
+                      <Button size="small" onClick={handleDiscardSource}>
+                        Discard
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
-                {/* Right side - Clear button */}
-                <div>
-                  <Tooltip
-                    title="Clear"
-                    color="#fff"
-                    style={{ color: "#000" }}
+                <TextArea
+                  rows={20}
+                  value={sourceText}
+                  onChange={(e) => {
+                    setSourceText(e.target.value);
+                    setIsSourceEdited(true);
+                    if (!selectedFile) {
+                      // Save to localStorage only for temp source
+                      localStorage.setItem(
+                        getTempSourceKey(projectId),
+                        e.target.value
+                      );
+                    }
+                  }}
+                  readOnly={!isSourceEditing}
+                  placeholder="Enter or upload text to translate..."
+                  style={{
+                    marginTop: 8,
+                    marginBottom: 8,
+                    backgroundColor: isSourceEdited ? "#fffbe6" : "transparent",
+                  }}
+                />
+                {/*  Upload + Clear buttons */}
+                <div
+                  style={{
+                    marginTop: 12,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    minHeight: "32px",
+                  }}
+                >
+                  {/* Left side - Upload section */}
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "flex-start",
+                    }}
                   >
-                    <Button
+                    <Upload
+                      beforeUpload={handleFileUpload}
+                      showUploadList={false}
+                      accept=".txt,.usfm,.docx,.pdf"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Tooltip
+                        title="Upload upto 2 MB(.txt, .usfm, .docx, .pdf )"
+                        color="#fff"
+                      >
+                        <Button
+                          icon={<UploadOutlined />}
+                          style={{
+                            background: "rgb(44 151 222 / 85%)",
+                            border: "1px solid #e5e7eb",
+                            borderRadius: "6px",
+                            color: "#000",
+                            padding: "6px 14px",
+                          }}
+                        />
+                      </Tooltip>
+                    </Upload>
+                    <Typography.Text
+                      type="secondary"
                       style={{
-                        backgroundColor: "rgb(229, 118 ,119)",
-                        color: "white",
-                        boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
-                        border: "none",
+                        fontSize: "12px",
+                        marginTop: "4px",
+                        display: "block",
                       }}
-                      onClick={() => {
-                        setSourceText("");
-                        setTargetText("");
-                        const key = selectedFile ? getSourceKey(projectId, selectedFile.id) : getTempSourceKey(projectId);
-                        localStorage.removeItem(key);
-                        setIsSourceEdited(false);
-                      }}
-                      icon={<CloseOutlined />}
-                    />
-                  </Tooltip>
+                    >
+                      <strong>Drop .txt, .usfm, .docx, .pdf up to 2 MB</strong>
+                    </Typography.Text>
+                  </div>
+
+                  {/* Right side - Clear button */}
+                  <div>
+                    <Tooltip
+                      title="Clear"
+                      color="#fff"
+                      style={{ color: "#000" }}
+                    >
+                      <Button
+                        style={{
+                          backgroundColor: "rgb(229, 118 ,119)",
+                          color: "white",
+                          boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+                          border: "none",
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setClearModalVisible(true);
+                        }}
+                        icon={<CloseOutlined />}
+                      />
+                    </Tooltip>
+                  </div>
                 </div>
               </div>
             </Col>
             {/* Target */}
             <Col span={12} style={{ maxHeight: "70vh", overflowY: "auto" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
                 <h3 style={{ margin: 0 }}>Target</h3>
                 <div style={{ display: "flex", gap: 8 }}>
-                  {!isEditing ? (
-                    <>
-                      {/* Copy Button */}
-                      <Tooltip
-                        title="Copy translation"
-                        color="#fff"
-                        style={{ color: "#000" }}
-                      >
-                        <Button
-                          type="default"
-                          icon={<CopyOutlined />}
-                          onClick={() => {
-                            navigator.clipboard.writeText(targetText || "");
-                            message.success("Copied to clipboard!");
-                          }}
-                          size="middle"
-                        />
-                      </Tooltip>
-
-                      <DownloadDraftButton
-                        content={targetText}
-                  
+                  <>
+                    <Tooltip
+                      title="Save"
+                      color="#fff"
+                      style={{ color: "#000" }}
+                    >
+                      <Button
+                        type="default"
+                        icon={<SaveOutlined />}
+                        onClick={handleSaveDraft}
+                        size="middle"
                       />
+                    </Tooltip>
+                    <Tooltip
+                      title="Copy"
+                      color="#fff"
+                      style={{ color: "#000" }}
+                    >
+                      <Button
+                        type="default"
+                        icon={<CopyOutlined />}
+                        onClick={() => {
+                          navigator.clipboard.writeText(targetText || "");
+                          message.success("Copied to clipboard!");
+                        }}
+                        size="middle"
+                      />
+                    </Tooltip>
 
-                      {/* Edit Button */}
-                      <Tooltip
-                        title="Edit draft"
-                        color="#fff"
-                        style={{ color: "#000" }}
-                      >
-                        <Button
-                          type="default"
-                          icon={<EditOutlined />}
-                          onClick={() => setIsEditing(true)}
-                          size="middle"
-                        />
-                      </Tooltip>
-                    </>
-                  ) : (
-                    // Show Save + Discard when editing
+                    <DownloadDraftButton content={targetText} />
+                  </>
+                  {/* : (
                     <div>
                       <Button
                         type="primary"
@@ -635,7 +916,7 @@ export default function TextDocumentTranslation() {
                         Discard
                       </Button>
                     </div>
-                  )}
+                  )} */}
                 </div>
               </div>
 
@@ -643,7 +924,7 @@ export default function TextDocumentTranslation() {
                 rows={20}
                 value={targetText}
                 onChange={handleDraftChange}
-                readOnly={!isEditing}
+                // readOnly={!isEditing}
                 style={{
                   marginTop: 8,
                   backgroundColor: isEdited ? "#fffbe6" : "transparent",
@@ -653,24 +934,44 @@ export default function TextDocumentTranslation() {
           </Row>
           {/*  Translate button centered below both panels */}
           <Row justify="center" style={{ marginTop: 16 }}>
-  <Tooltip
-    title={!selectedModel ? "Please select a model first" : ""}
-    color="#fff"
-  >
-    <Button
-      type="primary"
-      icon={<TranslationOutlined />}
-      onClick={handleTranslate}
-      loading={loading}
-      disabled={!selectedModel} // <-- disable if no model selected
-    >
-      {loading ? "Translating..." : "Translate"}
-    </Button>
-  </Tooltip>
-</Row>
-
+            <Tooltip
+              title={!selectedModel ? "Please select a model first" : ""}
+              color="#fff"
+            >
+              <Button
+                type="primary"
+                icon={<TranslationOutlined />}
+                onClick={handleTranslate}
+                loading={loading}
+                disabled={!selectedModel} // <-- disable if no model selected
+              >
+                {loading ? "Translating..." : "Translate"}
+              </Button>
+            </Tooltip>
+          </Row>
         </Card>
       )}
+
+      <Modal
+        title="Confirm Clear"
+        open={clearModalVisible}
+        onCancel={() => setClearModalVisible(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setClearModalVisible(false)}>
+            Cancel
+          </Button>,
+          <Button
+            key="clear"
+            type="primary"
+            danger
+            onClick={handleClearConfirm}
+          >
+            Clear
+          </Button>,
+        ]}
+      >
+        <p>This will clear both source and target permanently.</p>
+      </Modal>
     </div>
   );
 }
