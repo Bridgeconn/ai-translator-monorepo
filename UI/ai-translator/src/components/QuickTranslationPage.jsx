@@ -286,7 +286,24 @@ export default function QuickTranslationPage() {
       // Fallback to browser alert
       alert(`${type.toUpperCase()}: ${description}`);
     }
-  };
+   };
+  // ✅ Auto-select correct model based on source/target languages
+useEffect(() => {
+  if (!sourceLang || !targetLang) return;
+
+  const src = sourceLang.BCP_code;
+  const tgt = targetLang.BCP_code;
+
+  const isEngNzemePair =
+    (src === "eng_Latn" && tgt === "nzm_Latn") ||
+    (src === "nzm_Latn" && tgt === "eng_Latn");
+
+  if (isEngNzemePair) {
+    setSelectedModel("nllb_finetuned_eng_nzm");
+  } else {
+    setSelectedModel("nllb-600M");
+  }
+}, [sourceLang, targetLang]);
 
   // ------------------ Copy & Paste Logic ------------------
   const handleCopy = (content) => {
@@ -1115,7 +1132,6 @@ export default function QuickTranslationPage() {
       setSaveError("");
     }, 2000);
   };
-
   return (
     <div style={{ padding: 24, marginBottom: 0 }}>
       <Title level={2} style={{ marginBottom: 0 }}>
@@ -1303,17 +1319,48 @@ export default function QuickTranslationPage() {
             extra={
               <Space>
                 <Select
-                  value={selectedModel || undefined}
-                  onChange={setSelectedModel}
-                  disabled={loading}
-                  style={{ minWidth: 120 }}
-                >
-                  {availableModels.map((m) => (
-                    <Select.Option key={m.value} value={m.value}>
-                      {m.label}
-                    </Select.Option>
-                  ))}
-                </Select>
+  value={selectedModel || undefined}
+  onChange={setSelectedModel}
+  disabled={loading}
+  style={{ minWidth: 200 }}
+>
+  {availableModels.map((m) => {
+    let disabled = false;
+    let tooltip = "";
+
+    const src = sourceLang?.BCP_code;
+    const tgt = targetLang?.BCP_code;
+    const isEngNzemePair =
+      (src === "eng_Latn" && tgt === "nzm_Latn") ||
+      (src === "nzm_Latn" && tgt === "eng_Latn");
+
+    if (m.value === "nllb-600M" && isEngNzemePair) {
+      disabled = true;
+      tooltip = "This model does not support Zeme Naga language.";
+    } else if (m.value === "nllb_finetuned_eng_nzm" && !isEngNzemePair) {
+      disabled = true;
+      tooltip = "This model supports only English ↔ Zeme Naga translation.";
+    }
+
+    return (
+      <Select.Option key={m.value} value={m.value} disabled={disabled}>
+        <Tooltip
+          title={tooltip}
+          placement="right"
+          overlayInnerStyle={{
+            backgroundColor: "#fff",
+            color: "#000",
+            border: "1px solid #ddd",
+            borderRadius: "6px",
+            padding: "6px 10px",
+          }}
+        >
+          {m.label}
+        </Tooltip>
+      </Select.Option>
+    );
+  })}
+</Select>
                 <Tooltip
                   color="#ffffff"
                   title={
@@ -1434,7 +1481,7 @@ export default function QuickTranslationPage() {
                   handleTranslate();
                 }
               }}
-              disabled={loading || !selectedModel} // disable if loading or no model selected
+              disabled={loading || !selectedModel } 
               style={{
                 padding: "0 32px",
                 borderRadius: "8px",
