@@ -1,6 +1,6 @@
 from uuid import uuid4, UUID
 from sqlalchemy.orm import Session
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from typing import Optional, List
 import os
 import httpx
@@ -8,7 +8,7 @@ import time
 import logging
 from dotenv import load_dotenv
 from sqlalchemy import asc, cast, Integer
-
+import asyncio
 
 # Import models
 from app.models.project import Project
@@ -333,7 +333,16 @@ def translate_chunk(db: Session, project_id: UUID, book_name: str, skip: int = 0
 
 
 
-def translate_chapter(db: Session, project_id: UUID, book_name: str, chapter_number: int, verse_numbers: List[int],model_name: str = "nllb-600M"):
+# def translate_chapter(db: Session, project_id: UUID, book_name: str, chapter_number: int, verse_numbers: List[int],model_name: str = "nllb-600M"):
+async def translate_chapter(
+    db: Session,
+    project_id: UUID,
+    book_name: str,
+    chapter_number: int,
+    verse_numbers: List[int],
+    model_name: str = "nllb-600M",
+    request: Optional[Request] = None
+):
     # 1. Fetch tokens for the specific chapter AND specific verses
     ALLOWED_MODELS = ["nllb-600M", "nllb_finetuned_eng_nzm"]
     if model_name not in ALLOWED_MODELS:
@@ -397,6 +406,10 @@ def translate_chapter(db: Session, project_id: UUID, book_name: str, chapter_num
     # 5. Poll for results
     status_url = f"{VACHAN_JOB_STATUS_URL}?job_id={job_id}"
     for attempt in range(MAX_RETRIES):
+        if request and await request.is_disconnected():
+         logger.info(f"Chapter {chapter_number} translation aborted by client")
+         raise HTTPException(status_code=499, detail="Translation aborted by client")
+    
         status_resp = httpx.get(status_url, headers={"Authorization": f"Bearer {token}"})
         status_resp.raise_for_status()
         data = status_resp.json().get("data", {})
@@ -421,6 +434,6 @@ def translate_chapter(db: Session, project_id: UUID, book_name: str, chapter_num
         elif "failed" in status:
             raise HTTPException(status_code=500, detail="Vachan AI job failed.")
 
-        time.sleep(POLL_INTERVAL)
+        await asyncio.sleep(POLL_INTERVAL)
 
     raise HTTPException(status_code=504, detail="Timeout waiting for chapter translation.")

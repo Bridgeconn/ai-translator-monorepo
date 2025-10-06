@@ -23,19 +23,22 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Only handle token expiry here, not login errors:
+    if (
+      error.response?.status === 401 &&
+      !error.config.url.includes("/auth/login") && 
+      !error.config.url.includes("/users/")        
+    ) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
-      if (
-        !window.location.pathname.includes("/login") &&
-        !window.location.pathname.includes("/register")
-      ) {
-        window.location.href = "/login";
+      if (!window.location.pathname.includes("/reset-password")) {
+        window.location.href = "/"; 
       }
     }
-    return Promise.reject(error);
+    return Promise.reject(error); // let onError handle the rest
   }
 );
+
 
 // ------------------ Auth API ------------------
 export const authAPI = {
@@ -52,22 +55,8 @@ export const authAPI = {
     return response.data;
   },
   register: async (userData) => {
-    try {
-      const response = await api.post("/users/", userData);
-      return response.data;
-    } catch (error) {
-      const errData = error.response?.data;
-  
-      if (typeof errData?.detail === "string") {
-        return { error: errData.detail }; // ✅ Return object instead of throwing
-      }
-  
-      if (Array.isArray(errData)) {
-        return { error: errData[0]?.msg || "Validation error" };
-      }
-  
-      return { error: "Registration failed" };
-    }
+    const response = await api.post("/users/", userData);
+    return response.data;
   },
     
   getCurrentUser: async () => {
@@ -455,11 +444,11 @@ export const verseTokensAPI = {
   },
 };
 
-export const translateChapter = async (projectId, bookName, chapterNumber, verseNumbers, model_name = "nllb-600M") => {
+export const translateChapter = async (projectId, bookName, chapterNumber, verseNumbers, model_name = "nllb-600M",signal) => {
   const res = await api.post(
     `/verse_tokens/translate-chapter/${projectId}/${bookName}/${chapterNumber}`,
     { verse_numbers: verseNumbers,model_name: model_name },   // 👈 send body only if verses passed
-    
+    { signal }
   );
   return res.data;
 };
