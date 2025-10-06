@@ -22,6 +22,7 @@ import {
 } from "@ant-design/icons";
 
 import { Tooltip } from "antd"; //  add this at the top with other imports
+import { useAuthModal } from "./AuthModalContext"; // add at top of MainLayout
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -36,6 +37,7 @@ export default function MainLayout() {
   const [newPassword, setNewPassword] = useState("");
   const { notification } = App.useApp();
   const [showWelcome, setShowWelcome] = useState(false);
+  const { openLogin } = useAuthModal(); // inside your component
 
   // inside MainLayout.jsx
 const token = localStorage.getItem("token");
@@ -138,7 +140,7 @@ const userMenuItems = token
       key: "login",
       label: "Login",
       icon: <UserOutlined />,
-      onClick: () => navigate("/login"),
+      onClick: () => openLogin(), // 👈 open modal
     },
     {
       key: "home",
@@ -157,7 +159,7 @@ const userMenuItems = token
   
     const handleMenuClick = ({ key }) => {
       if (!token && protectedPaths.includes(key)) {
-        navigate("/login"); //  force login before opening
+        openLogin(); //  force login before opening
         return;
       }
       navigate(key);

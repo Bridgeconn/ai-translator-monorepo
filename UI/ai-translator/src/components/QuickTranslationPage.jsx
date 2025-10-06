@@ -33,6 +33,7 @@ import { useNavigate } from "react-router-dom";
 import * as pdfjsLib from "pdfjs-dist";
 import { App } from "antd";
 import { InfoCircleOutlined } from "@ant-design/icons";
+import { useAuthModal } from "./AuthModalContext";
 pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
 const { TextArea } = Input;
@@ -166,6 +167,7 @@ export default function QuickTranslationPage() {
   const [loading, setLoading] = useState(false);
   const { notification } = App.useApp();
   const navigate = useNavigate();
+  const { openLogin } = useAuthModal();
   const controllerRef = useRef(null);
 
   
@@ -806,7 +808,7 @@ useEffect(() => {
         })
       );
 
-      navigate("/login"); // redirect to login
+      openLogin(); // redirect to login
       return;
     }
 

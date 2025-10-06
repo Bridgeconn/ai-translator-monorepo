@@ -2,8 +2,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from "react-
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App as AntdApp, ConfigProvider } from "antd";
 import HomePage from "./components/HomePage";
-import LoginForm from "./components/LoginForm";
-import RegisterForm from "./components/RegisterForm";
+import { AuthModalProvider } from "./components/AuthModalContext";
+import AuthModal from "./components/AuthModal";
 import MainLayout from "./components/MainLayout";
 import ResetPassword from "./components/ResetPassword";
 import DashboardPage from "./pages/DashboardPage";
@@ -13,6 +13,7 @@ import QuickTranslationPage from "./components/QuickTranslationPage";
 import VerseTranslationPage from './components/VerseTranslationPage';
 import WordTranslation from "./components/WordTranslation";
 import TextDocumentTranslation from "./components/TextDocumentTranslation";
+import { useAuthModal } from "./components/AuthModalContext"; 
 // React Query config
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,10 +23,14 @@ const queryClient = new QueryClient({
     },
   },
 });
-
 const ProtectedOutlet = () => {
   const token = localStorage.getItem("token");
-  return token ? <Outlet /> : <Navigate to="/login" replace />;
+  const { openLogin } = useAuthModal(); // use the modal context
+
+  if (token) return <Outlet />;
+
+  openLogin();
+  return null;
 };
 
 // Ant Design theme
@@ -44,11 +49,12 @@ function App() {
       <AntdApp> 
         <QueryClientProvider client={queryClient}>
           <Router>
+          <AuthModalProvider>
+              {/* ADD AuthModal component */}
+              <AuthModal />
             <Routes>
               {/* Public routes */}
               <Route path="/" element={<HomePage />} />
-              <Route path="/login" element={<LoginForm />} />
-              <Route path="/register" element={<RegisterForm />} />
               <Route path="/reset-password" element={<ResetPassword />} />
 
               {/* Protected routes */}
@@ -60,25 +66,27 @@ function App() {
               {/* PROTECTED inside layout */}
               <Route element={<ProtectedOutlet />}>
               
-                <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="/sources" element={<SourcesListPage />} />
-                <Route path="/projects" element={<ProjectsPage />} />
-                <Route path="/quick-translation" element={<QuickTranslationPage />} />
-                <Route path="/projects/:projectId/translate" element={<VerseTranslationPage />} />
-                <Route path="/projects/:projectId/word-translation" element={<WordTranslation />} />
-                <Route path="/projects/:projectId/text-translation" element={<TextDocumentTranslation />} />
+                <Route path="dashboard" element={<DashboardPage />} />
+                <Route path="sources" element={<SourcesListPage />} />
+                <Route path="projects" element={<ProjectsPage />} />
+                <Route path="quick-translation" element={<QuickTranslationPage />} />
+                <Route path="projects/:projectId/translate" element={<VerseTranslationPage />} />
+                <Route path="projects/:projectId/word-translation" element={<WordTranslation />} />
+                <Route path="projects/:projectId/text-translation" element={<TextDocumentTranslation />} />
 
               </Route>
 
                     {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-            </Route>
-          </Routes>
-        </Router>
-      </QueryClientProvider>
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Route>
+              </Routes>
+            </AuthModalProvider>
+            {/* CLOSE AuthModalProvider */}
+          </Router>
+        </QueryClientProvider>
       </AntdApp>
     </ConfigProvider>
   );
-};
+}
 
 export default App;
