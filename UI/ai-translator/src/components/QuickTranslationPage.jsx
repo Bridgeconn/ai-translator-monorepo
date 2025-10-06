@@ -1424,7 +1424,7 @@ export default function QuickTranslationPage() {
                   handleTranslate();
                 }
               }}
-              disabled={loading || !selectedModel} // disable if loading or no model selected
+              disabled={!selectedModel} // disable if loading or no model selected
               style={{
                 padding: "0 32px",
                 borderRadius: "8px",
