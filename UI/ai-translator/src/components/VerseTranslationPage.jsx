@@ -15,6 +15,7 @@ import {
   Select,
   Breadcrumb,
   Progress,
+  Popconfirm,
   Modal,
   Tag,
   Divider,
@@ -131,7 +132,7 @@ const VerseTranslationPage = () => {
 
   const [serverDraft, setServerDraft] = useState("");
   const [loadingDraft, setLoadingDraft] = useState(false);
-  const [translationAttempted, setTranslationAttempted] = useState(false); // Updated for clarity
+  const [isZemeNaga, setIsZemeNaga] = useState(false);
 
   // store edits per verse_token_id
   const [draftId, setDraftId] = useState(null); //Added to track draft ID
@@ -165,6 +166,31 @@ const VerseTranslationPage = () => {
       Languages: "Zeme Naga, English",
     },
   };
+  useEffect(() => {
+    if (!project) return;
+  
+    const src = (project.source_language_name || "")
+      .toLowerCase()
+      .replace(/[-_]/g, " ")
+      .trim();
+    const tgt = (project.target_language_name || "")
+      .toLowerCase()
+      .replace(/[-_]/g, " ")
+      .trim();
+  
+    const isZemeNagaPair =
+      (src === "zeme naga" && tgt === "english") ||
+      (src === "english" && tgt === "zeme naga");
+  
+    setIsZemeNaga(isZemeNagaPair);
+  
+    if (isZemeNagaPair) {
+      setSelectedModel("nllb_finetuned_eng_nzm"); // auto-select finetuned model
+    } else {
+      setSelectedModel("nllb-600M"); // default model
+    }
+  }, [project]);
+  
     // Book upload state
     const [isBookUploadModalOpen, setIsBookUploadModalOpen] = useState(false);
     //const [uploadProgressOpen, setUploadProgressOpen] = useState(false);
@@ -677,10 +703,15 @@ const [totalBooks, setTotalBooks] = useState(0);
       message.info("Please select a specific book and chapter to translate.");
       return;
     }
-    setLoadingTranslate(true);
-    setCancelTranslation(false); // Reset cancel before starting
+   // Reset all translations to empty when starting new translation
+  setTokens(prev =>
+    prev.map(tok => ({ ...tok, verse_translated_text: "" }))
+  );
+  
+  setLoadingTranslate(true);
+  setCancelTranslation(false);
+  setTranslationAttempted(true); // Create a new AbortController
 
-    // Create a new AbortController
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
@@ -759,8 +790,6 @@ const [totalBooks, setTotalBooks] = useState(0);
       if (!cancelTranslation) {
         message.success({ key, content: "Chapter translated successfully!" });
       }
-      // ✅ immediately refresh draft so UI shows translations without refresh
-      // await updateServerDraft();
 
     } catch (err) {
       const key = "translating";
@@ -942,6 +971,10 @@ const [totalBooks, setTotalBooks] = useState(0);
       fetchTokensForSelection(selectedBook, selectedChapter);
     }
   }, [selectedBook, selectedChapter]);
+
+  const hasExistingTranslations = useMemo(() => {
+    return tokens.some(t => t.verse_translated_text && t.verse_translated_text.trim() !== "");
+  }, [tokens]);
 
   // ---------- UI ----------
   return (
@@ -1142,45 +1175,109 @@ const [totalBooks, setTotalBooks] = useState(0);
                   />
                 </Tooltip>
                 <Select
-                  style={{ width: 220 }}
-                  value={selectedModel || undefined}
-                  onChange={(val) => setSelectedModel(val)}
-                  disabled={loadingTranslate} // disabled during translation
-                >
-                  <Option value="nllb-600M">nllb-600M</Option>
-                  <Option value="nllb_finetuned_eng_nzm">nllb_finetuned_eng_nzm</Option>
-                </Select>
+  style={{ width: 220 }}
+  value={selectedModel || undefined}
+  onChange={(val) => {
+    if (val === "nllb-600M" && isZemeNaga) {
+      message.warning("nllb-600M not supported for Zeme Naga");
+      return; // block selection
+    }
+    setSelectedModel(val);
+  }}
+  disabled={loadingTranslate}
+>
+<Option value="nllb-600M" disabled={isZemeNaga}>
+    <Tooltip
+      title="This model does NOT support Zeme Naga language."
+      placement="left"
+      overlayInnerStyle={{
+        backgroundColor: "#fff",
+        color: "#000",
+        border: "1px solid #ddd",
+        borderRadius: "6px",
+        padding: "6px 10px",
+      }}
+    >
+      nllb-600M
+    </Tooltip>
+  </Option>
+
+  <Option value="nllb_finetuned_eng_nzm" disabled={!isZemeNaga}>
+    <Tooltip
+      title="This model ONLY supports Zeme Naga language."
+      placement="left"
+      overlayInnerStyle={{
+        backgroundColor: "#fff",
+        color: "#000",
+        border: "1px solid #ddd",
+        borderRadius: "6px",
+        padding: "6px 10px",
+      }}
+    >
+      nllb-finetuned-eng-nzm
+    </Tooltip>
+  </Option>
+</Select>
               </div>
             </Col>
             <Col>
-              <Tooltip
-                title={
-                  !selectedModel && selectedBook !== "all" && selectedChapter
-                    ? "Please select a model first"
-                    : ""
-                }
-                placement="top"
-              >
-                <span style={{ display: "inline-block" }}>
-                  <Button
-                    type="dashed"
-                    icon={<ThunderboltOutlined />}
-                    onClick={() => {
-                      if (loadingTranslate) {
-                        setCancelTranslation(true);          // Stop the loop
-                        abortControllerRef.current?.abort(); // Abort any in-progress API call
-                      } else {
-                        selectedChapter ? handleTranslateChapter() : handleTranslateAllChunks();
-                      }
-                    }}
-                    disabled={!selectedModel || selectedBook === "all" || !selectedChapter}
-                    style={loadingTranslate ? { color: "red", borderColor: "red" } : {}}
-
-                  >
-                    {loadingTranslate ? "Cancel Translation" : "Translate"}
-                  </Button>
-                </span>
-              </Tooltip>
+            <Tooltip
+  title={
+    !selectedModel && selectedBook !== "all" && selectedChapter
+      ? "Please select a model first"
+      : ""
+  }
+  placement="top"
+>
+  <span style={{ display: "inline-block" }}>
+    {loadingTranslate ? (
+      <Button
+        type="dashed"
+        icon={<ThunderboltOutlined />}
+        onClick={() => {
+          setCancelTranslation(true);
+          abortControllerRef.current?.abort();
+        }}
+        style={{ color: "red", borderColor: "red" }}
+      >
+        Cancel Translation
+      </Button>
+    ) : hasExistingTranslations ? (
+      <Popconfirm
+        title="Re-translate Chapter"
+        description="This chapter already has translations. Do you want to translate again? This will replace existing translations."
+        onConfirm={() => {
+          selectedChapter ? handleTranslateChapter() : handleTranslateAllChunks();
+        }}
+        okText="Yes, Translate Again"
+        cancelText="Cancel"
+        overlayInnerStyle={{
+          width: '400px',  // Adjust width
+          fontSize: '14px', // Adjust font size
+        }}
+      >
+        <Button
+          type="dashed"
+          icon={<ThunderboltOutlined />}
+          disabled={!selectedModel || selectedBook === "all" || !selectedChapter}
+        >
+          Translate
+        </Button>
+      </Popconfirm>
+    ) : (
+      <Button
+        type="dashed"
+        icon={<ThunderboltOutlined />}
+        onClick={() => {
+          selectedChapter ? handleTranslateChapter() : handleTranslateAllChunks();
+        }}
+        disabled={!selectedModel || selectedBook === "all" || !selectedChapter}
+      >
+        Translate
+      </Button>
+    )}
+  </span>
+</Tooltip>
             </Col>
 
           </Row>
@@ -1312,18 +1409,6 @@ const [totalBooks, setTotalBooks] = useState(0);
                             });
                           }}
                         />
-
-
-
-                        {/* {translationAttempted && !t.verse_translated_text && (
-                          <Typography.Text
-                            type="danger"
-                            style={{ fontSize: "14px" }}
-                          >
-                            Translation failed
-                          </Typography.Text>
-                        )}
-  */}
                         <Space style={{ marginTop: 6 }}>
                           {editedTokens[t.verse_token_id] && (
                             <>
