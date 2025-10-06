@@ -10,6 +10,7 @@ from app.schemas.project_text_document import (
     ProjectFileResponse, SuccessResponse, ProjectSummaryResponse, ProjectFileData, FileUpdate
 )
 from app.crud import project_text_document as crud
+from app.crud.project_text_document import delete_file_from_project
 from typing import List, Optional
 
 router = APIRouter()
@@ -217,3 +218,16 @@ def delete_project(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting project: {str(e)}")
+@router.delete("/{project_id}/files/{file_id}", response_model=dict)
+def api_delete_file(
+    project_id: str,
+    file_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        return delete_file_from_project(db, project_id, file_id, current_user.user_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
