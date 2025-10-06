@@ -108,6 +108,7 @@ export const authAPI = {
   },
 };
 
+
 // ------------------ Projects API ------------------
 export const projectsAPI = {
   getAllProjects: async () => (await api.get("/projects/")).data.data,
@@ -140,6 +141,12 @@ export const textDocumentAPI = {
     const res = await api.delete(`/api/project-text-documents/${projectId}`);
     return res.data;
   },
+  deleteFile: async (projectId, fileId) => {
+    const res = await api.delete(`/api/project-text-documents/${projectId}/files/${fileId}`);
+    return res.data;
+  },
+
+
   // Add this function to your textDocumentAPI object in api.js
 
   // Add this function to your textDocumentAPI object in api.js
@@ -379,6 +386,9 @@ export const booksAPI = {
     const response = await api.get(`/books/by_source/${sourceId}`);
     return response.data.data || [];
   },
+  deleteBook: async (bookId) => {
+    return api.delete(`/books/${bookId}`);
+  }, 
 };
 
 //------------------ Verse Tokens API ------------------

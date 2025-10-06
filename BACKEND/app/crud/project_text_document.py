@@ -294,3 +294,19 @@ def delete_project(db: Session, project_id: str, owner_id: UUID):
 
     db.commit()
 
+def delete_file_from_project(db: Session, project_id: str, file_id: str, owner_id: UUID):
+    """
+    Delete a single file from a project, ensuring ownership
+    """
+    file_record = db.query(ProjectTextDocument).filter(
+        ProjectTextDocument.project_id == project_id,
+        ProjectTextDocument.id == file_id,
+        ProjectTextDocument.owner_id == owner_id
+    ).first()
+
+    if not file_record:
+        raise ValueError(f"File with ID {file_id} not found in project {project_id} or not owned by user")
+
+    db.delete(file_record)
+    db.commit()
+    return {"detail": f"File '{file_record.file_name}' deleted successfully"}
