@@ -156,13 +156,13 @@ const Dashboard = () => {
 
         <Col xs={24} sm={12}>
           <Card
-            hoverable
-            onClick={() => navigate("/sources")}
-            onKeyDown={handleKeyNav("/sources")}
-            role="button"
-            tabIndex={0}
-            aria-label="View sources"
-            style={cardStyle}
+            // hoverable
+            // onClick={() => navigate("/sources")}
+            // onKeyDown={handleKeyNav("/sources")}
+            // role="button"
+            // tabIndex={0}
+            // aria-label="View sources"
+            style={{ ...cardStyle, cursor: "default" }}// disable click for now and set cursor to default
             bodyStyle={{ padding: 0 }}
           >
             <FileTextOutlined style={iconStyle("#52c41a")} />
