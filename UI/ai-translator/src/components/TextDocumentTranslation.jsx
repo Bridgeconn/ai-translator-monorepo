@@ -248,7 +248,22 @@ export default function TextDocumentTranslation() {
     };
     if (projectId) fetchData();
   }, [projectId]);
-
+  const isNagaTranslation = (src, tgt) => {
+    const nagaLangs = ["Zeme Naga", "Zeme naga", "nzm"]; // Add language codes/names you use
+    const englishLangs = ["English", "eng"];
+    return (
+      (englishLangs.includes(src) && nagaLangs.includes(tgt)) ||
+      (nagaLangs.includes(src) && englishLangs.includes(tgt))
+    );
+  };
+  useEffect(() => {
+    if (!sourceLangName || !targetLangName) return;
+  
+    if (isNagaTranslation(sourceLangName, targetLangName)) {
+      setSelectedModel("nllb_finetuned_eng_nzm"); // auto-select Naga model
+    }
+  }, [sourceLangName, targetLangName]);
+    
   // ------------------ Handle File Selection ------------------
   const handleFileChange = async (fileId) => {
     const file = projectFiles.find((f) => f.id === fileId);
@@ -685,16 +700,36 @@ export default function TextDocumentTranslation() {
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 {/* Model Dropdown */}
                 <Select
-                  style={{ width: 160 }}
-                  value={selectedModel}
-                  onChange={(value) => setSelectedModel(value)}
-                >
-                  {" "}
-                  <Option value="nllb-600M">nllb-600M</Option>
-                  <Option value="nllb_finetuned_eng_nzm">
-                    nllb_finetuned_eng_nzm
-                  </Option>
-                </Select>
+  style={{ width: 160 }}
+  value={selectedModel}
+  onChange={(value) => {
+    if (
+      isNagaTranslation(sourceLangName, targetLangName) &&
+      value === "nllb-600M"
+    ) {
+      // Keep the selection unchanged
+      setModelTooltip("This model does not support Zeme Naga language");
+      return;
+    }
+    setSelectedModel(value);
+    setModelTooltip(""); // reset tooltip if valid
+  }}
+>
+  <Option
+      title={!isNagaTranslation ? "Model not supported for Zeme Naga" : "Default model"}
+    value="nllb-600M"
+    disabled={isNagaTranslation(sourceLangName, targetLangName)}
+  >
+    nllb-600M
+  </Option>
+  <Option 
+    title={isNagaTranslation ? "Model only supported for Zeme Naga translation" : "Default model"}
+    value="nllb_finetuned_eng_nzm"
+    disabled={!isNagaTranslation(sourceLangName, targetLangName)}
+  >
+    nllb_finetuned_eng_nzm
+  </Option>
+  </Select>
                 <Tooltip
                   title={
                     selectedModel

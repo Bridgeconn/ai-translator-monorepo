@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Typography, Button, Space, Row, Col, Card } from "antd";
 import { useNavigate } from "react-router-dom";
 import {
@@ -6,12 +6,12 @@ import {
   EditOutlined,
   ThunderboltOutlined,
 } from "@ant-design/icons";
-
+import { useAuthModal } from "./AuthModalContext";  // ✅ Add this
 const { Title, Paragraph, Text } = Typography;
 
 export default function HomePage() {
   const navigate = useNavigate();
-
+  const { openLogin } = useAuthModal();  // ✅ Add this
   const features = [
     {
       icon: <TranslationOutlined style={{ fontSize: 28, color: "white" }} />,
@@ -143,7 +143,7 @@ export default function HomePage() {
           <Space size="middle">
             <Button
               size="large"
-              onClick={() => navigate("/login")}
+              onClick={openLogin}  // ✅ New way              
               style={styles.primaryBtn}
             >
               Get Started
