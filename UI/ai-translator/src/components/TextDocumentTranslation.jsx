@@ -666,19 +666,20 @@ export default function TextDocumentTranslation() {
               }}
             />
           </Upload>
-          {/* Delete File Button */}
-          <Tooltip title="Delete file">
-            <Button
-              icon={
-                <DeleteOutlined
-                  style={{ color: "red", cursor: "pointer", fontSize: 20 }}
-                />
-              }
-              onClick={handleDeleteFile}
-              disabled={!selectedFile}
-              danger
-            />
-          </Tooltip>
+            {/* Delete File Button */}
+            {selectedFile && (
+            <Tooltip title="Delete file">
+              <Button
+                icon={
+                  <DeleteOutlined
+                    style={{ color: "red", cursor: "pointer", fontSize: 20 }}
+                  />
+                }
+                onClick={handleDeleteFile}
+                danger
+              />
+            </Tooltip>
+          )}
         </div>
       </div>
 

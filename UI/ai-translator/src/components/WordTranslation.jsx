@@ -301,10 +301,12 @@ export default function WordTranslation() {
         const books = await booksAPI.getBooksBySourceId(project.source_id);
         setProjectBooks(books);
       } catch (e) {
-        notificationApi.error({
-          message: "Error",
-          description: "Failed to load book for this project",
+        notificationApi.info({
+          key: "upload-book-info", // 👈 unique key prevents duplicate
+          message: "Info",
+          description: "No books found. Please upload books to start translation.",
           placement: "top",
+          duration: 3,
         });
       }
     };
@@ -1183,14 +1185,15 @@ export default function WordTranslation() {
                 
               }}
             />
-            <Button
-  type="text"
-  icon={<DeleteOutlined style={{ color: "red", cursor: "pointer" , fontSize: 20}} />}
-  onClick={handleDeleteBook}
-  title="Delete Selected Book"
-  disabled={!selectedBook}
-  danger
-/>
+           {selectedBook && (
+              <Button
+                type="text"
+                icon={<DeleteOutlined style={{ color: "red", cursor: "pointer", fontSize: 20 }} />}
+                onClick={handleDeleteBook}
+                title="Delete Selected Book"
+                danger
+              />
+            )}
 
           </div>
         </div>
