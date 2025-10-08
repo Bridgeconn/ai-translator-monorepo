@@ -336,11 +336,37 @@ const [totalBooks, setTotalBooks] = useState(0);
   const fetchAvailableBooks = async (sourceId) => {
     try {
       const res = await api.get(`/books/by_source/${sourceId}`);
-      setBooks(res.data.data);
-    } catch {
-      message.error("Failed to fetch books");
+      const bookData = res.data?.data || [];
+      setBooks(bookData);
+  
+      // Show message only if empty
+      if (bookData.length === 0) {
+        message.info({
+          content: "No books found. Please upload books to start translation.",
+          key: "no-books", // prevents duplicate message stacking
+          duration: 3,
+        });
+      }
+    } catch (err) {
+      setBooks([]);
+  
+      // Handle 404 (no data found)
+      if (err.response?.status === 404) {
+        message.info({
+          content: "No books found. Please upload books to start translation.",
+          key: "no-books", // same key — prevents repeat popup
+          duration: 3,
+        });
+      } else {
+        message.error({
+          content: "Failed to fetch books",
+          key: "fetch-error",
+          duration: 3,
+        });
+      }
     }
   };
+  
 
   const fetchChaptersByBook = async (bookId) => {
     try {
@@ -1070,14 +1096,15 @@ const [totalBooks, setTotalBooks] = useState(0);
               //  borderColor: 'rgb(44, 141, 251)',
                 }}
               />
-               <Button
-  type="text"
-  icon={<DeleteOutlined style={{ color: "red", cursor: "pointer",fontSize: 20 }} />}
-  onClick={handleDeleteBook}
-  title="Delete Selected Book"
-  disabled={!selectedBook}
-  danger
-/>
+        {selectedBook && selectedBook !== "all" && (
+                <Button
+                  type="text"
+                  icon={<DeleteOutlined style={{ color: "red", cursor: "pointer",fontSize: 20 }} />}
+                  onClick={handleDeleteBook}
+                  title="Delete Selected Book"
+                  danger
+                />
+              )}
             {/* )} */}
           </div>
  

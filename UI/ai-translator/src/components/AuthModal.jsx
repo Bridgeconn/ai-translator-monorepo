@@ -163,6 +163,7 @@ export default function AuthModal() {
     loginForm.resetFields();
     registerForm.resetFields();
     setIsRegister(false);
+    setIsForgot(false);
     close();
   };
 
