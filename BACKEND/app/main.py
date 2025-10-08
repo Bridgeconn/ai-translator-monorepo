@@ -57,7 +57,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://mt.vachanengine.org",
+        "https://mt.vachanengine.org", "localhost:3000", "http://localhost:3000","https://vachan-ai-ui-v2.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
