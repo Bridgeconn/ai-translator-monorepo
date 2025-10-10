@@ -1236,35 +1236,85 @@ const [totalBooks, setTotalBooks] = useState(0);
   onChange={(val) => setSelectedModel(val)}
   disabled={loadingTranslate}
 >
-  <Option value="nllb-600M" disabled={selectedModel !== "nllb-600M"}>
-    <Tooltip title="General-purpose model for 200 languages.">
-      nllb-600M
-    </Tooltip>
-  </Option>
+<Option value="nllb-600M" disabled={selectedModel !== "nllb-600M"}>
+  <Tooltip
+    title="General-purpose model for 200 languages."
+    overlayInnerStyle={{
+      backgroundColor: "#fff",
+      color: "#000",
+      border: "1px solid #ddd",
+      borderRadius: "6px",
+      padding: "6px 10px",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
+    }}
+  >
+    nllb-600M
+  </Tooltip>
+</Option>
 
-  <Option value="nllb_finetuned_eng_nzm" disabled={selectedModel !== "nllb_finetuned_eng_nzm"}>
-    <Tooltip title="This model ONLY supports English ↔ Zeme Naga.">
-      nllb-finetuned-eng-nzm
-    </Tooltip>
-  </Option>
+<Option value="nllb_finetuned_eng_nzm" disabled={selectedModel !== "nllb_finetuned_eng_nzm"}>
+  <Tooltip
+    title="This model ONLY supports English ↔ Zeme Naga."
+    overlayInnerStyle={{
+      backgroundColor: "#fff",
+      color: "#000",
+      border: "1px solid #ddd",
+      borderRadius: "6px",
+      padding: "6px 10px",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
+    }}
+  >
+    nllb-finetuned-eng-nzm
+  </Tooltip>
+</Option>
 
-  <Option value="nllb-english-nagamese" disabled={selectedModel !== "nllb-english-nagamese"}>
-    <Tooltip title="This model ONLY supports English ↔ Nagamese.">
-      nllb-english-nagamese
-    </Tooltip>
-  </Option>
+<Option value="nllb-english-nagamese" disabled={selectedModel !== "nllb-english-nagamese"}>
+  <Tooltip
+    title="This model ONLY supports English ↔ Nagamese."
+    overlayInnerStyle={{
+      backgroundColor: "#fff",
+      color: "#000",
+      border: "1px solid #ddd",
+      borderRadius: "6px",
+      padding: "6px 10px",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
+    }}
+  >
+    nllb-english-nagamese
+  </Tooltip>
+</Option>
 
-  <Option value="nllb-gujrathi-koli_kachchi" disabled={selectedModel !== "nllb-gujrathi-koli_kachchi"}>
-    <Tooltip title="This model ONLY supports Gujarati ↔ Kachi Koli.">
-      nllb-gujrathi-koli_kachchi
-    </Tooltip>
-  </Option>
+<Option value="nllb-gujrathi-koli_kachchi" disabled={selectedModel !== "nllb-gujrathi-koli_kachchi"}>
+  <Tooltip
+    title="This model ONLY supports Gujarati ↔ Kachi Koli."
+    overlayInnerStyle={{
+      backgroundColor: "#fff",
+      color: "#000",
+      border: "1px solid #ddd",
+      borderRadius: "6px",
+      padding: "6px 10px",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
+    }}
+  >
+    nllb-gujrathi-koli_kachchi
+  </Tooltip>
+</Option>
 
-  <Option value="nllb-hin-surjapuri" disabled={selectedModel !== "nllb-hin-surjapuri"}>
-    <Tooltip title="This model ONLY supports Hindi ↔ Surjapuri.">
-      nllb-hin-surjapuri
-    </Tooltip>
-  </Option>
+<Option value="nllb-hin-surjapuri" disabled={selectedModel !== "nllb-hin-surjapuri"}>
+  <Tooltip
+    title="This model ONLY supports Hindi ↔ Surjapuri."
+    overlayInnerStyle={{
+      backgroundColor: "#fff",
+      color: "#000",
+      border: "1px solid #ddd",
+      borderRadius: "6px",
+      padding: "6px 10px",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
+    }}
+  >
+    nllb-hin-surjapuri
+  </Tooltip>
+</Option>
 </Select>
               </div>
             </Col>
