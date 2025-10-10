@@ -283,33 +283,42 @@ useEffect(() => {
     return;
   }
 
-  const validPairs = [
-    ["English", "Zeme Naga"],
-    ["Zeme Naga", "English"],
-    ["English", "Nagamese"],
-    ["Nagamese", "English"],
-    ["Gujarati", "Kachi Koli"],
-    ["Kachi Koli", "Gujarati"],
-    ["Hindi", "Surjapuri"],
-    ["Surjapuri", "Hindi"],
-  ];
+  const specialPairs = {
+    "Zeme Naga": "English",
+    "Nagamese": "English",
+    "Kachi Koli": "Gujarati",
+    "Surjapuri": "Hindi",
+  };
 
-  const isSupported = validPairs.some(
-    ([src, tgt]) =>
-      src === sourceLang.name && tgt === targetLang.name
-  );
+  const src = sourceLang.name;
+  const tgt = targetLang.name;
 
-  if (!isSupported) {
+  const isSourceSpecial = Object.keys(specialPairs).includes(src);
+  const isTargetSpecial = Object.keys(specialPairs).includes(tgt);
+
+  let invalid = false;
+
+  // ✅ Check only when either side is special
+  if (isSourceSpecial) {
+    invalid = specialPairs[src] !== tgt;
+  } else if (isTargetSpecial) {
+    invalid = specialPairs[tgt] !== src;
+  } else {
+    invalid = false; // ✅ other combinations are allowed
+  }
+
+  if (invalid) {
     setIsInvalidPair(true);
-    showNotification(
-      "error",
-      "Unsupported Pair",
-      `Translation between ${sourceLang.name} and ${targetLang.name} is not supported by any available model.`
-    );
+    notification.error({
+      message: "Unsupported Language Pair",
+      description: `${src} ↔ ${tgt} is not supported by available models.`,
+      duration: 3,
+    });
   } else {
     setIsInvalidPair(false);
   }
 }, [sourceLang, targetLang]);
+
   useEffect(() => {
     if (!saveModalVisible) return;
 
