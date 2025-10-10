@@ -1977,7 +1977,7 @@ Mulao,NaN,giu
 White Gelao,NaN,giw
 Gilima,NaN,gix
 South Giziga,NaN,giz
-Kachi Koli,NaN,gjk
+Kachi Koli,gjk_Gujr,gjk
 Gunditjmara,NaN,gjm
 Gonja,NaN,gjn
 Gujari,NaN,gju
@@ -4161,7 +4161,7 @@ Namla,NaN,naa
 Narak,NaN,nac
 Naka'ela,NaN,nae
 Nabak,NaN,naf
-Nagamese,NaN,nag
+Nagamese,nag_Latn,nag
 Nalu,NaN,naj
 Nakanai,NaN,nak
 Nalik,NaN,nal
@@ -5433,7 +5433,7 @@ Kemi Sami,NaN,sjk
 Sajalong,NaN,sjl
 Mapun,NaN,sjm
 Xibe,NaN,sjo
-Surjapuri,NaN,sjp
+Surjapuri,sjp_Deva,sjp
 Siar-Lak,NaN,sjr
 Senhaja De Srair,NaN,sjs
 Ter Sami,NaN,sjt

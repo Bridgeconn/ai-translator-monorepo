@@ -94,13 +94,42 @@ const CreateProjectModal = ({
   const handleSourceChange = (sourceId) => {
     form.setFieldsValue({ source_id: sourceId });
     updateProjectName();
-  };
+    // ✅ Find selected source object
+    const selectedSource = sources.find((s) => s.source_id === sourceId);
+  
+    // ✅ Apply filtering based on source language name
+    if (selectedSource && FILTER_MAP[selectedSource.language_name]) {
+      setFilteredTargetLangs(FILTER_MAP[selectedSource.language_name]);
+    } else {
+      setFilteredTargetLangs([]); // show all
+    }
+  
+    // ✅ Reset target if invalid
+    const currentTargetId = form.getFieldValue("target_language_id");
+    const currentTarget = languages.find((l) => l.language_id === currentTargetId);
+    if (
+      currentTarget &&
+      selectedSource &&
+      FILTER_MAP[selectedSource.language_name] &&
+      !FILTER_MAP[selectedSource.language_name].includes(currentTarget.name)
+    ) {
+      form.setFieldsValue({ target_language_id: null });
+    }
+  }; 
 
   const handleTargetLanguageChange = (langObj) => {
     form.setFieldsValue({ target_language_id: langObj.language_id });
     updateProjectName();
   };
-
+// 🔹 Restriction mapping for special source languages
+const FILTER_MAP = {
+  "Zeme Naga": ["English"],
+  "Nagamese": ["English"],
+  "Kachi Koli": ["Gujarati"],
+  "Surjapuri": ["Hindi"],
+};
+// 🔹 State to hold allowed target language list
+const [filteredTargetLangs, setFilteredTargetLangs] = useState([]);
   return (
     <>
       {contextHolder}
@@ -210,18 +239,20 @@ const CreateProjectModal = ({
           </Form.Item>
 
           {/* Target Language */}
-          <Form.Item
-            label="Target Language"
-            name="target_language_id"
-            rules={[
-              { required: true, message: "Please select target language" },
-            ]}
-            style={{ width: "100%" }}
-          >
-            <div className="full-width-select">
-              <LanguageSelect label="" onChange={handleTargetLanguageChange} />
-            </div>
-          </Form.Item>
+<Form.Item
+  label="Target Language"
+  name="target_language_id"
+  rules={[{ required: true, message: "Please select target language" }]}
+  style={{ width: "100%" }}
+>
+  <div className="full-width-select">
+    <LanguageSelect
+      label=""
+      onChange={handleTargetLanguageChange}
+      filterList={filteredTargetLangs}
+    />
+  </div>
+</Form.Item>
 
           {/* Translation Type */}
           <Form.Item

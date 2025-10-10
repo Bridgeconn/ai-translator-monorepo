@@ -45,7 +45,7 @@ const LINE_SENTINEL = " ⟦LB⟧ ";
 async function getAccessToken() {
   console.log(
     "🔑 Requesting token:",
-    "https://api.vachanengine.org/v2/ai/token"
+    "https://stagingapi.vachanengine.org/v2/ai/token"
   );
   const params = new URLSearchParams();
   params.append("username", import.meta.env.VITE_VACHAN_USERNAME);
@@ -70,7 +70,7 @@ async function requestDocTranslation(token, file, srcLangCode, tgtLangCode, mode
   );
 
   const resp = await vachanApi.post(
-    `/model/text/translate-document?device=cpu&model_name=${model_name}&source_language=${srcLangCode}&target_language=${tgtLangCode}`,
+    `/model/text/translate-document?device=cpu&model_name=${model_name}&source_language=${srcLangCode}&target_language=${tgtLangCode}&output_format=txt`,
     formData,
     {
       headers: {
@@ -194,13 +194,6 @@ export default function QuickTranslationPage() {
     }
   }, []);
   const modelsInfo = {
-    "nllb_finetuned_eng_nzm": {
-      tasks: "mt, text translation",
-      languageCodeType: "BCP-47",
-      developedBy: "Meta",
-      license: "CC-BY-NC 4.0",
-      languages: "Zeme Naga, English",
-    },
     "nllb-600M": {
       tasks: "mt, text translation",
       languageCodeType: "BCP-47",
@@ -208,7 +201,35 @@ export default function QuickTranslationPage() {
       license: "CC-BY-NC 4.0",
       languages: "200 languages",
     },
-  };
+    "nllb_finetuned_eng_nzm": {
+      tasks: "mt, text translation",
+      languageCodeType: "BCP-47",
+      developedBy: "Meta",
+      license: "CC-BY-NC 4.0",
+      languages: "English, Zeme Naga (nzm_Latn)",
+    },
+    "nllb-english-nagamese": {
+      tasks: "mt, text translation",
+      languageCodeType: "BCP-47",
+      developedBy: "Meta",
+      license: "CC-BY-NC 4.0",
+      languages: "English, Nagamese (nag_Latn)",
+    },
+    "nllb-gujrathi-koli_kachchi": {
+      tasks: "mt, text translation",
+      languageCodeType: "BCP-47",
+      developedBy: "Meta",
+      license: "CC-BY-NC 4.0",
+      languages: "Gujarati, Kachi Koli (gjk_Gujr)",
+    },
+    "nllb-hin-surjapuri": {
+      tasks: "mt, text translation",
+      languageCodeType: "BCP-47",
+      developedBy: "Meta",
+      license: "CC-BY-NC 4.0",
+      languages: "Hindi, Surjapuri (sjp_Deva)",
+    },
+  };  
   const [isModalVisible, setIsModalVisible] = useState(false);
   const showInfo = () => setIsModalVisible(true);
   const handleClose = () => setIsModalVisible(false);
@@ -229,10 +250,66 @@ export default function QuickTranslationPage() {
   const [creatingProject, setCreatingProject] = useState(false);
   const [createProjectError, setCreateProjectError] = useState("");
   const [selectedModel, setSelectedModel] = useState("nllb-600M");
+  const [filteredTargetLangs, setFilteredTargetLangs] = useState([]);
+const [filteredSourceLangs, setFilteredSourceLangs] = useState([]);
+const [isInvalidPair, setIsInvalidPair] = useState(false);
+
   const availableModels = [
     { label: "nllb-600M", value: "nllb-600M" },
-    { label: "nllb_finetuned_eng_nzm", value: "nllb_finetuned_eng_nzm" }
+    { label: "nllb_finetuned_eng_nzm", value: "nllb_finetuned_eng_nzm" },
+    { label: "nllb-english-nagamese", value: "nllb-english-nagamese" },
+    { label: "nllb-gujrathi-koli_kachchi", value: "nllb-gujrathi-koli_kachchi" },
+    { label: "nllb-hin-surjapuri", value: "nllb-hin-surjapuri" }
   ];
+  const LANGUAGE_PAIRS = {
+    "Zeme Naga": ["English"],
+    "English": ["Zeme Naga", "Nagamese"],
+    "Nagamese": ["English"],
+    "Kachi Koli": ["Gujarati"],
+    "Gujarati": ["Kachi Koli"],
+    "Surjapuri": ["Hindi"],
+    "Hindi": ["Surjapuri"],
+  };
+  // One-way filter mapping (special languages restrict pairing)
+const FILTER_MAP = {
+  "Zeme Naga": ["English"],
+  "Nagamese": ["English"],
+  "Kachi Koli": ["Gujarati"],
+  "Surjapuri": ["Hindi"],
+};
+useEffect(() => {
+  if (!sourceLang || !targetLang) {
+    setIsInvalidPair(false);
+    return;
+  }
+
+  const validPairs = [
+    ["English", "Zeme Naga"],
+    ["Zeme Naga", "English"],
+    ["English", "Nagamese"],
+    ["Nagamese", "English"],
+    ["Gujarati", "Kachi Koli"],
+    ["Kachi Koli", "Gujarati"],
+    ["Hindi", "Surjapuri"],
+    ["Surjapuri", "Hindi"],
+  ];
+
+  const isSupported = validPairs.some(
+    ([src, tgt]) =>
+      src === sourceLang.name && tgt === targetLang.name
+  );
+
+  if (!isSupported) {
+    setIsInvalidPair(true);
+    showNotification(
+      "error",
+      "Unsupported Pair",
+      `Translation between ${sourceLang.name} and ${targetLang.name} is not supported by any available model.`
+    );
+  } else {
+    setIsInvalidPair(false);
+  }
+}, [sourceLang, targetLang]);
   useEffect(() => {
     if (!saveModalVisible) return;
 
@@ -290,22 +367,52 @@ export default function QuickTranslationPage() {
     }
    };
   // ✅ Auto-select correct model based on source/target languages
-useEffect(() => {
-  if (!sourceLang || !targetLang) return;
+  useEffect(() => {
+    if (!sourceLang || !targetLang) return;
+    console.log("=" .repeat(50));
+  console.log("🔍 SOURCE LANG OBJECT:", JSON.stringify(sourceLang, null, 2));
+  console.log("🔍 TARGET LANG OBJECT:", JSON.stringify(targetLang, null, 2));
+  console.log("=" .repeat(50));
 
-  const src = sourceLang.BCP_code;
-  const tgt = targetLang.BCP_code;
+    const src = sourceLang.BCP_code;
+    const tgt = targetLang.BCP_code;
+  
+    // Check for English ↔ Zeme Naga
+    const isEngNzemePair =
+      (src === "eng_Latn" && tgt === "nzm_Latn") ||
+      (src === "nzm_Latn" && tgt === "eng_Latn");
+  
+    // Check for English ↔ Naga Pidgin
+    const isEngNagPair =
+      (src === "eng_Latn" && tgt === "nag_Latn") ||
+      (src === "nag_Latn" && tgt === "eng_Latn");
+      console.log("🔍 Checking nag_Latn pair:", isEngNagPair);
+  console.log("🔍 src === 'eng_Latn':", src === "eng_Latn");
+  console.log("🔍 tgt === 'nag_Latn':", tgt === "nag_Latn");
 
-  const isEngNzemePair =
-    (src === "eng_Latn" && tgt === "nzm_Latn") ||
-    (src === "nzm_Latn" && tgt === "eng_Latn");
-
-  if (isEngNzemePair) {
-    setSelectedModel("nllb_finetuned_eng_nzm");
-  } else {
-    setSelectedModel("nllb-600M");
-  }
-}, [sourceLang, targetLang]);
+  
+    // Check for Gujarati ↔ Kachi Koli
+    const isGujGjkPair =
+      (src === "guj_Gujr" && tgt === "gjk_Gujr") ||
+      (src === "gjk_Gujr" && tgt === "guj_Gujr");
+  
+    // Check for Hindi ↔ Surjapuri
+    const isHinSjpPair =
+      (src === "hin_Deva" && tgt === "sjp_Deva") ||
+      (src === "sjp_Deva" && tgt === "hin_Deva");
+  
+    if (isEngNzemePair) {
+      setSelectedModel("nllb_finetuned_eng_nzm");
+    } else if (isEngNagPair) {
+      setSelectedModel("nllb-english-nagamese");
+    } else if (isGujGjkPair) {
+      setSelectedModel("nllb-gujrathi-koli_kachchi");
+    } else if (isHinSjpPair) {
+      setSelectedModel("nllb-hin-surjapuri");
+    } else {
+      setSelectedModel("nllb-600M");
+    }
+  }, [sourceLang, targetLang]);
 
   // ------------------ Copy & Paste Logic ------------------
   const handleCopy = (content) => {
@@ -462,6 +569,38 @@ useEffect(() => {
       );
       return;
     }
+    // ✅ Recalculate the correct model right here
+  const src = sourceLang.BCP_code;
+  const tgt = targetLang.BCP_code;
+  
+  let modelToUse = "nllb-600M"; // default
+  
+  const isEngNzemePair =
+    (src === "eng_Latn" && tgt === "nzm_Latn") ||
+    (src === "nzm_Latn" && tgt === "eng_Latn");
+  
+  const isEngNagPair =
+    (src === "eng_Latn" && tgt === "nag_Latn") ||
+    (src === "nag_Latn" && tgt === "eng_Latn");
+  
+  const isGujGjkPair =
+    (src === "guj_Gujr" && tgt === "gjk_Gujr") ||
+    (src === "gjk_Gujr" && tgt === "guj_Gujr");
+  
+  const isHinSjpPair =
+    (src === "hin_Deva" && tgt === "sjp_Deva") ||
+    (src === "sjp_Deva" && tgt === "hin_Deva");
+  
+  if (isEngNzemePair) {
+    modelToUse = "nllb_finetuned_eng_nzm";
+  } else if (isEngNagPair) {
+    modelToUse = "nllb-english-nagamese";
+  } else if (isGujGjkPair) {
+    modelToUse = "nllb-gujrathi-koli_kachchi";
+  } else if (isHinSjpPair) {
+    modelToUse = "nllb-hin-surjapuri";
+  }
+  console.log("🎯 Using model for translation:", modelToUse);
 
     if (!sourceText.trim() && !uploadedFile) {
       showNotification(
@@ -471,7 +610,13 @@ useEffect(() => {
       );
       return;
     }
+    let fileToSend = uploadedFile;
 
+if (!uploadedFile && sourceText.trim() !== "") {
+  const blob = new Blob([sourceText], { type: "text/plain" });
+  fileToSend = new File([blob], "content_only.txt", { type: "text/plain" });
+  console.log("📝 Created virtual file from typed text:", fileToSend);
+}
     //  Create AbortController right away so user can cancel anytime
     controllerRef.current = new AbortController();
     const signal = controllerRef.current.signal;
@@ -562,15 +707,20 @@ useEffect(() => {
       } else {
         // Pasted text
         if (containsUSFMMarkers(sourceText)) {
-          message.warning(
-            " This file contains USFM markers. The translation output may not be accurate."
-          )
+          showNotification(
+            "warning",
+            "USFM Markers Detected",
+            "This text contains USFM markers. The translation output may not be accurate. Use verse translation for better results."
+          );
           isUSFMContent = true;
           const extracted = extractUSFMContent(sourceText);
           usfmStructure = extracted.structure;
           textToTranslate = normalizeText(extracted.plainText);
         } else {
           textToTranslate = normalizeText(sourceText);
+          if (!uploadedFile && sourceText.trim().length < 5) {
+            textToTranslate += "\n"; // Adds minimal context to help the model
+          }
         }
       }
 
@@ -594,7 +744,7 @@ useEffect(() => {
         fileToSend,
         sourceLang?.BCP_code,
         targetLang?.BCP_code,
-        selectedModel || "nllb-600M"
+        modelToUse
       );
       if (signal.aborted) throw new Error("Translation cancelled");
 
@@ -615,25 +765,85 @@ useEffect(() => {
       const csvText = await fetchAssets(token, finishedJobId);
       if (signal.aborted) throw new Error("Translation cancelled");
 
-      // --- 7️⃣ Parse CSV ---
-      const parsed = Papa.parse(csvText, {
-        header: true,
-        skipEmptyLines: true,
-        dynamicTyping: false,
-        trimHeaders: true,
-      });
+      // // --- 7️⃣ Parse CSV ---
+      // const parsed = Papa.parse(csvText, {
+      //   header: true,
+      //   skipEmptyLines: true,
+      //   dynamicTyping: false,
+      //   trimHeaders: true,
+      // });
 
-      console.log("📥 Parsed CSV data:", parsed.data);
+      // console.log("📥 Parsed CSV data:", parsed.data);
 
-      // --- 8️⃣ Rebuild translation ---
-      let translatedText = "";
-      if (isUSFMContent && usfmStructure) {
-        translatedText = reconstructUSFM(usfmStructure, parsed.data);
-      } else {
-        translatedText = simpleTranslation(textToTranslate, parsed.data);
-      }
+      // // --- 8️⃣ Rebuild translation ---
+      // let translatedText = "";
+      // if (isUSFMContent && usfmStructure) {
+      //   translatedText = reconstructUSFM(usfmStructure, parsed.data);
+      // } else {
+      //   translatedText = simpleTranslation(textToTranslate, parsed.data);
+      // }
 
-      setTargetText(normalizeTranslation(translatedText));
+      // setTargetText(normalizeTranslation(translatedText));
+      // --- 7️⃣ Check if response is CSV or plain text ---
+console.log("📥 Raw response from API:", csvText);
+
+// // Check if the response looks like CSV (first line should have "Source" and "Translation" headers)
+const firstLine = csvText.split('\n')[0];
+const isCSVFormat = firstLine.toLowerCase().includes('source') && 
+                    (firstLine.toLowerCase().includes('translation') || 
+                     firstLine.toLowerCase().includes('target'));
+
+console.log("🔍 First line:", firstLine);
+console.log("🔍 Is CSV format?", isCSVFormat);
+let translatedText = "";
+
+if (!isCSVFormat) {
+  // ✅ API returned plain text directly - just use it!
+  console.log("✅ API returned plain text directly");
+  translatedText = csvText.trim();
+  
+  // If it's USFM, we might need to reconstruct structure
+  if (isUSFMContent && usfmStructure) {
+    // Split the plain text by lines and try to match with structure
+    const translationLines = translatedText.split('\n').filter(l => l.trim());
+    translatedText = reconstructUSFMFromPlainText(usfmStructure, translationLines);
+  }
+} else {
+  // Parse as CSV
+  console.log("📥 Parsing as CSV format");
+  const parsed = Papa.parse(csvText, {
+    header: true,
+    skipEmptyLines: true,
+    dynamicTyping: false,
+    trimHeaders: true,
+  });
+
+  console.log("📥 Parsed CSV data:", parsed.data);
+
+  if (!parsed.data || parsed.data.length === 0) {
+    throw new Error("No translation data received from API");
+  }
+  // --- 8️⃣ Rebuild translation from CSV ---
+  if (isUSFMContent && usfmStructure) {
+    translatedText = reconstructUSFM(usfmStructure, parsed.data);
+  } else {
+    translatedText = simpleTranslation(textToTranslate, parsed.data);
+  }
+}
+console.log("✅ Final translated text:", translatedText);
+if (!translatedText || translatedText.trim() === "") {
+  throw new Error("Translation resulted in empty text");
+}
+if (
+  sourceText.trim() !== "" && 
+  translatedText.trim() === textToTranslate.trim()
+) {
+  // Use textToTranslate, which is the normalized source text sent to the API
+  throw new Error(
+    "Translation failed: The server returned the original source text. Please check the API logs or contact support."
+  );
+}
+setTargetText(normalizeTranslation(translatedText));
       setIsTargetEdited(false);
       setIsTranslated(true);
       showNotification(
@@ -759,9 +969,30 @@ useEffect(() => {
       })
       .join("\n");
   }
-
+  function reconstructUSFMFromPlainText(structure, translationLines) {
+    let translationIndex = 0;
+    
+    return structure
+      .map((element) => {
+        if (element.type === "translatable") {
+          const translation = translationLines[translationIndex++];
+          if (translation) {
+            const originalIndent = element.originalLine.match(/^\s*/)[0];
+            return originalIndent + element.prefix + translation;
+          } else {
+            return element.originalLine;
+          }
+        } else {
+          return element.originalLine;
+        }
+      })
+      .join("\n");
+  }
+  
   //  Helper: non-USFM translation
   function simpleTranslation(sourceText, csvData) {
+    console.log("🔍 CSV Data received:", csvData);
+  console.log("🔍 Source text:", sourceText);
     const translations = csvData
       .map((row) => row.Translation?.trim())
       .filter(Boolean);
@@ -1161,46 +1392,100 @@ useEffect(() => {
             <Row gutter={16} align="bottom">
               {/* Source Language - Left side */}
               <Col xs={24} md={8}>
-                <LanguageSelect
-                  value={sourceLang}
-                  onChange={setSourceLang}
-                  disabled={loading}
-                  placeholder="Select source language"
-                />
-              </Col>
+  <LanguageSelect
+    value={sourceLang}
+    onChange={(lang) => {
+      setSourceLang(lang);
+      // ✅ Apply one-way filtering based on special language selection
+      if (lang && FILTER_MAP[lang.name]) {
+        setFilteredTargetLangs(FILTER_MAP[lang.name]);
+      } else {
+        setFilteredTargetLangs([]); // show all languages
+      }
+    
+      // Optional: reset target if current one is invalid
+      if (lang && FILTER_MAP[lang.name]) {
+        const allowed = FILTER_MAP[lang.name];
+        if (!allowed.some((n) => n === targetLang?.name)) {
+          setTargetLang(null);
+        }
+      }
+      // ✅ Clear reverse filtering when source changes
+    setFilteredSourceLangs([]);
+    }}
+    disabled={loading}
+    filterList={filteredSourceLangs}
+    placeholder="Select source language"
+  />
+</Col>
 
-              {/* Swap Button - Center */}
-              <Col
-                xs={24}
-                md={2}
-                style={{
-                  textAlign: "center",
-
-                }}
-              >
-                <Tooltip title="Swap Languages" color="#fff">
-                  <Button
-                    shape="circle"
-                    icon={<SwapOutlined />}
-                    onClick={() => {
-                      const temp = sourceLang;
-                      setSourceLang(targetLang);
-                      setTargetLang(temp);
-                    }}
-                    disabled={loading}
-                  />
-                </Tooltip>
-              </Col>
-              <Col xs={0} md={6} />
-              {/* Target Language - Right side */}
-              <Col xs={24} md={8} alignItems="right">
-                <LanguageSelect
-                  value={targetLang}
-                  onChange={setTargetLang}
-                  disabled={loading}
-                  placeholder="Select target language"
-                />
-              </Col>
+{/* Swap Button - Center */}
+<Col xs={24} md={2} style={{ textAlign: "center" }}>
+  <Tooltip title="Swap Languages" color="#fff">
+    <Button
+      shape="circle"
+      icon={<SwapOutlined />}
+      onClick={() => {
+        // ✅ Clear filters first to avoid blank dropdown bug
+        setFilteredTargetLangs([]);
+        setFilteredSourceLangs([]);
+        const temp = sourceLang;
+        setSourceLang(targetLang);
+        setTargetLang(temp);
+      }}
+      disabled={loading}
+    />
+  </Tooltip>
+</Col>            
+              <Col xs={0} md={6} />            
+{/* Target Language - Right side */}
+<Col xs={24} md={8} alignItems="right">
+  <LanguageSelect
+    value={targetLang}
+    onChange={(lang) => {
+      setTargetLang(lang);
+    
+      // ✅ Only apply filtering when target is one of the special languages
+      if (
+        lang &&
+        ["Zeme Naga", "Nagamese", "Kachi Koli", "Surjapuri"].includes(lang.name)
+      ) {
+        // Each special target has one specific allowed source
+        const filterMap = {
+          "Zeme Naga": ["English"],
+          "Nagamese": ["English"],
+          "Kachi Koli": ["Gujarati"],
+          "Surjapuri": ["Hindi"],
+        };
+        setFilteredSourceLangs(filterMap[lang.name]);
+      } else {
+        // Base or unrestricted target language → show all sources
+        setFilteredSourceLangs([]);
+      }
+    
+      // ✅ Reset source if current source is not allowed anymore
+      if (
+        lang &&
+        ["Zeme Naga", "Nagamese", "Kachi Koli", "Surjapuri"].includes(lang.name)
+      ) {
+        const allowedSource = {
+          "Zeme Naga": ["English"],
+          "Nagamese": ["English"],
+          "Kachi Koli": ["Gujarati"],
+          "Surjapuri": ["Hindi"],
+        }[lang.name];
+        if (!allowedSource.includes(sourceLang?.name)) {
+          setSourceLang(null);
+        }
+      }   
+      // ✅ Clear any target-side filters (since we’re filtering source only) 
+      setFilteredTargetLangs([]);
+    }} 
+    disabled={loading}
+    filterList={filteredTargetLangs}
+    placeholder="Select target language"   
+  />
+</Col>
             </Row>
 
           </Card>
@@ -1333,16 +1618,37 @@ useEffect(() => {
     const src = sourceLang?.BCP_code;
     const tgt = targetLang?.BCP_code;
     const isEngNzemePair =
-      (src === "eng_Latn" && tgt === "nzm_Latn") ||
-      (src === "nzm_Latn" && tgt === "eng_Latn");
+  (src === "eng_Latn" && tgt === "nzm_Latn") ||
+  (src === "nzm_Latn" && tgt === "eng_Latn");
 
-    if (m.value === "nllb-600M" && isEngNzemePair) {
-      disabled = true;
-      tooltip = "This model does not support Zeme Naga language.";
-    } else if (m.value === "nllb_finetuned_eng_nzm" && !isEngNzemePair) {
-      disabled = true;
-      tooltip = "This model supports only English ↔ Zeme Naga translation.";
-    }
+const isEngNagPair =
+  (src === "eng_Latn" && tgt === "nag_Latn") ||
+  (src === "nag_Latn" && tgt === "eng_Latn");
+const isGujGjkPair =
+  (src === "guj_Gujr" && tgt === "gjk_Gujr") ||
+  (src === "gjk_Gujr" && tgt === "guj_Gujr");
+const isHinSjpPair =
+  (src === "hin_Deva" && tgt === "sjp_Deva") ||
+  (src === "sjp_Deva" && tgt === "hin_Deva");
+// Disable nllb-600M for specialized language pairs
+if (m.value === "nllb-600M" && (isEngNzemePair || isEngNagPair || isGujGjkPair || isHinSjpPair)) {
+  disabled = true;
+  tooltip = "Use the specialized fine-tuned model for this language pair.";
+} 
+// Only enable fine-tuned models for their specific language pairs
+else if (m.value === "nllb_finetuned_eng_nzm" && !isEngNzemePair) {
+  disabled = true;
+  tooltip = "This model supports only English ↔ Zeme Naga translation.";
+} else if (m.value ==="nllb-english-nagamese" && !isEngNagPair) {
+  disabled = true;
+  tooltip = "This model supports only English ↔ Naga Pidgin translation.";
+} else if (m.value === "nllb-gujrathi-koli_kachchi" && !isGujGjkPair) {
+  disabled = true;
+  tooltip = "This model supports only Gujarati ↔ Kachi Koli translation.";
+} else if (m.value === "nllb-hin-surjapuri" && !isHinSjpPair) {
+  disabled = true;
+  tooltip = "This model supports only Hindi ↔ Surjapuri translation.";
+}
 
     return (
       <Select.Option key={m.value} value={m.value} disabled={disabled}>
@@ -1483,21 +1789,25 @@ useEffect(() => {
                   handleTranslate();
                 }
               }}
-              disabled={!selectedModel} // disable if loading or no model selected
+              disabled={!selectedModel|| isInvalidPair} // disable if loading or no model selected
               style={{
                 padding: "0 32px",
                 borderRadius: "8px",
                 minWidth: "200px",
                 backgroundColor: loading
-                  ? "#ff4d4f"
-                  : !selectedModel
-                    ? "#d9d9d9"
-                    : "rgb(44,141,251)",
-                borderColor: loading
-                  ? "#ff4d4f"
-                  : !selectedModel
-                    ? "#d9d9d9"
-                    : "rgb(44,141,251)",
+      ? "#ff4d4f"
+      : isInvalidPair
+        ? "#d9d9d9"
+        : !selectedModel
+          ? "#d9d9d9"
+          : "rgb(44,141,251)",
+    borderColor: loading
+      ? "#ff4d4f"
+      : isInvalidPair
+        ? "#d9d9d9"
+        : !selectedModel
+          ? "#d9d9d9"
+          : "rgb(44,141,251)",
                 color: "#fff",
               }}
             >

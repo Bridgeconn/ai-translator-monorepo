@@ -165,29 +165,58 @@ const VerseTranslationPage = () => {
       License: "CC-BY-NC 4.0",
       Languages: "Zeme Naga, English",
     },
+    "nllb-english-nagamese": {
+      Model: "nllb-english-nagamese",
+      Tasks: "mt, text translation",
+      "Language Code Type": "BCP-47",
+      DevelopedBy: "Meta",
+      License: "CC-BY-NC 4.0",
+      Languages: "English, Nagamese",
+    },
+    "nllb-gujrathi-koli_kachchi": {
+      Model: "nllb-gujrathi-koli_kachchi",
+      Tasks: "mt, text translation",
+      "Language Code Type": "BCP-47",
+      DevelopedBy: "Meta",
+      License: "CC-BY-NC 4.0",
+      Languages: "Gujarati, Kachi Koli",
+    },
+    "nllb-hin-surjapuri": {
+      Model: "nllb-hin-surjapuri",
+      Tasks: "mt, text translation",
+      "Language Code Type": "BCP-47",
+      DevelopedBy: "Meta",
+      License: "CC-BY-NC 4.0",
+      Languages: "Hindi, Surjapuri",
+    },
   };
+  const availableModels = [
+    { label: "nllb-600M", value: "nllb-600M" },
+    { label: "nllb_finetuned_eng_nzm", value: "nllb_finetuned_eng_nzm" },
+    { label: "nllb-english-nagamese", value: "nllb-english-nagamese" },
+    { label: "nllb-gujrathi-koli_kachchi", value: "nllb-gujrathi-koli_kachchi" },
+    { label: "nllb-hin-surjapuri", value: "nllb-hin-surjapuri" },
+  ];
   useEffect(() => {
     if (!project) return;
   
-    const src = (project.source_language_name || "")
-      .toLowerCase()
-      .replace(/[-_]/g, " ")
-      .trim();
-    const tgt = (project.target_language_name || "")
-      .toLowerCase()
-      .replace(/[-_]/g, " ")
-      .trim();
+    const src = (project.source_language_name || "").toLowerCase().trim();
+    const tgt = (project.target_language_name || "").toLowerCase().trim();
+    let forcedModel = null;
+    if ((src === "english" && tgt === "zeme naga") || (src === "zeme naga" && tgt === "english")) {
+      forcedModel = "nllb_finetuned_eng_nzm";
+    } else if ((src === "english" && tgt === "nagamese") || (src === "nagamese" && tgt === "english")) {
+      forcedModel = "nllb-english-nagamese";
+    } else if ((src === "gujarati" && tgt === "kachi koli") || (src === "kachi koli" && tgt === "gujarati")) {
+      forcedModel = "nllb-gujrathi-koli_kachchi";
+    } else if ((src === "hindi" && tgt === "surjapuri") || (src === "surjapuri" && tgt === "hindi")) {
+      forcedModel = "nllb-hin-surjapuri";
+    }
   
-    const isZemeNagaPair =
-      (src === "zeme naga" && tgt === "english") ||
-      (src === "english" && tgt === "zeme naga");
-  
-    setIsZemeNaga(isZemeNagaPair);
-  
-    if (isZemeNagaPair) {
-      setSelectedModel("nllb_finetuned_eng_nzm"); // auto-select finetuned model
+    if (forcedModel) {
+      setSelectedModel(forcedModel);
     } else {
-      setSelectedModel("nllb-600M"); // default model
+      setSelectedModel("nllb-600M");
     }
   }, [project]);
   
@@ -1202,46 +1231,38 @@ const [totalBooks, setTotalBooks] = useState(0);
                   />
                 </Tooltip>
                 <Select
-  style={{ width: 220 }}
+  style={{ width: 240 }}
   value={selectedModel || undefined}
-  onChange={(val) => {
-    if (val === "nllb-600M" && isZemeNaga) {
-      message.warning("nllb-600M not supported for Zeme Naga");
-      return; // block selection
-    }
-    setSelectedModel(val);
-  }}
+  onChange={(val) => setSelectedModel(val)}
   disabled={loadingTranslate}
 >
-<Option value="nllb-600M" disabled={isZemeNaga}>
-    <Tooltip
-      title="This model does NOT support Zeme Naga language."
-      placement="left"
-      overlayInnerStyle={{
-        backgroundColor: "#fff",
-        color: "#000",
-        border: "1px solid #ddd",
-        borderRadius: "6px",
-        padding: "6px 10px",
-      }}
-    >
+  <Option value="nllb-600M" disabled={selectedModel !== "nllb-600M"}>
+    <Tooltip title="General-purpose model for 200 languages.">
       nllb-600M
     </Tooltip>
   </Option>
 
-  <Option value="nllb_finetuned_eng_nzm" disabled={!isZemeNaga}>
-    <Tooltip
-      title="This model ONLY supports Zeme Naga language."
-      placement="left"
-      overlayInnerStyle={{
-        backgroundColor: "#fff",
-        color: "#000",
-        border: "1px solid #ddd",
-        borderRadius: "6px",
-        padding: "6px 10px",
-      }}
-    >
+  <Option value="nllb_finetuned_eng_nzm" disabled={selectedModel !== "nllb_finetuned_eng_nzm"}>
+    <Tooltip title="This model ONLY supports English ↔ Zeme Naga.">
       nllb-finetuned-eng-nzm
+    </Tooltip>
+  </Option>
+
+  <Option value="nllb-english-nagamese" disabled={selectedModel !== "nllb-english-nagamese"}>
+    <Tooltip title="This model ONLY supports English ↔ Nagamese.">
+      nllb-english-nagamese
+    </Tooltip>
+  </Option>
+
+  <Option value="nllb-gujrathi-koli_kachchi" disabled={selectedModel !== "nllb-gujrathi-koli_kachchi"}>
+    <Tooltip title="This model ONLY supports Gujarati ↔ Kachi Koli.">
+      nllb-gujrathi-koli_kachchi
+    </Tooltip>
+  </Option>
+
+  <Option value="nllb-hin-surjapuri" disabled={selectedModel !== "nllb-hin-surjapuri"}>
+    <Tooltip title="This model ONLY supports Hindi ↔ Surjapuri.">
+      nllb-hin-surjapuri
     </Tooltip>
   </Option>
 </Select>

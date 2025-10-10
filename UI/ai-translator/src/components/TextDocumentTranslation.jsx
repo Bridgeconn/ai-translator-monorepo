@@ -56,7 +56,38 @@ const MODEL_INFO = {
     License: "CC-BY-NC 4.0",
     Languages: "Zeme Naga, English",
   },
+  "nllb-english-nagamese": {
+      Model: "nllb-english-nagamese",
+      Tasks: "mt, text translation",
+      "Language Code Type": "BCP-47",
+      DevelopedBy: "Meta",
+      License: "CC-BY-NC 4.0",
+      Languages: "English, Nagamese",
+    },
+    "nllb-gujrathi-koli_kachchi": {
+      Model: "nllb-gujrathi-koli_kachchi",
+      Tasks: "mt, text translation",
+      "Language Code Type": "BCP-47",
+      DevelopedBy: "Meta",
+      License: "CC-BY-NC 4.0",
+      Languages: "Gujarati, Kachi Koli",
+    },
+    "nllb-hin-surjapuri": {
+      Model: "nllb-hin-surjapuri",
+      Tasks: "mt, text translation",
+      "Language Code Type": "BCP-47",
+      DevelopedBy: "Meta",
+      License: "CC-BY-NC 4.0",
+      Languages: "Hindi, Surjapuri",
+    },
 };
+const MODEL_OPTIONS = [
+  { label: "nllb-600M", value: "nllb-600M", tooltip: "General-purpose model for 200 languages." },
+  { label: "nllb_finetuned_eng_nzm", value: "nllb_finetuned_eng_nzm", tooltip: "This model ONLY supports English ↔ Zeme Naga." },
+  { label: "nllb-english-nagamese", value: "nllb-english-nagamese", tooltip: "This model ONLY supports English ↔ Nagamese." },
+  { label: "nllb-gujrathi-koli_kachchi", value: "nllb-gujrathi-koli_kachchi", tooltip: "This model ONLY supports Gujarati ↔ Kachi Koli." },
+  { label: "nllb-hin-surjapuri", value: "nllb-hin-surjapuri", tooltip: "This model ONLY supports Hindi ↔ Surjapuri." },
+];
 
 // ------------------  Vachan Helpers ------------------
 async function getAccessToken() {
@@ -248,22 +279,38 @@ export default function TextDocumentTranslation() {
     };
     if (projectId) fetchData();
   }, [projectId]);
-  const isNagaTranslation = (src, tgt) => {
-    const nagaLangs = ["Zeme Naga", "Zeme naga", "nzm"]; // Add language codes/names you use
-    const englishLangs = ["English", "eng"];
-    return (
-      (englishLangs.includes(src) && nagaLangs.includes(tgt)) ||
-      (nagaLangs.includes(src) && englishLangs.includes(tgt))
-    );
-  };
   useEffect(() => {
-    if (!sourceLangName || !targetLangName) return;
+    if (!project?.source_language?.code || !project?.target_language?.code) return;
   
-    if (isNagaTranslation(sourceLangName, targetLangName)) {
-      setSelectedModel("nllb_finetuned_eng_nzm"); // auto-select Naga model
-    }
-  }, [sourceLangName, targetLangName]);
-    
+    const src = project.source_language.code;
+    const tgt = project.target_language.code;
+    let modelToUse = "nllb-600M";
+  
+    const isEngNzemePair =
+      (src === "eng_Latn" && tgt === "nzm_Latn") ||
+      (src === "nzm_Latn" && tgt === "eng_Latn");
+  
+    const isEngNagPair =
+      (src === "eng_Latn" && tgt === "nag_Latn") ||
+      (src === "nag_Latn" && tgt === "eng_Latn");
+  
+    const isGujGjkPair =
+      (src === "guj_Gujr" && tgt === "gjk_Gujr") ||
+      (src === "gjk_Gujr" && tgt === "guj_Gujr");
+  
+    const isHinSjpPair =
+      (src === "hin_Deva" && tgt === "sjp_Deva") ||
+      (src === "sjp_Deva" && tgt === "hin_Deva");
+  
+    if (isEngNzemePair) modelToUse = "nllb_finetuned_eng_nzm";
+    else if (isEngNagPair) modelToUse = "nllb-english-nagamese";
+    else if (isGujGjkPair) modelToUse = "nllb-gujrathi-koli_kachchi";
+    else if (isHinSjpPair) modelToUse = "nllb-hin-surjapuri";
+  
+    setSelectedModel(modelToUse);
+    console.log(`🎯 Auto-selected model for ${src} ↔ ${tgt}: ${modelToUse}`);
+  }, [project]);
+  
   // ------------------ Handle File Selection ------------------
   const handleFileChange = async (fileId) => {
     const file = projectFiles.find((f) => f.id === fileId);
@@ -701,36 +748,61 @@ export default function TextDocumentTranslation() {
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 {/* Model Dropdown */}
                 <Select
-  style={{ width: 160 }}
   value={selectedModel}
-  onChange={(value) => {
-    if (
-      isNagaTranslation(sourceLangName, targetLangName) &&
-      value === "nllb-600M"
-    ) {
-      // Keep the selection unchanged
-      setModelTooltip("This model does not support Zeme Naga language");
-      return;
-    }
-    setSelectedModel(value);
-    setModelTooltip(""); // reset tooltip if valid
+  style={{ width: 250 }}
+  dropdownRender={() => {
+    const src = project?.source_language?.code || "";
+    const tgt = project?.target_language?.code || "";
+
+    return (
+      <>
+        {MODEL_OPTIONS.map((opt) => {
+          const isSelected = opt.value === selectedModel;
+          const disabled = opt.value !== selectedModel;
+
+          return (
+            <Tooltip
+              key={opt.value}
+              title={opt.tooltip}
+              placement="right"
+              overlayInnerStyle={{
+                backgroundColor: "#fff",
+                color: "#000",
+                border: "1px solid #ddd",
+                borderRadius: "6px",
+                padding: "6px 10px",
+              }}
+            >
+              <div
+                style={{
+                  padding: "6px 12px",
+                  cursor: disabled ? "not-allowed" : "default",
+                  color: disabled ? "#999" : "#000",
+                  backgroundColor: isSelected ? "#e6f7ff" : "transparent",
+                  fontWeight: isSelected ? 600 : 400,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+                onClick={(e) => {
+                  e.stopPropagation(); // prevent changing model
+                }}
+              >
+                <span>{opt.label}</span>
+              </div>
+            </Tooltip>
+          );
+        })}
+      </>
+    );
   }}
 >
-  <Option
-      title={!isNagaTranslation ? "Model not supported for Zeme Naga" : "Default model"}
-    value="nllb-600M"
-    disabled={isNagaTranslation(sourceLangName, targetLangName)}
-  >
-    nllb-600M
-  </Option>
-  <Option 
-    title={isNagaTranslation ? "Model only supported for Zeme Naga translation" : "Default model"}
-    value="nllb_finetuned_eng_nzm"
-    disabled={!isNagaTranslation(sourceLangName, targetLangName)}
-  >
-    nllb_finetuned_eng_nzm
-  </Option>
-  </Select>
+  {MODEL_OPTIONS.map((opt) => (
+    <Option key={opt.value} value={opt.value} disabled={opt.value !== selectedModel}>
+      {opt.label}
+    </Option>
+  ))}
+</Select>
                 <Tooltip
                   title={
                     selectedModel

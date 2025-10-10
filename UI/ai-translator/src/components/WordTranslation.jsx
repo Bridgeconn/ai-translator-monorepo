@@ -150,7 +150,31 @@ export default function WordTranslation() {
       DevelopedBy: "Meta",
       License: "CC-BY-NC 4.0",
       Languages: "Zeme Naga, English"
-    }
+    },
+    "nllb-english-nagamese": {
+      Model: "nllb-english-nagamese",
+      Tasks: "mt, text translation",
+      "Language Code Type": "BCP-47",
+      DevelopedBy: "Meta",
+      License: "CC-BY-NC 4.0",
+      Languages: "English, Nagamese",
+    },
+    "nllb-gujrathi-koli_kachchi": {
+      Model: "nllb-gujrathi-koli_kachchi",
+      Tasks: "mt, text translation",
+      "Language Code Type": "BCP-47",
+      DevelopedBy: "Meta",
+      License: "CC-BY-NC 4.0",
+      Languages: "Gujarati, Kachi Koli",
+    },
+    "nllb-hin-surjapuri": {
+      Model: "nllb-hin-surjapuri",
+      Tasks: "mt, text translation",
+      "Language Code Type": "BCP-47",
+      DevelopedBy: "Meta",
+      License: "CC-BY-NC 4.0",
+      Languages: "Hindi, Surjapuri",
+    },
   };
 
   // Derived helpers
@@ -158,10 +182,14 @@ export default function WordTranslation() {
   const showEditorUnsaved = hasTokenEdits;           // show save/discard in editor
   const showDraftUnsaved = isDraftEdited;            // show save/discard in draft
   // --- Model options ---
-  const MODEL_OPTIONS = [
-    { label: "NLLB 600M", value: "nllb-600M" },
-    { label: "NLLB Fine-tuned ENG → NZM", value: "nllb_finetuned_eng_nzm" }
-  ];
+  // const MODEL_OPTIONS = [
+  //   { label: "nllb-600M", value: "nllb-600M" },
+  //   { label: "nllb_finetuned_eng_nzm", value: "nllb_finetuned_eng_nzm" },
+  //   { label: "nllb-english-nagamese", value: "nllb-english-nagamese" },
+  //   { label: "nllb-gujrathi-koli_kachchi", value: "nllb-gujrathi-koli_kachchi" },
+  //   { label: "nllb-hin-surjapuri", value: "nllb-hin-surjapuri" },
+  // ];
+  
   // Keep isDraftEdited in sync anytime draft/original change (avoids timing issues)
   useEffect(() => {
     setIsDraftEdited(String(draftContent || "") !== String(originalDraft || ""));
@@ -346,67 +374,43 @@ export default function WordTranslation() {
     };
     fetchLanguages();
   }, [project]);
-
   useEffect(() => {
-    if (!sourceLang || !targetLang) return; // Wait for languages to load
-
-    const srcCode = sourceLang.BCP_code;
-    const tgtCode = targetLang.BCP_code;
-    const ZEME_NAGA_CODE = "nzm_Latn";
-    const FINE_TUNED_MODEL = "nllb_finetuned_eng_nzm";
-    const BASE_MODEL = "nllb-600M";
-
-    const SUPPORTED_CODES = ["eng_Latn", ZEME_NAGA_CODE];
-    const isSupported = (code) => SUPPORTED_CODES.includes(code);
-    const isZemeNagaSelected = srcCode === ZEME_NAGA_CODE || tgtCode === ZEME_NAGA_CODE;
-
-    let calculatedErrorMsg = "";
-
-    // 1. **AUTO-SELECTION (ONLY ON INITIAL LOAD/DATA FETCH):**
-    // This logic runs ONLY if Zeme Naga is selected AND the model is currently the initial default ("nllb-600M").
-    // This satisfies the "select finetuned by default" requirement.
-    if (isZemeNagaSelected && selectedModel === BASE_MODEL) {
-
-      setSelectedModel(FINE_TUNED_MODEL);
-      setModelLanguageError(""); // Clear error state on switch
-
-      showNotification(
-        "info",
-        "Model Switched",
-        "Zeme Naga language detected. Automatically switched to 'nllb_finetuned_eng_nzm' for optimal translation.",
-        3
-      );
-      // We explicitly return here to let the state update trigger a clean run of the validation.
-      return;
+    if (!sourceLang?.BCP_code || !targetLang?.BCP_code) return;
+  
+    const src = sourceLang.BCP_code;
+    const tgt = targetLang.BCP_code;
+  
+    let modelToUse = "nllb-600M"; // default
+  
+    const isEngNzemePair =
+      (src === "eng_Latn" && tgt === "nzm_Latn") ||
+      (src === "nzm_Latn" && tgt === "eng_Latn");
+  
+    const isEngNagPair =
+      (src === "eng_Latn" && tgt === "nag_Latn") ||
+      (src === "nag_Latn" && tgt === "eng_Latn");
+  
+    const isGujGjkPair =
+      (src === "guj_Gujr" && tgt === "gjk_Gujr") ||
+      (src === "gjk_Gujr" && tgt === "guj_Gujr");
+  
+    const isHinSjpPair =
+      (src === "hin_Deva" && tgt === "sjp_Deva") ||
+      (src === "sjp_Deva" && tgt === "hin_Deva");
+  
+    if (isEngNzemePair) {
+      modelToUse = "nllb_finetuned_eng_nzm";
+    } else if (isEngNagPair) {
+      modelToUse = "nllb-english-nagamese";
+    } else if (isGujGjkPair) {
+      modelToUse = "nllb-gujrathi-koli_kachchi";
+    } else if (isHinSjpPair) {
+      modelToUse = "nllb-hin-surjapuri";
     }
-
-    // 2. **VALIDATION (Runs every time, including after a manual selection):**
-
-    // Rule 1: Disable button if nllb-600M is selected for Zeme Naga project.
-    if (selectedModel === BASE_MODEL) {
-      if (isZemeNagaSelected) {
-        calculatedErrorMsg =
-          "Zeme Naga translation is not supported by 'nllb-600M'. Please select the 'nllb_finetuned_eng_nzm' model, or switch languages.";
-      }
-    }
-    // Rule 2: Validation for nllb_finetuned_eng_nzm
-    else if (selectedModel === FINE_TUNED_MODEL) {
-      if (!isSupported(srcCode) || !isSupported(tgtCode)) {
-        calculatedErrorMsg =
-          "The 'nllb_finetuned_eng_nzm' model only supports English (eng_Latn) and Zeme Naga (nzm_Latn). Please switch languages or model.";
-      }
-    }
-    // Show notification ONLY if the error state is transitioning to a new error
-    if (calculatedErrorMsg && calculatedErrorMsg !== modelLanguageError) {
-      // This is a redundant check, as the <Select> component shows the immediate error, 
-      // but it's good practice to keep the validation check here too.
-      showNotification("error", "Language Mismatch", calculatedErrorMsg, 5);
-    }
-
-    // Set the state last. This is what enables/disables the button.
-    setModelLanguageError(calculatedErrorMsg);
-
-  }, [sourceLang, targetLang, selectedModel, showNotification, modelLanguageError]);
+  
+    setSelectedModel(modelToUse);
+    console.log(`🔁 Auto-selected model for ${src} ↔ ${tgt}: ${modelToUse}`);
+  }, [sourceLang, targetLang]);
   //  -------- Fetch or Generate tokens ------------------
   const handleDeleteBook = () => {
     console.log("handleDeleteBook called");
@@ -1337,65 +1341,98 @@ export default function WordTranslation() {
                         />
                       </Tooltip>
                       <Select
-                        value={selectedModel}
-                        onChange={(val) => {
-                          isManualSelection.current = true;
-                          setSelectedModel(val);
-                        }}
-                        style={{ width: 250 }}
-                        dropdownRender={(menu) => {
-                          const ZEME_NAGA_CODE = "nzm_Latn";
-                          const isZemeNagaSelected =
-                            sourceLang?.BCP_code === ZEME_NAGA_CODE ||
-                            targetLang?.BCP_code === ZEME_NAGA_CODE;
+  value={selectedModel}
+  style={{ width: 250 }}
+  dropdownRender={() => {
+    const src = sourceLang?.BCP_code || "";
+    const tgt = targetLang?.BCP_code || "";
 
-                          return (
-                            <>
-                              {MODEL_OPTIONS.map((opt) => {
-                                // Disable nllb-600M for Zeme Naga
-                                // Disable finetuned model for non-Zeme Naga
-                                const disabled =
-                                  (isZemeNagaSelected && opt.value === "nllb-600M") ||
-                                  (!isZemeNagaSelected && opt.value === "nllb_finetuned_eng_nzm");
+    const models = [
+      {
+        label: "nllb-600M",
+        value: "nllb-600M",
+        tooltip: "General-purpose model for 200 languages.",
+        valid: true, // always valid fallback
+      },
+      {
+        label: "nllb_finetuned_eng_nzm",
+        value: "nllb_finetuned_eng_nzm",
+        tooltip: "This model ONLY supports English ↔ Zeme Naga.",
+        valid:
+          (src === "eng_Latn" && tgt === "nzm_Latn") ||
+          (src === "nzm_Latn" && tgt === "eng_Latn"),
+      },
+      {
+        label: "nllb-english-nagamese",
+        value: "nllb-english-nagamese",
+        tooltip: "This model ONLY supports English ↔ Nagamese.",
+        valid:
+          (src === "eng_Latn" && tgt === "nag_Latn") ||
+          (src === "nag_Latn" && tgt === "eng_Latn"),
+      },
+      {
+        label: "nllb-gujrathi-koli_kachchi",
+        value: "nllb-gujrathi-koli_kachchi",
+        tooltip: "This model ONLY supports Gujarati ↔ Kachi Koli.",
+        valid:
+          (src === "guj_Gujr" && tgt === "gjk_Gujr") ||
+          (src === "gjk_Gujr" && tgt === "guj_Gujr"),
+      },
+      {
+        label: "nllb-hin-surjapuri",
+        value: "nllb-hin-surjapuri",
+        tooltip: "This model ONLY supports Hindi ↔ Surjapuri.",
+        valid:
+          (src === "hin_Deva" && tgt === "sjp_Deva") ||
+          (src === "sjp_Deva" && tgt === "hin_Deva"),
+      },
+    ];
 
-                                const tooltipText =
-                                  isZemeNagaSelected && opt.value === "nllb-600M"
-                                    ? "This model does not support Zeme Naga language."
-                                    : !isZemeNagaSelected && opt.value === "nllb_finetuned_eng_nzm"
-                                      ? "This model only supports Zeme Naga language."
-                                      : "";
+    return (
+      <>
+        {models.map((opt) => {
+          // Mark all non-selected, non-matching models as disabled (greyed)
+          const disabled = opt.value !== selectedModel; // disable everything except the selected one
+          const isSelected = opt.value === selectedModel;
 
-                                return (
-                                  <Tooltip
-                                    key={opt.value}
-                                    title={tooltipText}
-                                    placement="right"
-                                    overlayInnerStyle={{
-                                      backgroundColor: "#fff",
-                                      color: "#000",
-                                      border: "1px solid #ddd",
-                                      borderRadius: "6px",
-                                      padding: "6px 10px",
-                                    }}
-                                  >
-                                    <div
-                                      style={{
-                                        padding: "6px 12px",
-                                        cursor: disabled ? "not-allowed" : "pointer",
-                                        color: disabled ? "#999" : "inherit",
-                                      }}
-                                      onClick={() => !disabled && setSelectedModel(opt.value)}
-                                    >
-                                      {opt.label}
-                                    </div>
-                                  </Tooltip>
-                                );
-                              })}
-                            </>
-                          );
-                        }}
-                      >
-                      </Select>
+          return (
+            <Tooltip
+              key={opt.value}
+              title={opt.tooltip}
+              placement="right"
+              overlayInnerStyle={{
+                backgroundColor: "#fff",
+                color: "#000",
+                border: "1px solid #ddd",
+                borderRadius: "6px",
+                padding: "6px 10px",
+              }}
+            >
+              <div
+                style={{
+                  padding: "6px 12px",
+                  cursor: disabled ? "not-allowed" : "default",
+                  color: disabled ? "#999" : "#000",
+                  backgroundColor: isSelected ? "#e6f7ff" : "transparent",
+                  fontWeight: isSelected ? 600 : 400,
+                }}
+                onClick={(e) => {
+                  e.stopPropagation(); // prevent closing or selecting others
+                }}
+              >
+                {opt.label}
+              </div>
+            </Tooltip>
+          );
+        })}
+      </>
+    );
+  }}
+>
+  <Option key={selectedModel} value={selectedModel}>
+    {selectedModel}
+  </Option>
+</Select>
                     </div>
 
                     {hasGenerated ? (
