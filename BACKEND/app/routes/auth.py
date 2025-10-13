@@ -6,8 +6,8 @@ from app.database import get_db
 from app.models.users import User
 from app.utils.auth import verify_password, create_access_token, get_password_hash
 from app.crud import password_reset
-from app.utils.email import send_email
-from app.config import settings
+from app.utils.email import send_email,send_email_aiui
+from app.config import settings,settingsaiui
 from app.schemas.auth import (
     TokenResponse,
     ForgotPasswordRequest,
@@ -70,6 +70,27 @@ def forgot_password(
     subject = "Reset your password"
     body = f"Click here to reset your password: {link}"
     bg.add_task(send_email, user.email, subject, body)
+
+    return response
+
+
+@router.post("/forgot-password/ai-ui")
+def forgot_password(
+    payload: ForgotPasswordRequest,
+    bg: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    response = {"message": "If the email exists, a reset link has been sent."}
+    user = db.query(User).filter(User.email == payload.email.lower()).first()
+    if not user:
+        return response
+
+    plaintext_token = password_reset.create_password_reset_token(db, user)
+    link = f"{settingsaiui.FRONTEND_AI_UI_BASE_URL}/reset-password?token={plaintext_token}"
+
+    subject = "Reset your password"
+    body = f"Click here to reset your password: {link}"
+    bg.add_task(send_email_aiui, user.email, subject, body)
 
     return response
 
