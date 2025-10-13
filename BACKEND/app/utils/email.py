@@ -1,7 +1,7 @@
 import smtplib
 from email.mime.text import MIMEText
 from email.message import EmailMessage
-from config import settings,settingsaiui
+from app.config import settings,settingsaiui
 
 def send_email(to_email: str, subject: str, body: str):
     msg = MIMEText(body, "html")
