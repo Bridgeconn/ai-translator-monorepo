@@ -187,7 +187,7 @@ const userMenuItems = token
     <Layout style={{ minHeight: "100vh" }}>
       {/* Sidebar */}
       <Sider
-        width={80}
+        width={90}
         style={{
           background: "#fff",
           borderRight: "1px solid #f0f0f0",
@@ -237,40 +237,74 @@ const userMenuItems = token
   mode="vertical"
   selectedKeys={[selectedKey]}
   onClick={handleMenuClick}
-  style={{ border: "none", background: "transparent" }}
-  items={navigationItems.map((item) => ({
-    key: item.key,
-    icon: (
-      <Tooltip title={item.label} placement="right">
-        <div
-          style={{
-            fontSize: "20px",
-            color: selectedKey === item.key ? "#8b5cf6" : "#8c8c8c",
-            display: "flex",
-            justifyContent: "center",
-          }}
-        >
-          {item.icon}
-        </div>
-      </Tooltip>
-    ),
-    // 👇 no permanent label — only tooltip
-    label: null,
-    style: {
-      height: "60px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      margin: "8px 0",
-      borderRadius: "8px",
-      borderLeft:
-        selectedKey === item.key ? "4px solid #8b5cf6" : "4px solid transparent",
-      backgroundColor:
-        selectedKey === item.key ? "rgba(139,92,246,0.12)" : "transparent",
-      transition: "all 0.2s ease",
-    },
-  }))}
- />
+  style={{ border: "none", background: "transparent", marginTop: "12px" }}
+  items={navigationItems.map((item) => {
+    const isSelected = selectedKey === item.key;
+    const words = item.label.split(" ");
+    const isLongLabel = words.length > 1;
+
+    return {
+      key: item.key,
+      icon: (
+        <Tooltip title={item.label} placement="right">
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              color: isSelected ? "#8b5cf6" : "#8c8c8c",
+              height: "100%",
+            }}
+          >
+            {/* Icon */}
+            <div style={{ fontSize: "20px", marginBottom: "4px" }}>
+              {item.icon}
+            </div>
+
+            {/* Label — show neatly in 1 or 2 lines */}
+            <div
+              style={{
+                fontSize: isLongLabel ? "10px" : "11px",
+                fontWeight: isSelected ? 600 : 500,
+                color: isSelected ? "#8b5cf6" : "#555",
+                lineHeight: "12px",
+                textAlign: "center",
+                maxWidth: "60px",
+                wordWrap: "break-word",
+                whiteSpace: "normal",
+              }}
+            >
+              {words.map((w, i) => (
+                <span key={i}>
+                  {w}
+                  {i !== words.length - 1 && <br />} {/* 👈 only add line break between words */}
+                </span>
+              ))}
+            </div>
+          </div>
+        </Tooltip>
+      ),
+      label: null, // disable AntD's default label
+      style: {
+        height: "80px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        borderRadius: "10px",
+        margin: "4px 0",
+        borderLeft: isSelected
+          ? "4px solid #8b5cf6"
+          : "4px solid transparent",
+        backgroundColor: isSelected
+          ? "rgba(139,92,246,0.12)"
+          : "transparent",
+        transition: "all 0.2s ease",
+      },
+    };
+  })}
+/>
+
 
       </Sider>
 
