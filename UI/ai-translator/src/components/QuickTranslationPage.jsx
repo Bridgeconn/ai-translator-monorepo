@@ -486,7 +486,12 @@ useEffect(() => {
       return; // don’t update state
     }
     setSourceText(newText);
-
+    if (uploadedFile) {
+      setUploadedFile(null);
+      setFilename("manual-input.txt");
+      console.log("✂️ Cleared uploaded file since user edited text manually");
+    }
+  
     // Whenever source is cleared or replaced, reset target
     if (!isTargetEdited) {
       setTargetText("");
@@ -619,13 +624,27 @@ useEffect(() => {
       );
       return;
     }
-    let fileToSend = uploadedFile;
+//     let fileToSend = uploadedFile;
 
-if (!uploadedFile && sourceText.trim() !== "") {
+// if (!uploadedFile && sourceText.trim() !== "") {
+//   const blob = new Blob([sourceText], { type: "text/plain" });
+//   fileToSend = new File([blob], "content_only.txt", { type: "text/plain" });
+//   console.log("📝 Created virtual file from typed text:", fileToSend);
+// }
+let fileToSend;
+
+if (sourceText.trim() !== "") {
+  // Always use latest edited text from sourceText
   const blob = new Blob([sourceText], { type: "text/plain" });
-  fileToSend = new File([blob], "content_only.txt", { type: "text/plain" });
-  console.log("📝 Created virtual file from typed text:", fileToSend);
+  fileToSend = new File([blob], "edited_source.txt", { type: "text/plain" });
+} else if (uploadedFile) {
+  // fallback if text box empty
+  fileToSend = uploadedFile;
+} else {
+  showNotification("warning", "Missing Input", "Please enter or upload some source text first.");
+  return;
 }
+
     //  Create AbortController right away so user can cancel anytime
     controllerRef.current = new AbortController();
     const signal = controllerRef.current.signal;
@@ -666,74 +685,90 @@ if (!uploadedFile && sourceText.trim() !== "") {
           .split("\n")
           .map((line) => line.trim())
           .join("\n");
-
-      // --- 2️⃣ Extract text from uploaded file or pasted text ---
-      if (uploadedFile) {
-        if (uploadedFile.name.endsWith(".pdf")) {
-          const arrayBuffer = await uploadedFile.arrayBuffer();
-          if (signal.aborted) throw new Error("Translation cancelled");
-
-          const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-
-          let pdfText = "";
-          for (let i = 1; i <= pdf.numPages; i++) {
-            if (signal.aborted) throw new Error("Translation cancelled");
-            const page = await pdf.getPage(i);
-            const content = await page.getTextContent();
-            const strings = content.items.map((item) => item.str);
-            pdfText += strings.join(" ") + "\n";
-          }
-
-          textToTranslate = normalizeText(pdfText);
-        } else if (uploadedFile.name.endsWith(".docx")) {
-          const arrayBuffer = await uploadedFile.arrayBuffer();
-          if (signal.aborted) throw new Error("Translation cancelled");
-
-          const mammoth = await import("mammoth");
-          const { value: text } = await mammoth.extractRawText({ arrayBuffer });
-          textToTranslate = normalizeText(text);
-        } else {
-          const fileContent = await uploadedFile.text();
-          if (signal.aborted) throw new Error("Translation cancelled");
-
           if (containsUSFMMarkers(sourceText)) {
             showNotification(
               "warning",
               "USFM Markers Detected",
               "This text contains USFM markers. The translation output may not be accurate. Use verse translation for better results."
             );
-          
             isUSFMContent = true;
             const extracted = extractUSFMContent(sourceText);
             usfmStructure = extracted.structure;
             textToTranslate = normalizeText(extracted.plainText);
+          } else {
+            textToTranslate = normalizeText(sourceText);
+            if (textToTranslate.trim().length < 5) {
+              textToTranslate += "\n"; // Adds minimal context
+            }
           }
-          
-           else {
-            textToTranslate = normalizeText(fileContent);
-          }
-        }
-      } else {
-        // Pasted text
-        if (containsUSFMMarkers(sourceText)) {
-          showNotification(
-            "warning",
-            "USFM Markers Detected",
-            "This text contains USFM markers. The translation output may not be accurate. Use verse translation for better results."
-          );
-          isUSFMContent = true;
-          const extracted = extractUSFMContent(sourceText);
-          usfmStructure = extracted.structure;
-          textToTranslate = normalizeText(extracted.plainText);
-        } else {
-          textToTranslate = normalizeText(sourceText);
-          if (!uploadedFile && sourceText.trim().length < 5) {
-            textToTranslate += "\n"; // Adds minimal context to help the model
-          }
-        }
-      }
 
-      if (signal.aborted) throw new Error("Translation cancelled");
+      // --- 2️⃣ Extract text from uploaded file or pasted text ---
+      // if (uploadedFile) {
+      //   if (uploadedFile.name.endsWith(".pdf")) {
+      //     const arrayBuffer = await uploadedFile.arrayBuffer();
+      //     if (signal.aborted) throw new Error("Translation cancelled");
+
+      //     const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+
+      //     let pdfText = "";
+      //     for (let i = 1; i <= pdf.numPages; i++) {
+      //       if (signal.aborted) throw new Error("Translation cancelled");
+      //       const page = await pdf.getPage(i);
+      //       const content = await page.getTextContent();
+      //       const strings = content.items.map((item) => item.str);
+      //       pdfText += strings.join(" ") + "\n";
+      //     }
+
+      //     textToTranslate = normalizeText(pdfText);
+      //   } else if (uploadedFile.name.endsWith(".docx")) {
+      //     const arrayBuffer = await uploadedFile.arrayBuffer();
+      //     if (signal.aborted) throw new Error("Translation cancelled");
+
+      //     const mammoth = await import("mammoth");
+      //     const { value: text } = await mammoth.extractRawText({ arrayBuffer });
+      //     textToTranslate = normalizeText(text);
+      //   } else {
+      //     const fileContent = await uploadedFile.text();
+      //     if (signal.aborted) throw new Error("Translation cancelled");
+
+      //     if (containsUSFMMarkers(sourceText)) {
+      //       showNotification(
+      //         "warning",
+      //         "USFM Markers Detected",
+      //         "This text contains USFM markers. The translation output may not be accurate. Use verse translation for better results."
+      //       );
+          
+      //       isUSFMContent = true;
+      //       const extracted = extractUSFMContent(sourceText);
+      //       usfmStructure = extracted.structure;
+      //       textToTranslate = normalizeText(extracted.plainText);
+      //     }
+          
+      //      else {
+      //       textToTranslate = normalizeText(fileContent);
+      //     }
+      //   }
+      // } else {
+      //   // Pasted text
+      //   if (containsUSFMMarkers(sourceText)) {
+      //     showNotification(
+      //       "warning",
+      //       "USFM Markers Detected",
+      //       "This text contains USFM markers. The translation output may not be accurate. Use verse translation for better results."
+      //     );
+      //     isUSFMContent = true;
+      //     const extracted = extractUSFMContent(sourceText);
+      //     usfmStructure = extracted.structure;
+      //     textToTranslate = normalizeText(extracted.plainText);
+      //   } else {
+      //     textToTranslate = normalizeText(sourceText);
+      //     if (!uploadedFile && sourceText.trim().length < 5) {
+      //       textToTranslate += "\n"; // Adds minimal context to help the model
+      //     }
+      //   }
+      // }
+
+      // if (signal.aborted) throw new Error("Translation cancelled");
 
       // --- 3️⃣ Prepare text file for translation API ---
       const blob = new Blob([textToTranslate], { type: "text/plain" });
@@ -798,9 +833,11 @@ console.log("📥 Raw response from API:", csvText);
 
 // // Check if the response looks like CSV (first line should have "Source" and "Translation" headers)
 const firstLine = csvText.split('\n')[0];
-const isCSVFormat = firstLine.toLowerCase().includes('source') && 
-                    (firstLine.toLowerCase().includes('translation') || 
-                     firstLine.toLowerCase().includes('target'));
+const isCSVFormat =
+  firstLine.toLowerCase().includes('sentence') ||
+  (firstLine.toLowerCase().includes('source') &&
+   (firstLine.toLowerCase().includes('translation') ||
+    firstLine.toLowerCase().includes('target')));
 
 console.log("🔍 First line:", firstLine);
 console.log("🔍 Is CSV format?", isCSVFormat);

@@ -106,13 +106,14 @@ async function requestDocTranslation(
   file,
   srcLangCode,
   tgtLangCode,
-  model_name
+  model_name,
+  output_format = "txt"
 ) {
   const formData = new FormData();
   formData.append("file", file);
 
   const resp = await vachanApi.post(
-    `/model/text/translate-document?device=cpu&model_name=${model_name}&source_language=${srcLangCode}&target_language=${tgtLangCode}`,
+    `/model/text/translate-document?device=cpu&model_name=${model_name}&source_language=${srcLangCode}&target_language=${tgtLangCode}&output_format=${output_format}`,
     formData,
     { headers: { Authorization: `Bearer ${token}` } }
   );
@@ -135,13 +136,69 @@ async function pollJobStatus({ token, jobId }) {
   throw new Error("Polling timed out");
 }
 
+// async function fetchAssets(token, jobId) {
+//   const resp = await vachanApi.get(`/assets?job_id=${jobId}`, {
+//     headers: { Authorization: `Bearer ${token}` },
+//     responseType: "blob",
+//   });
+//   return await resp.data.text();
+// }
 async function fetchAssets(token, jobId) {
   const resp = await vachanApi.get(`/assets?job_id=${jobId}`, {
     headers: { Authorization: `Bearer ${token}` },
-    responseType: "blob",
+    responseType: "text", // allow plain text response too
   });
-  return await resp.data.text();
+
+  console.log("📦 Raw assets data:", resp.data);
+
+  // 🧠 Case 1: API returned direct translation (plain text)
+  if (typeof resp.data === "string" && !resp.data.includes("asset_id")) {
+    console.log("✅ API returned plain translated text directly");
+    return resp.data.trim();
+  }
+
+  // 🧠 Case 2: API returned JSON with assets
+  let assets;
+  try {
+    const data =
+      typeof resp.data === "string" ? JSON.parse(resp.data) : resp.data;
+    assets = data?.data?.files || data?.data || [];
+  } catch (err) {
+    console.warn("⚠️ Could not parse JSON, treating as plain text output");
+    return resp.data.trim();
+  }
+
+  if (!Array.isArray(assets) || assets.length === 0) {
+    console.error("❌ No assets found. Response was:", resp.data);
+    throw new Error("No assets found for this job");
+  }
+
+  // Find the correct output file
+  const outputFile = assets.find(
+    (f) =>
+      f.file_type?.toLowerCase().includes("output") ||
+      f.asset_type?.toLowerCase().includes("output") ||
+      f.file_name?.toLowerCase().includes("translated")
+  );
+
+  if (!outputFile) {
+    console.error("❌ No output file found in assets:", assets);
+    throw new Error("No output file found in assets");
+  }
+
+  // Download the translated text file
+  const textResp = await vachanApi.get(
+    `/assets/download?asset_id=${outputFile.asset_id}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      responseType: "text",
+    }
+  );
+
+  console.log("📥 Downloaded translated text length:", textResp.data?.length);
+  return textResp.data.trim();
 }
+
 // ------------------  USFM Helpers ------------------
 function containsUSFMMarkers(text) {
   return /\\(id|c|v|s\d?|p|q\d?|m|nb|b|d|sp|pb|li\d?|pi\d?|pc|pr|cls)\b/.test(
@@ -501,7 +558,10 @@ export default function TextDocumentTranslation() {
       } else {
         textToTranslate = sourceText;
       }
-      
+      // 🧩 DEBUG: Check what text is actually being sent to the API
+console.log("📤 Sending textToTranslate:", textToTranslate);
+console.log("📄 Length of textToTranslate:", textToTranslate.length);
+
 
       // 3. Prepare file
       const blob = new Blob([textToTranslate], { type: "text/plain" });
@@ -527,7 +587,8 @@ export default function TextDocumentTranslation() {
         fileToSend,
         srcCode,
         tgtCode,
-        selectedModel
+        selectedModel,
+        "txt"
       );
 
       message.info("⏳ Translating... please wait");
@@ -537,17 +598,38 @@ export default function TextDocumentTranslation() {
 
       // 6. Fetch assets
       const csvText = await fetchAssets(token, jobId);
-
+      console.log("📦 Fetched asset text:", csvText);
+      console.log("📏 Asset length:", csvText?.length);
       // 7. Parse CSV
-      const parsed = Papa.parse(csvText, {
-        header: true,
-        skipEmptyLines: true,
-      });
+      // const parsed = Papa.parse(csvText, {
+      //   header: true,
+      //   skipEmptyLines: true,
+      // });
 
-      // 8. Rebuild translation
-      const translatedText = isUSFM
-        ? reconstructUSFM(usfmStructure, parsed.data)
-        : simpleTranslation(textToTranslate, parsed.data);
+      // // 8. Rebuild translation
+      // const translatedText = isUSFM
+      //   ? reconstructUSFM(usfmStructure, parsed.data)
+      //   : simpleTranslation(textToTranslate, parsed.data);
+      let translatedText;
+
+if (
+  csvText.startsWith("{") ||  // JSON or structured data
+  csvText.includes(",Translation") || // CSV header detected
+  csvText.includes("\t") // TSV-like structure
+) {
+  // Parse CSV or TSV structured response
+  const parsed = Papa.parse(csvText, {
+    header: true,
+    skipEmptyLines: true,
+  });
+  translatedText = isUSFM
+    ? reconstructUSFM(usfmStructure, parsed.data)
+    : simpleTranslation(textToTranslate, parsed.data);
+} else {
+  // Plain translated text — use directly
+  translatedText = csvText.trim();
+}
+
 
       setTargetText(translatedText);
       message.success("Translation complete!");
