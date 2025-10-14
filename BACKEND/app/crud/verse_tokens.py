@@ -25,20 +25,21 @@ from app.models.languages import Language
 logger = logging.getLogger(__name__)
 load_dotenv()
 
-VACHAN_USERNAME="slimywhite2@gmail.com"
-VACHAN_PASSWORD="Demon@9827"
+VACHAN_LOGIN_URL = os.getenv("VACHAN_LOGIN_URL")
+VACHAN_TRANSLATE_URL = os.getenv("VACHAN_TRANSLATE_URL")
+VACHAN_JOB_STATUS_URL = os.getenv("VACHAN_JOB_STATUS_URL")
+VACHAN_USERNAME = os.getenv("VACHAN_USERNAME")
+VACHAN_PASSWORD = os.getenv("VACHAN_PASSWORD")
+VACHAN_MODEL_NAME = os.getenv("VACHAN_MODEL_NAME")
 
-VACHAN_LOGIN_URL = "https://api.vachanengine.org/v2/ai/token"
-VACHAN_TRANSLATE_URL = "https://api.vachanengine.org/v2/ai/model/text/translate"
-VACHAN_JOB_STATUS_URL = "https://api.vachanengine.org/v2/ai/model/job"
-# VACHAN_MODEL_NAME = "nllb-600M"
+# Safety check
+for var in ["VACHAN_LOGIN_URL", "VACHAN_TRANSLATE_URL", "VACHAN_JOB_STATUS_URL", "VACHAN_USERNAME", "VACHAN_PASSWORD"]:
+    if not locals()[var]:
+        raise RuntimeError(f"Missing required environment variable: {var}")
 
-# VACHAN_LOGIN_URL = os.getenv("VACHAN_AUTH_URL")
-# VACHAN_TRANSLATE_URL = os.getenv("VACHAN_TRANSLATE_URL")
-# VACHAN_JOB_STATUS_URL = os.getenv("VACHAN_JOB_STATUS_URL")
-# VACHAN_USERNAME = os.getenv("VACHAN_USERNAME")
-# VACHAN_PASSWORD = os.getenv("VACHAN_PASSWORD")
-# VACHAN_MODEL_NAME = os.getenv("VACHAN_MODEL_NAME")
+if not VACHAN_TRANSLATE_URL.endswith("/model/text/translate"):
+    raise RuntimeError(f"Invalid VACHAN_TRANSLATE_URL: {VACHAN_TRANSLATE_URL}")
+
 
 required_env_vars = [
     "VACHAN_LOGIN_URL",

@@ -9,12 +9,12 @@ logging.basicConfig(level=logging.INFO)
 # Load environment variables
 load_dotenv()
  
-VACHAN_LOGIN_URL = "https://api.vachanengine.org/v2/ai/token"
-VACHAN_TRANSLATE_URL = "https://api.vachanengine.org/v2/ai/model/text/translate"
-VACHAN_JOB_STATUS_URL = "https://api.vachanengine.org/v2/ai/model/job"
- 
-USERNAME = "slimywhite2@gmail.com"
-PASSWORD = "Demon@9827"
+VACHAN_LOGIN_URL = os.getenv("VACHAN_LOGIN_URL")
+VACHAN_TRANSLATE_URL = os.getenv("VACHAN_TRANSLATE_URL")
+VACHAN_JOB_STATUS_URL = os.getenv("VACHAN_JOB_STATUS_URL")
+VACHAN_USERNAME = os.getenv("VACHAN_USERNAME")
+VACHAN_PASSWORD = os.getenv("VACHAN_PASSWORD")
+VACHAN_MODEL_NAME = os.getenv("VACHAN_MODEL_NAME")
  
 MAX_RETRIES = 200
 POLL_INTERVAL = 3 
@@ -29,8 +29,8 @@ DEFAULT_MODEL = "nllb-600M"
 def get_access_token():
     try:
         resp = httpx.post(VACHAN_LOGIN_URL, data={
-            "username": USERNAME,
-            "password": PASSWORD
+            "username": VACHAN_USERNAME,
+            "password": VACHAN_PASSWORD
         })
         logging.info(f"[Vachan] Login response status: {resp.status_code}")
         logging.info(f"[Vachan] Login response body: {resp.text}")
