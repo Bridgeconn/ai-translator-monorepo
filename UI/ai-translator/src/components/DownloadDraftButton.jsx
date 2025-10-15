@@ -18,7 +18,7 @@ function extractLines(node) {
   return "";
 }
 
-export default function DownloadDraftButton({ style, content, disabled = false, targetLanguage }) {
+export default function DownloadDraftButton({ style, content, disabled = false, targetLanguage,sourceLanguage }) {
   const rawText = extractLines(content);
   const hasContent = rawText && rawText.trim().length > 0; // added
 
@@ -33,16 +33,28 @@ export default function DownloadDraftButton({ style, content, disabled = false, 
       .map((line) => line.trim())
       .filter((line) => line.length > 0);
 
-    const langName = (targetLanguage || "translation").toLowerCase();
+    // const langName = (targetLanguage || "translation").toLowerCase();
 
+
+    // if (format === "txt" || format === "usfm") {
+    //   const blob = new Blob([lines.join("\n\n")], {
+    //     type: "text/plain;charset=utf-8",
+    //   });
+    //   //saveAs(blob, `draft.${format}`);
+    //   saveAs(blob, `${langName}-draft.${format}`);
+
+    // }
+    const src =
+      sourceLanguage?.slice(0, 3).toLowerCase() || "src";
+    const tgt =
+      targetLanguage?.slice(0, 3).toLowerCase() || "tgt";
+      const fileName = `${src}_${tgt}.${format}`;
 
     if (format === "txt" || format === "usfm") {
       const blob = new Blob([lines.join("\n\n")], {
         type: "text/plain;charset=utf-8",
       });
-      //saveAs(blob, `draft.${format}`);
-      saveAs(blob, `${langName}-draft.${format}`);
-
+      saveAs(blob, fileName);
     }
 
 
@@ -65,7 +77,8 @@ export default function DownloadDraftButton({ style, content, disabled = false, 
       });
 
       const blob = await Packer.toBlob(doc);
-      saveAs(blob, `${langName}-draft.docx`);
+      // saveAs(blob, `${langName}-draft.docx`);
+      saveAs(blob, fileName);
     }
   };
 
