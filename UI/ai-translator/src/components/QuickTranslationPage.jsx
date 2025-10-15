@@ -30,10 +30,10 @@ import LanguageSelect from "./LanguageSelect";
 import vachanApi from "../api/vachan";
 import Papa from "papaparse"; // CSV parser
 import { useNavigate } from "react-router-dom";
-import * as pdfjsLib from "pdfjs-dist";
 import { App } from "antd";
 import { InfoCircleOutlined } from "@ant-design/icons";
 import { useAuthModal } from "./AuthModalContext";
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf";
 pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
 const { TextArea } = Input;
@@ -59,7 +59,13 @@ async function getAccessToken() {
   return resp.data.access_token;
 }
 
-async function requestDocTranslation(token, file, srcLangCode, tgtLangCode, model_name) {
+async function requestDocTranslation(
+  token,
+  file,
+  srcLangCode,
+  tgtLangCode,
+  model_name
+) {
   const formData = new FormData();
   formData.append("file", file);
 
@@ -170,8 +176,6 @@ export default function QuickTranslationPage() {
   const { openLogin } = useAuthModal();
   const controllerRef = useRef(null);
 
-  
-
   // Restore draft if available
   useEffect(() => {
     const draft = localStorage.getItem("quickTranslationDraft");
@@ -194,7 +198,7 @@ export default function QuickTranslationPage() {
     }
   }, []);
   const modelsInfo = {
-    "nllb_finetuned_eng_nzm": {
+    nllb_finetuned_eng_nzm: {
       tasks: "mt, text translation",
       languageCodeType: "BCP-47",
       developedBy: "Meta",
@@ -231,7 +235,7 @@ export default function QuickTranslationPage() {
   const [selectedModel, setSelectedModel] = useState("nllb-600M");
   const availableModels = [
     { label: "nllb-600M", value: "nllb-600M" },
-    { label: "nllb_finetuned_eng_nzm", value: "nllb_finetuned_eng_nzm" }
+    { label: "nllb_finetuned_eng_nzm", value: "nllb_finetuned_eng_nzm" },
   ];
   useEffect(() => {
     if (!saveModalVisible) return;
@@ -288,24 +292,24 @@ export default function QuickTranslationPage() {
       // Fallback to browser alert
       alert(`${type.toUpperCase()}: ${description}`);
     }
-   };
+  };
   // ✅ Auto-select correct model based on source/target languages
-useEffect(() => {
-  if (!sourceLang || !targetLang) return;
+  useEffect(() => {
+    if (!sourceLang || !targetLang) return;
 
-  const src = sourceLang.BCP_code;
-  const tgt = targetLang.BCP_code;
+    const src = sourceLang.BCP_code;
+    const tgt = targetLang.BCP_code;
 
-  const isEngNzemePair =
-    (src === "eng_Latn" && tgt === "nzm_Latn") ||
-    (src === "nzm_Latn" && tgt === "eng_Latn");
+    const isEngNzemePair =
+      (src === "eng_Latn" && tgt === "nzm_Latn") ||
+      (src === "nzm_Latn" && tgt === "eng_Latn");
 
-  if (isEngNzemePair) {
-    setSelectedModel("nllb_finetuned_eng_nzm");
-  } else {
-    setSelectedModel("nllb-600M");
-  }
-}, [sourceLang, targetLang]);
+    if (isEngNzemePair) {
+      setSelectedModel("nllb_finetuned_eng_nzm");
+    } else {
+      setSelectedModel("nllb-600M");
+    }
+  }, [sourceLang, targetLang]);
 
   // ------------------ Copy & Paste Logic ------------------
   const handleCopy = (content) => {
@@ -333,17 +337,6 @@ useEffect(() => {
         showNotification("error", "Copy Failed", "Could not copy text.");
       }
       document.body.removeChild(textarea);
-    }
-  };
-
-  const handlePaste = async (setContent) => {
-    try {
-      const clipText = await navigator.clipboard.readText();
-      setContent(clipText);
-      showNotification("success", "Pasted", "Text pasted from clipboard!");
-    } catch (err) {
-      console.error("Failed to paste: ", err);
-      showNotification("error", "Paste Failed", "Could not paste text.");
     }
   };
 
@@ -389,6 +382,19 @@ useEffect(() => {
 
   // ------------------ File Upload Handler ------------------
   const handleFileUpload = async (file) => {
+    const allowedExtensions = [".txt", ".usfm", ".docx", ".pdf"];
+    const fileExtension = file.name
+      .slice(file.name.lastIndexOf("."))
+      .toLowerCase();
+
+    if (!allowedExtensions.includes(fileExtension)) {
+      showNotification(
+        "error",
+        "Unsupported Format",
+        "Only .txt, .usfm, .docx, and .pdf files are supported."
+      );
+      return Upload.LIST_IGNORE; // stop upload right away
+    }
     const isLt2M = file.size / 1024 / 1024 < 2;
     if (!isLt2M) {
       showNotification(
@@ -548,14 +554,12 @@ useEffect(() => {
               "USFM Markers Detected",
               "This text contains USFM markers. The translation output may not be accurate. Use verse translation for better results."
             );
-          
+
             isUSFMContent = true;
             const extracted = extractUSFMContent(sourceText);
             usfmStructure = extracted.structure;
             textToTranslate = normalizeText(extracted.plainText);
-          }
-          
-           else {
+          } else {
             textToTranslate = normalizeText(fileContent);
           }
         }
@@ -564,7 +568,7 @@ useEffect(() => {
         if (containsUSFMMarkers(sourceText)) {
           message.warning(
             " This file contains USFM markers. The translation output may not be accurate."
-          )
+          );
           isUSFMContent = true;
           const extracted = extractUSFMContent(sourceText);
           usfmStructure = extracted.structure;
@@ -604,8 +608,7 @@ useEffect(() => {
       const finishedJobId = await pollJobStatus({
         token,
         jobId,
-        onStatusUpdate: (status) =>
-          setStatusMsg(`Translation in progress...`),
+        onStatusUpdate: (status) => setStatusMsg(`Translation in progress...`),
         notification,
         signal, // ✅ pass controller signal here
       });
@@ -1156,53 +1159,79 @@ useEffect(() => {
               boxShadow: "0 4px 10px rgba(0,0,0,0.15)", // ✅ shadow effect
               borderRadius: "10px", // rounded corners
             }}
+            styles={{
+              body: {
+                padding: 18, // 👈 replace bodyStyle={{ padding: 8 }}
+              },
+            }}
           >
-            <Title level={4}>🌐 Language Settings</Title>
-            <Row gutter={16} align="bottom">
-              {/* Source Language - Left side */}
-              <Col xs={24} md={8}>
-                <LanguageSelect
-                  value={sourceLang}
-                  onChange={setSourceLang}
-                  disabled={loading}
-                  placeholder="Select source language"
-                />
+            {/* <Title style={{marginBlock:0}} level={5}>🌐 Language Settings</Title> */}
+            <Row
+              gutter={16}
+              align="middle"
+              justify="center"
+              className="lang-select-row"
+              // style={{ marginTop: 0 }}
+            >
+              <Col xs={24} sm={24} md={11} lg={11}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    // marginRight: "100px",
+                  }}
+                >
+                  <LanguageSelect
+                    value={sourceLang}
+                    onChange={setSourceLang}
+                    disabled={loading}
+                    placeholder="Select source language"
+                    style={{ width: "60%" }}
+                  />
+                </div>
               </Col>
 
-              {/* Swap Button - Center */}
               <Col
                 xs={24}
+                sm={24}
                 md={2}
-                style={{
-                  textAlign: "center",
-
-                }}
+                lg={2}
+                style={{ display: "flex", justifyContent: "center" }}
               >
-                <Tooltip title="Swap Languages" color="#fff">
-                  <Button
-                    shape="circle"
-                    icon={<SwapOutlined />}
-                    onClick={() => {
-                      const temp = sourceLang;
-                      setSourceLang(targetLang);
-                      setTargetLang(temp);
-                    }}
-                    disabled={loading}
-                  />
-                </Tooltip>
+                <div className="swap-button-wrapper">
+                  <Tooltip title="Swap Languages" color="#fff">
+                    <Button
+                      shape="circle"
+                      icon={<SwapOutlined />}
+                      onClick={() => {
+                        const temp = sourceLang;
+                        setSourceLang(targetLang);
+                        setTargetLang(temp);
+                      }}
+                      disabled={loading}
+                    />
+                  </Tooltip>
+                </div>
               </Col>
-              <Col xs={0} md={6} />
-              {/* Target Language - Right side */}
-              <Col xs={24} md={8} alignItems="right">
-                <LanguageSelect
-                  value={targetLang}
-                  onChange={setTargetLang}
-                  disabled={loading}
-                  placeholder="Select target language"
-                />
+
+              <Col xs={24} sm={24} md={11} lg={11}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    // marginLeft: "100px",
+                  }}
+                >
+                  <LanguageSelect
+                    value={targetLang}
+                    onChange={setTargetLang}
+                    disabled={loading}
+                    placeholder="Select target language"
+                    style={{ width: "60%" }}
+                  />
+                </div>
               </Col>
             </Row>
-
           </Card>
         </Col>
 
@@ -1210,9 +1239,24 @@ useEffect(() => {
         <Col xs={24} md={12} style={{ marginTop: 16 }}>
           <Card
             title={<span>Source Text</span>}
-            extra={<span style={{ fontWeight: 500 }}>{sourceLang?.label}</span>}
+            extra={
+              sourceText && (
+                <Tooltip
+                  title="Clear"
+                  color="#fff"
+                  styles={{ body: { color: "#000" } }}
+                >
+                  <Button
+                    shape="circle"
+                    onClick={handleClearAll}
+                    icon={<CloseOutlined />}
+                    disabled={loading}
+                  />
+                </Tooltip>
+              )
+            }
             style={{
-              height: "100%",
+              height: "110%",
               display: "flex",
               flexDirection: "column",
               boxShadow: "0 4px 10px rgba(0,0,0,0.15)", // ✅ shadow effect
@@ -1237,22 +1281,21 @@ useEffect(() => {
                 },
               }}
             />
-            {/* Container for buttons with flexbox layout */}
             <div
               style={{
                 marginTop: 12,
                 display: "flex",
                 justifyContent: "space-between",
-                alignItems: "center", // Changed from "flex-end" to "center"
-                minHeight: "32px", // Add consistent height
+                alignItems: "center", // vertically center icons
+                minHeight: "32px",
               }}
             >
-              {/* Left side - Upload section */}
+              {/* Left side - Upload button and note */}
               <div
                 style={{
                   display: "flex",
-                  flexDirection: "column",
-                  alignItems: "flex-start",
+                  alignItems: "center",
+                  gap: "8px",
                 }}
               >
                 <Upload
@@ -1261,19 +1304,17 @@ useEffect(() => {
                   accept=".txt,.usfm,.docx,.pdf"
                   disabled={loading}
                 >
-                  <Tooltip
-                    title="Upload upto 2 MB(.txt, .usfm, .docx, .pdf )"
-                    color="#fff"
-                  >
+                  <Tooltip title="Upload File" color="#fff">
                     <Button
+                    type="default"
                       icon={<UploadOutlined />}
                       disabled={loading}
                       style={{
-                        background: "rgb(44 151 222 / 85%)",
-                        border: "1px solid #e5e7eb",
-                        borderRadius: "6px",
-                        color: "#000",
-                        padding: "6px 14px",
+                        // background: "",
+                        // border: "1px solid #e5e7eb",
+                        // borderRadius: "6px",
+                        // color: "#000",
+                        padding: "5px 30px",
                         cursor: loading ? "not-allowed" : "pointer",
                       }}
                     />
@@ -1283,37 +1324,22 @@ useEffect(() => {
                   type="secondary"
                   style={{
                     fontSize: "12px",
-                    marginTop: "4px",
+                    // marginTop: "0px",
                     display: "block",
                   }}
                 >
-                  <strong>Drop .txt, .usfm, .docx, .pdf up to 2 MB</strong>
+                  Supported formats: TXT, PDF, DOCX, USFM • up to 2 MB
                 </Typography.Text>
               </div>
 
               {/* Right side - Clear button */}
-              <div>
-                <Tooltip
-                  title="Clear"
-                  color="#fff"
-                  styles={{ body: { color: "#000" } }}
-                >
-                  <Button
-                    style={{
-                      backgroundColor: "rgb(229, 118 ,119)",
-                      color: "white",
-                      boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
-                      border: "none",
-                    }}
-                    onClick={handleClearAll}
-                    icon={<CloseOutlined />}
-                    disabled={loading}
-                  />
-                </Tooltip>
-              </div>
+              {/* <div>
+                
+              </div> */}
             </div>
           </Card>
         </Col>
+
         {/* Target Panel */}
         <Col xs={24} md={12} style={{ marginTop: 16 }}>
           <Card
@@ -1321,61 +1347,89 @@ useEffect(() => {
             extra={
               <Space>
                 <Select
-  value={selectedModel || undefined}
-  onChange={setSelectedModel}
-  disabled={loading}
-  style={{ minWidth: 200 }}
->
-  {availableModels.map((m) => {
-    let disabled = false;
-    let tooltip = "";
+                  value={selectedModel || undefined}
+                  onChange={setSelectedModel}
+                  disabled={loading}
+                  style={{ minWidth: 200 }}
+                >
+                  {availableModels.map((m) => {
+                    let disabled = false;
+                    let tooltip = "";
 
-    const src = sourceLang?.BCP_code;
-    const tgt = targetLang?.BCP_code;
-    const isEngNzemePair =
-      (src === "eng_Latn" && tgt === "nzm_Latn") ||
-      (src === "nzm_Latn" && tgt === "eng_Latn");
+                    const src = sourceLang?.BCP_code;
+                    const tgt = targetLang?.BCP_code;
+                    const isEngNzemePair =
+                      (src === "eng_Latn" && tgt === "nzm_Latn") ||
+                      (src === "nzm_Latn" && tgt === "eng_Latn");
 
-    if (m.value === "nllb-600M" && isEngNzemePair) {
-      disabled = true;
-      tooltip = "This model does not support Zeme Naga language.";
-    } else if (m.value === "nllb_finetuned_eng_nzm" && !isEngNzemePair) {
-      disabled = true;
-      tooltip = "This model supports only English ↔ Zeme Naga translation.";
-    }
+                    if (m.value === "nllb-600M" && isEngNzemePair) {
+                      disabled = true;
+                      tooltip =
+                        "This model does not support Zeme Naga language.";
+                    } else if (
+                      m.value === "nllb_finetuned_eng_nzm" &&
+                      !isEngNzemePair
+                    ) {
+                      disabled = true;
+                      tooltip =
+                        "This model supports only English ↔ Zeme Naga translation.";
+                    }
 
-    return (
-      <Select.Option key={m.value} value={m.value} disabled={disabled}>
-        <Tooltip
-          title={tooltip}
-          placement="right"
-          overlayInnerStyle={{
-            backgroundColor: "#fff",
-            color: "#000",
-            border: "1px solid #ddd",
-            borderRadius: "6px",
-            padding: "6px 10px",
-          }}
-        >
-          {m.label}
-        </Tooltip>
-      </Select.Option>
-    );
-  })}
-</Select>
+                    return (
+                      <Select.Option
+                        key={m.value}
+                        value={m.value}
+                        disabled={disabled}
+                      >
+                        <Tooltip
+                          title={tooltip}
+                          placement="right"
+                          overlayInnerStyle={{
+                            backgroundColor: "#fff",
+                            color: "#000",
+                            border: "1px solid #ddd",
+                            borderRadius: "6px",
+                            padding: "6px 10px",
+                          }}
+                        >
+                          {m.label}
+                        </Tooltip>
+                      </Select.Option>
+                    );
+                  })}
+                </Select>
                 <Tooltip
                   color="#ffffff"
                   title={
                     selectedModel ? (
-                      <div style={{ color: 'var(--primary-color)' }}>
-                        <div><strong>Model Name:</strong> {selectedModel}</div>
-                        <div><strong>Tasks:</strong> {modelsInfo[selectedModel].tasks}</div>
-                        <div><strong>Languages:</strong> {modelsInfo[selectedModel].languages}</div>
-                        <div><strong>Language Code Type:</strong> {modelsInfo[selectedModel].languageCodeType}</div>
-                        <div><strong>Developed By:</strong> {modelsInfo[selectedModel].developedBy}</div>
-                        <div><strong>License:</strong> {modelsInfo[selectedModel].license}</div>
+                      <div style={{ color: "var(--primary-color)" }}>
+                        <div>
+                          <strong>Model Name:</strong> {selectedModel}
+                        </div>
+                        <div>
+                          <strong>Tasks:</strong>{" "}
+                          {modelsInfo[selectedModel].tasks}
+                        </div>
+                        <div>
+                          <strong>Languages:</strong>{" "}
+                          {modelsInfo[selectedModel].languages}
+                        </div>
+                        <div>
+                          <strong>Language Code Type:</strong>{" "}
+                          {modelsInfo[selectedModel].languageCodeType}
+                        </div>
+                        <div>
+                          <strong>Developed By:</strong>{" "}
+                          {modelsInfo[selectedModel].developedBy}
+                        </div>
+                        <div>
+                          <strong>License:</strong>{" "}
+                          {modelsInfo[selectedModel].license}
+                        </div>
                       </div>
-                    ) : "Select a model to see info"
+                    ) : (
+                      "Select a model to see info"
+                    )
                   }
                 >
                   <Button
@@ -1384,11 +1438,10 @@ useEffect(() => {
                     disabled={!selectedModel} // disables button when no model selected
                   />
                 </Tooltip>
-
               </Space>
             }
             style={{
-              height: "100%",
+              height: "110%",
               display: "flex",
               flexDirection: "column",
               boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
@@ -1396,11 +1449,20 @@ useEffect(() => {
             }}
             bodyStyle={{ flex: 1, display: "flex", flexDirection: "column" }}
           >
-            <Spin
+            <div
+              style={{
+                position: "relative",
+                flex: 1,
+                minHeight: 320,
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              {/* <Spin
               spinning={loading}
               tip="Translating..."
               style={{ flex: 1, display: "flex", flexDirection: "column" }}
-            >
+            > */}
               <TextArea
                 rows={10}
                 value={targetText}
@@ -1410,14 +1472,31 @@ useEffect(() => {
                 style={{
                   flex: 1,
                   resize: "none",
-                  color: "#000",
+                  color: "#000", // text color
                   "::placeholder": {
-                    color: "#888",
-                    opacity: 1,
+                    // placeholder styling
+                    opacity: 1, // ensure it shows properly
+                    height: "100%",
                   },
                 }}
               />
-            </Spin>
+              {loading && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0, // top:0; right:0; bottom:0; left:0
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "rgba(255,255,255,0.65)", // semi-transparent overlay
+                    zIndex: 10,
+                    pointerEvents: "none", // let clicks pass if you want; set true to block
+                  }}
+                >
+                  <Spin tip="Translating..." />
+                </div>
+              )}
+            </div>
             <div
               style={{
                 marginTop: 12,
@@ -1455,63 +1534,72 @@ useEffect(() => {
                     <DownloadDraftButton
                       content={targetText}
                       disabled={loading || !targetText}
-                      targetLanguage={targetLang?.name}
+                      targetLanguage={targetLang?.BCP_code}
+                      sourceLanguage={sourceLang?.BCP_code}
                     />
                   </Space>
                 </Col>
-                <Col>{/* Add empty column for consistent spacing */}</Col>
+                <Col>
+                  <Tooltip
+                    title={!selectedModel ? "Please select a model first" : ""}
+                    color="#fff"
+                  >
+                    <Button
+                      type="primary"
+                      danger={loading}
+                      size="medium"
+                      icon={
+                        loading ? <CloseOutlined /> : <></>
+                      }
+                      onClick={() => {
+                        if (loading) {
+                          handleCancelTranslate();
+                        } else {
+                          handleTranslate();
+                        }
+                      }}
+                      disabled={!selectedModel} // disable if loading or no model selected
+                      style={{
+                        padding: "0 32px",
+                        borderRadius: "8px",
+                        minWidth: "100px",
+                        backgroundColor: loading
+                          ? "#ff4d4f"
+                          : !selectedModel
+                          ? "#d9d9d9"
+                          : "rgb(44,141,251)",
+                        borderColor: loading
+                          ? "#ff4d4f"
+                          : !selectedModel
+                          ? "#d9d9d9"
+                          : "rgb(44,141,251)",
+                        color: "#fff",
+                      }}
+                    >
+                      {loading ? "Cancel Translation" : "Translate"}
+                    </Button>
+                  </Tooltip>
+                </Col>
               </Row>
             </div>
           </Card>
         </Col>
 
         {/* Translate button centered */}
-        <Col span={24} style={{ textAlign: "center", marginTop: 24 }}>
-          <Tooltip
-            title={!selectedModel ? "Please select a model first" : ""}
-            color="#fff"
-          >
-            <Button
-              type="primary"
-              danger={loading}
-              size="medium"
-              icon={loading ? <CloseOutlined /> : <TranslationOutlined />}
-              onClick={() => {
-                if (loading) {
-                  handleCancelTranslate();
-                } else {
-                  handleTranslate();
-                }
-              }}
-              disabled={!selectedModel} // disable if loading or no model selected
-              style={{
-                padding: "0 32px",
-                borderRadius: "8px",
-                minWidth: "200px",
-                backgroundColor: loading
-                  ? "#ff4d4f"
-                  : !selectedModel
-                    ? "#d9d9d9"
-                    : "rgb(44,141,251)",
-                borderColor: loading
-                  ? "#ff4d4f"
-                  : !selectedModel
-                    ? "#d9d9d9"
-                    : "rgb(44,141,251)",
-                color: "#fff",
-              }}
-            >
-              {loading ? "Cancel Translation" : "Translate"}
-            </Button>
-          </Tooltip>
-
+        {/* <Col span={24} style={{ textAlign: "center", marginTop: 24 }}>
           {statusMsg && (
             <div style={{ marginTop: 12 }}>
-              <Text type="secondary">{statusMsg}</Text>
+              <Text>{statusMsg}</Text>
             </div>
           )}
-        </Col>
-
+        </Col> */}
+        {statusMsg && (
+          <div
+            style={{ marginTop: "80px", textAlign: "center", width: "100%" }}
+          >
+            <Text>{statusMsg}</Text>
+          </div>
+        )}
       </Row>
       <Modal
         title="Save Translation"
@@ -1528,7 +1616,7 @@ useEffect(() => {
         confirmLoading={saving}
         okText={saving ? "Saving..." : "Save"}
         okButtonProps={{
-          disabled: !selectedProject || !filename
+          disabled: !selectedProject || !filename,
         }}
       >
         {saveError && (
@@ -1573,15 +1661,15 @@ useEffect(() => {
             ))}
           </Select>
           <Tooltip title="Create new project" color="#fff">
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => {
-              setSaveModalVisible(false);  // Hide the save modal
-              setCreateProjectModalVisible(true);
-            }}
-            disabled={saving}
-          ></Button>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => {
+                setSaveModalVisible(false); // Hide the save modal
+                setCreateProjectModalVisible(true);
+              }}
+              disabled={saving}
+            ></Button>
           </Tooltip>
         </div>
 
@@ -1604,7 +1692,7 @@ useEffect(() => {
           setNewProjectName("");
           setNewProjectFilename("");
           setCreateProjectError("");
-          setSaveModalVisible(true);  // Show the save modal again
+          setSaveModalVisible(true); // Show the save modal again
         }}
         confirmLoading={creatingProject}
         okText={creatingProject ? "Creating..." : "Create"}

@@ -18,7 +18,7 @@ function extractLines(node) {
   return "";
 }
 
-export default function DownloadDraftButton({ style, content, disabled = false, targetLanguage }) {
+export default function DownloadDraftButton({ style, content, disabled = false, targetLanguage,sourceLanguage }) {
   const rawText = extractLines(content);
   const hasContent = rawText && rawText.trim().length > 0; // added
 
@@ -32,17 +32,17 @@ export default function DownloadDraftButton({ style, content, disabled = false, 
       .split("\n")
       .map((line) => line.trim())
       .filter((line) => line.length > 0);
-
-    const langName = (targetLanguage || "translation").toLowerCase();
-
+    const src =
+      sourceLanguage?.slice(0, 3).toLowerCase() || "src";
+    const tgt =
+      targetLanguage?.slice(0, 3).toLowerCase() || "tgt";
+      const fileName = `${src}_${tgt}.${format}`;
 
     if (format === "txt" || format === "usfm") {
       const blob = new Blob([lines.join("\n\n")], {
         type: "text/plain;charset=utf-8",
       });
-      //saveAs(blob, `draft.${format}`);
-      saveAs(blob, `${langName}-draft.${format}`);
-
+      saveAs(blob, fileName);
     }
 
 
@@ -65,7 +65,7 @@ export default function DownloadDraftButton({ style, content, disabled = false, 
       });
 
       const blob = await Packer.toBlob(doc);
-      saveAs(blob, `${langName}-draft.docx`);
+      saveAs(blob, fileName);
     }
   };
 
@@ -82,9 +82,7 @@ export default function DownloadDraftButton({ style, content, disabled = false, 
       <Tooltip title="Download" color="#fff" styles={{ body: { color: "#000"} }}>
 
       <Button
-        //type="primary"
         icon={<DownloadOutlined />}
-        // style={{  borderColor: "#722ed1", ...style }}
         disabled={disabled || !hasContent} //  disable button UI
       >
 
