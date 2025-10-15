@@ -19,6 +19,7 @@ import {
   Modal,
   Tag,
   Divider,
+  notification
 } from "antd";
 import {
   ThunderboltOutlined,
@@ -144,6 +145,7 @@ const VerseTranslationPage = () => {
   const [selectedModel, setSelectedModel] = useState("nllb-600M");
   const abortControllerRef = useRef(null);
   const [cancelTranslation, setCancelTranslation] = useState(false);
+  const [notificationApi, notificationContextHolder] = notification.useNotification();
 
   const [modal, modalContextHolder] = Modal.useModal();
   
@@ -274,6 +276,40 @@ const [totalBooks, setTotalBooks] = useState(0);
     const files = Array.from(e.target.files || []);
     if (!files.length || !project?.source_id) return;
   
+    // 1️⃣ Extension check
+    const invalidFiles = files.filter(
+      (file) => !file.name.toLowerCase().endsWith(".usfm")
+    );
+  
+    if (invalidFiles.length > 0) {
+      notificationApi.error({
+        message: "Unsupported File Format",
+        description:
+          "This file format is not supported for verse translation. Please upload USFM files only.",
+        placement: "top",
+        duration: 4,
+      });
+      e.target.value = "";
+      return;
+    }
+  
+    // 2️⃣ ✅ USFM structure validation
+    const textContent = await files[0].text();
+    const hasUSFMMarkers = /\\id|\\c|\\v/.test(textContent);
+  
+    if (!hasUSFMMarkers) {
+      notificationApi.error({
+        message: "Invalid USFM File",
+        description:
+          "The selected file does not appear to be a valid USFM file. Please upload a properly formatted USFM document.",
+        placement: "top",
+        duration: 5,
+      });
+      e.target.value = "";
+      return; // ❌ Stop here — don’t open modal
+    }
+  
+    // 3️⃣ Start upload process
     setTotalBooks(files.length);
     setUploadingBooks([]);
     setUploadedBooks([]);
@@ -281,36 +317,34 @@ const [totalBooks, setTotalBooks] = useState(0);
     setUploadProgressOpen(true);
   
     for (const file of files) {
-      const code = await guessUSFMCode(file); // Get the book code
-  
-      // Mark as uploading (by code, not filename)
-      setUploadingBooks(prev => [...prev, code]);
+      const code = await guessUSFMCode(file);
+      setUploadingBooks((prev) => [...prev, code]);
   
       try {
-        // Call your existing API helper
         const { uploaded, skipped } = await uploadBooksForSource(
           project.source_id,
-          [file] // send one at a time
+          [file]
         );
   
-        if (uploaded.length) {
-          setUploadedBooks(prev => [...prev, code]); // use code instead of file.name
-        }
-        if (skipped.length) {
-          setSkippedBooks(prev => [...prev, code]); // use code instead of file.name
-        }
+        if (uploaded.length) setUploadedBooks((prev) => [...prev, code]);
+        if (skipped.length) setSkippedBooks((prev) => [...prev, code]);
       } catch (err) {
-        setSkippedBooks(prev => [...prev, code]); // treat errors as skipped
+        console.error("Upload failed:", err);
+        setSkippedBooks((prev) => [...prev, code]);
+        notificationApi.error({
+          message: "Upload Failed",
+          description: `Failed to upload ${file.name}. Please check if the file is in correct USFM format.`,
+          placement: "top",
+          duration: 4,
+        });
       } finally {
-        // Remove from "uploading"
-        setUploadingBooks(prev => prev.filter(c => c !== code));
+        setUploadingBooks((prev) => prev.filter((c) => c !== code));
       }
     }
   
-    // Refresh book list after uploads complete
+    setUploadProgressOpen(false);
     await fetchAvailableBooks(project.source_id);
-  
-    e.target.value = ""; // reset input
+    e.target.value = "";
   };
   
 
@@ -1020,6 +1054,7 @@ const [totalBooks, setTotalBooks] = useState(0);
         onClose={() => setSummaryOpen(false)}
       /> */}
      {modalContextHolder}
+     {notificationContextHolder}
    <UploadProgressModal
   visible={uploadProgressOpen}
   uploading={uploadingBooks}

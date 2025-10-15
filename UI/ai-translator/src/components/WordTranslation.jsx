@@ -278,6 +278,40 @@ export default function WordTranslation() {
         const files = Array.from(e.target.files || []);
         if (!files.length || !project?.source_id) return;
     
+        // ✅ 1️⃣ File extension validation
+        const invalidFiles = files.filter(
+          (file) => !file.name.toLowerCase().endsWith(".usfm")
+        );
+    
+        if (invalidFiles.length > 0) {
+          notificationApi.error({
+            message: "Unsupported File Format",
+            description:
+              "This file format is not supported for word translation. Please upload USFM files only.",
+            placement: "top",
+            duration: 4,
+          });
+          e.target.value = ""; // reset
+          return;
+        }
+    
+        // ✅ 2️⃣ USFM structure validation
+        const textContent = await files[0].text();
+        const hasUSFMMarkers = /\\id|\\c|\\v/.test(textContent);
+    
+        if (!hasUSFMMarkers) {
+          notificationApi.error({
+            message: "Invalid USFM File",
+            description:
+              "The selected file does not appear to be a valid USFM file. Please upload a properly formatted USFM document.",
+            placement: "top",
+            duration: 5,
+          });
+          e.target.value = ""; // reset input
+          return;
+        }
+    
+        // ✅ 3️⃣ Proceed with upload (only valid USFM)
         await uploadBooksForSource(project.source_id, files);
     
         // 🔹 Refresh projectBooks list after upload
@@ -291,7 +325,6 @@ export default function WordTranslation() {
         e.target.value = ""; // reset input
       }
     };
-    
     
   // Fetch books for the project
   useEffect(() => {
