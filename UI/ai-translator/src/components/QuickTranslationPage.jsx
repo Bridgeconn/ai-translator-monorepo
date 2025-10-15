@@ -1238,7 +1238,7 @@ useEffect(() => {
               }}
             />
             {/* Container for buttons with flexbox layout */}
-            <div
+            {/* <div
               style={{
                 marginTop: 12,
                 display: "flex",
@@ -1246,15 +1246,32 @@ useEffect(() => {
                 alignItems: "center", // Changed from "flex-end" to "center"
                 minHeight: "32px", // Add consistent height
               }}
-            >
+            > */}
               {/* Left side - Upload section */}
-              <div
+              {/* <div
                 style={{
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "flex-start",
                 }}
-              >
+              > */}
+              <div
+  style={{
+    marginTop: 12,
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center", // vertically center icons
+    minHeight: "40px",
+  }}
+>
+  {/* Left side - Upload button and note */}
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: "8px",
+    }}
+  >
                 <Upload
                   beforeUpload={handleFileUpload}
                   showUploadList={false}
