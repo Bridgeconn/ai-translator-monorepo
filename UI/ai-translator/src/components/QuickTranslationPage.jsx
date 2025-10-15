@@ -30,10 +30,10 @@ import LanguageSelect from "./LanguageSelect";
 import vachanApi from "../api/vachan";
 import Papa from "papaparse"; // CSV parser
 import { useNavigate } from "react-router-dom";
-import * as pdfjsLib from "pdfjs-dist";
 import { App } from "antd";
 import { InfoCircleOutlined } from "@ant-design/icons";
 import { useAuthModal } from "./AuthModalContext";
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf";
 pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
 const { TextArea } = Input;

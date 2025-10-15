@@ -40,6 +40,9 @@ Then run:
 ### Start the app
 `uvicorn app.main:app --reload`
 
+or
+`python -m uvicorn app.main:app --reload`
+
 ### Packages
 pip install ruff black mypy (for testing lint errors)
 for test - `ruff check .`
