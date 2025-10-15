@@ -27,7 +27,7 @@ import {
 } from "@ant-design/icons";
 import DownloadDraftButton from "./DownloadDraftButton";
 import LanguageSelect from "./LanguageSelect";
-import vachanApi from "../stagingapi/vachan";
+import vachanApi from "../api/vachan";
 import Papa from "papaparse"; // CSV parser
 import { useNavigate } from "react-router-dom";
 import { App } from "antd";
@@ -43,10 +43,6 @@ const { Title, Text } = Typography;
 const LINE_SENTINEL = " ⟦LB⟧ ";
 // ------------------ API Helpers ------------------
 async function getAccessToken() {
-  console.log(
-    "🔑 Requesting token:",
-    "https://stagingapi.vachanengine.org/v2/ai/token"
-  );
   const params = new URLSearchParams();
   params.append("username", import.meta.env.VITE_VACHAN_USERNAME);
   params.append("password", import.meta.env.VITE_VACHAN_PASSWORD);
