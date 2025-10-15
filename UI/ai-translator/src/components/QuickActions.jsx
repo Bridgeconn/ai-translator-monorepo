@@ -139,42 +139,32 @@ export default function QuickActions() {
     <Card
       title="Quick Actions"
       style={{
-        width: "100%",
-        borderRadius: 12,
-        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-        border: "none",
-      }}
-      styles={{ body: { padding: 20 }, title: { fontSize: 18, fontWeight: 600 } }}
+              borderRadius: 20,
+              background: "linear-gradient(145deg, #ffffff, #f9fafc)",
+              boxShadow: "0 8px 20px rgba(0,0,0,0.06)",
+              height: "100%",
+              overflow: "hidden",
+            }}
+            styles={{
+              padding: "12px 20px",
+              height: "calc(100% - 60px)",
+              overflow: "auto",
+            }}
     >
       {/*  Message contextHolder */}
       {contextHolder}
       <Text
         style={{
           display: "block",
-          marginBottom: 20,
+          marginBottom: 40,
           color: "#262626",
         }}
       >
         Begin by adding a source file and creating a project. You can use Quick Translate for instant translations.
       </Text>
 
-      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-        {/* <Tooltip title="A Source is folder that contains Bible books that you want to translate.">
-          <Button
-            type="primary"
-            icon={<FileTextFilled />}
-            size="large"
-            block
-            style={{
-              borderRadius: 8,
-              backgroundColor: "#50C878",
-              borderColor: "#50C878",
-            }}
-            onClick={() => setIsSourceModalVisible(true)}
-          >
-            Add New Source <InfoCircleOutlined style={{ marginLeft: 8 }} />
-          </Button>
-        </Tooltip> */}
+      <Space direction="vertical" size="large" style={{ width: "100%" }}>
+       
 
 
         <Tooltip title="A Project is where you link a source folder and target language to start translation of Bible books.">
@@ -200,7 +190,7 @@ export default function QuickActions() {
           icon={<ThunderboltOutlined />}
           size="large"
           block
-          style={{ borderRadius: 8 }}
+          style={{ borderRadius: 8, backgroundColor: "#f0f0f0" }}
           onClick={() => (window.location.href = "/quick-translation")}
         >
           Quick Translate

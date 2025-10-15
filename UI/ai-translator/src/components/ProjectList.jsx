@@ -54,78 +54,114 @@ const ProjectList = ({
 
   return (
     <>
-      <Row gutter={[24, 24]}>
+      <Row gutter={[20, 20]}>
         {paginatedProjects.map((project) => {
-          const langs = extractLanguagesFromName(project.name || "") || {
-            source_language: "Source",
-            target_language: "Target",
-          };
+          const langs =
+            extractLanguagesFromName(project.name || "") || {
+              source_language: "Source",
+              target_language: "Target",
+            };
 
           return (
-            <Col xs={24} sm={12} md={8} lg={6} key={project.project_id} >
+            <Col xs={24} sm={12} md={8} lg={6} key={project.project_id}>
               <Card
-                onClick={() => handleCardClick(project)}
                 hoverable
                 style={{
+                  position: "relative", // for absolute overlay/action placement
                   borderRadius: 10,
                   border: "1px solid #e6e8eb",
-                  cursor: "pointer",
-                  transition: "transform 0.14s ease, box-shadow 0.14s ease",
-                  minHeight: 120,
-                  display: "flex",
-                  flexDirection: "column",
+                  cursor: "pointer", // cursor controlled by overlay
+                  minHeight: 108,
+                  padding: 0,
+                  overflow: "hidden",
                 }}
                 bodyStyle={{
                   padding: 14,
-                  display: "flex",
-                  flexDirection: "column",
-                  height: "100%",
                 }}
               >
-                {/* Top row: icon + title */}
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 8,
-                      background: "linear-gradient(135deg,#EAF2FF,#DCE9FF)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "#2c8dfb",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <FolderOpenOutlined
-                      style={{ fontSize: 18, color: "#2c8dfb" }}
-                    />
-                  </div>
+                {/* FULL-CARD CLICKABLE OVERLAY (invisible) */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Open project ${project.name || ""}`}
+                  onClick={() => handleCardClick(project)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleCardClick(project);
+                  }}
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    zIndex: 1,
+                    // overlay is fully transparent but receives clicks
+                    background: "transparent",
+                  }}
+                />
 
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <Text strong style={{ fontSize: 16 }}>
-                      {project.name ||
-                        `${langs.source_language} - ${langs.target_language}`}
-                    </Text>
-                    
-                    <div>
-                    {/* subtitle just below title */}
-                    <Text
-                      type="secondary"
-                      style={{ fontSize: 12, textTransform: "capitalize" }}
+                {/* CONTENT (above overlay visually) */}
+                <div
+                  style={{
+                    position: "relative",
+                    zIndex: 2,
+                    display: "flex",
+                    flexDirection: "column",
+                    height: "100%",
+                  }}
+                >
+                  {/* Top row: icon + title */}
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                    <div
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 8,
+                        background: "linear-gradient(135deg,#EAF2FF,#DCE9FF)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#2c8dfb",
+                        flexShrink: 0,
+                      }}
                     >
-                      {project.translation_type} translation
-                    </Text>
+                      <FolderOpenOutlined style={{ fontSize: 18, color: "#2c8dfb" }} />
+                    </div>
+
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <Text
+                        strong
+                        style={{
+                          fontSize: 17,
+                          display: "block",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {project.name ||
+                          `${langs.source_language} - ${langs.target_language}`}
+                      </Text>
+
+                      <Text type="secondary" style={{ fontSize: 12, display: "block", marginTop: 6 }}>
+                        {project.translation_type ? `${project.translation_type} translation` : ""}
+                      </Text>
                     </div>
                   </div>
+
+                  {/* spacer pushes the delete action to the bottom */}
+                  <div style={{ flex: 1 }} />
                 </div>
 
-                {/* spacer to push delete action to bottom */}
-                <div style={{ flex: 1 }} />
-
-                {/* Bottom row: delete button aligned right */}
+                {/* ACTIONS: placed above overlay so they capture clicks */}
                 <div
-                  style={{ display: "flex", justifyContent: "flex-end" }}
+                  style={{
+                    position: "absolute",
+                    right: 12,
+                    bottom: 12,
+                    zIndex: 3, // higher than overlay
+                    display: "flex",
+                    gap: 8,
+                    alignItems: "center",
+                  }}
+                  // stop propagation so clicking the action DOES NOT trigger the overlay navigation
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Popconfirm
@@ -138,8 +174,9 @@ const ProjectList = ({
                   >
                     <Button
                       type="text"
-                      icon={<DeleteOutlined style={{ color: "#ff4d4f" }} />}
-                      style={{ padding: "4px 8px" }}
+                      aria-label={`Delete ${project.name || "project"}`}
+                      icon={<DeleteOutlined style={{ color: "#ff4d4f", fontSize: 16 }} />}
+                      style={{ padding: 6 }}
                     />
                   </Popconfirm>
                 </div>

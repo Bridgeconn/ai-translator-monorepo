@@ -29,7 +29,7 @@ export default function LanguageSelect({ label, value, onChange, disabled = fals
       <Select
         showSearch
         placeholder={placeholder}
-        style={{ width: 200,
+        style={{ width: 250,
           boxShadow: "0 2px 6px rgba(0,0,0,0.15)", // ✅ shadow effect
           borderRadius: "6px"   }}
         loading={isLoading}

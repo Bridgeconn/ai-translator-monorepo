@@ -123,9 +123,7 @@ const Dashboard = () => {
   return (
     <Content
       style={{
-        padding: "24px 36px",
-        minHeight: "calc(100vh - 64px)",
-        background: "#f0f2f5",
+        padding: "24px",
         overflow: "hidden",
       }}
     >
@@ -192,7 +190,7 @@ const Dashboard = () => {
               height: "100%",
               overflow: "hidden",
             }}
-            bodyStyle={{
+            styles={{
               padding: "12px 20px",
               height: "calc(100% - 60px)",
               overflow: "auto",
