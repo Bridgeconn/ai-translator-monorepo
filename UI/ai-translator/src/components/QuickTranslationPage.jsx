@@ -1455,7 +1455,8 @@ useEffect(() => {
                     <DownloadDraftButton
                       content={targetText}
                       disabled={loading || !targetText}
-                      targetLanguage={targetLang?.name}
+                      targetLanguage={targetLang?.BCP_code}
+                      sourceLanguage={sourceLang?.BCP_code}
                     />
                   </Space>
                 </Col>
