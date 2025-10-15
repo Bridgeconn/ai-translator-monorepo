@@ -389,6 +389,17 @@ useEffect(() => {
 
   // ------------------ File Upload Handler ------------------
   const handleFileUpload = async (file) => {
+    const allowedExtensions = [".txt", ".usfm", ".docx", ".pdf"];
+    const fileExtension = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
+  
+    if (!allowedExtensions.includes(fileExtension)) {
+      showNotification(
+        "error",
+        "Unsupported Format",
+        "Only .txt, .usfm, .docx, and .pdf files are supported."
+      );
+      return Upload.LIST_IGNORE; // stop upload right away
+    }
     const isLt2M = file.size / 1024 / 1024 < 2;
     if (!isLt2M) {
       showNotification(

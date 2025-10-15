@@ -52,8 +52,8 @@ function UploadProgressModal({ visible, uploading = [], uploaded = [], skipped =
       open={visible}
       title="Book upload status"
       footer={null}
-      closable={isComplete}
-      onCancel={isComplete ? onClose : undefined}
+      closable={true}
+      onCancel={onClose}
       maskClosable={false}
     >
       <div style={{ marginBottom: 16 }}>
@@ -90,7 +90,7 @@ function UploadProgressModal({ visible, uploading = [], uploaded = [], skipped =
 
       {skipped.length > 0 && (
         <div style={{ marginBottom: 12 }}>
-          <Text type="secondary">⚠️ Skipped (already exists) ({skipped.length}):</Text>
+          <Text type="secondary">⚠️ Skipped (already exists | wrong format )({skipped.length}):</Text>
           <div style={{ marginTop: 8 }}>
             {skipped.map((code) => (
               <Tag color="gold" key={`skipped-${code}`} style={{ marginBottom: 6 }}>
@@ -101,13 +101,11 @@ function UploadProgressModal({ visible, uploading = [], uploaded = [], skipped =
         </div>
       )}
 
-      {isComplete && (
         <div style={{ textAlign: "right", marginTop: 16 }}>
           <Button type="primary" onClick={onClose}>
             Close
           </Button>
         </div>
-      )}
     </Modal>
   );
 }
@@ -262,8 +260,10 @@ const [totalBooks, setTotalBooks] = useState(0);
         });
         uploaded.push(code);
         existingCodes.add(code);
-      } catch {
+      } catch (error) {
+        console.error("Upload failed for:", code, error);
         message.error(`Failed to upload ${code}`);
+        skipped.push(code); // ✅ Treat failed uploads (wrong format etc.) as skipped
       }
     }
 
@@ -280,33 +280,30 @@ const [totalBooks, setTotalBooks] = useState(0);
     setSkippedBooks([]);
     setUploadProgressOpen(true);
   
-    for (const file of files) {
-      const code = await guessUSFMCode(file); // Get the book code
-  
-      // Mark as uploading (by code, not filename)
-      setUploadingBooks(prev => [...prev, code]);
-  
-      try {
-        // Call your existing API helper
-        const { uploaded, skipped } = await uploadBooksForSource(
-          project.source_id,
-          [file] // send one at a time
-        );
-  
-        if (uploaded.length) {
-          setUploadedBooks(prev => [...prev, code]); // use code instead of file.name
-        }
-        if (skipped.length) {
-          setSkippedBooks(prev => [...prev, code]); // use code instead of file.name
-        }
-      } catch (err) {
-        setSkippedBooks(prev => [...prev, code]); // treat errors as skipped
-      } finally {
-        // Remove from "uploading"
-        setUploadingBooks(prev => prev.filter(c => c !== code));
-      }
+  let allUploaded = [];
+  let allSkipped = [];
+
+  for (const file of files) {
+    const code = await guessUSFMCode(file);
+    setUploadingBooks((prev) => [...prev, code]);
+
+    try {
+      const { uploaded, skipped } = await uploadBooksForSource(project.source_id, [file]);
+
+      // ✅ Merge all results properly
+      if (uploaded.length) allUploaded.push(...uploaded);
+      if (skipped.length) allSkipped.push(...skipped);
+    } catch {
+      allSkipped.push(code);
+    } finally {
+      setUploadingBooks((prev) => prev.filter((c) => c !== code));
     }
-  
+  }
+
+  // ✅ Update once at the end
+  setUploadedBooks(allUploaded);
+  setSkippedBooks(allSkipped);
+
     // Refresh book list after uploads complete
     await fetchAvailableBooks(project.source_id);
   

@@ -61,7 +61,7 @@ function UploadProgressModal({ visible, uploading = [], uploaded = [], skipped =
 
       {skipped.length > 0 && (
         <div style={{ marginBottom: 12 }}>
-          <Text type="secondary">⚠️ Skipped (already exists) ({skipped.length}):</Text>
+          <Text type="secondary">⚠️ Skipped (already exists| wrong format) ({skipped.length}):</Text>
           <div style={{ marginTop: 8 }}>
             {skipped.map((code) => (
               <Tag color="gold" key={`skipped-${code}`} style={{ marginBottom: 6 }}>
@@ -222,20 +222,25 @@ export default function WordTranslation() {
         setUploadedBooks([]);
         setSkippedBooks([]);
         setUploadProgressOpen(true);
-      
-        for (const file of files) {
-          const code = await guessUSFMCode(file);
-      
-          // mark as uploading (by code)
-          setUploadingBooks((prev) => [...prev, code]);
-      
-          if (existingCodes.has(code)) {
-            skipped.push(code);
-            setSkippedBooks((prev) => [...prev, code]);
-            setUploadingBooks((prev) => prev.filter((c) => c !== code));
-            continue;
-          }
-      
+          for (const file of files) {
+            const ext = file.name.split(".").pop()?.toLowerCase();
+        
+            // ✅ Wrong format check
+            if (ext !== "usfm") {
+              skipped.push(`${file.name}`);
+              setSkippedBooks((prev) => [...prev, `${file.name}`]);
+              continue;
+            }
+        
+            const code = await guessUSFMCode(file);
+            setUploadingBooks((prev) => [...prev, code]);
+        
+            if (existingCodes.has(code)) {
+              skipped.push(`${code}`);
+              setSkippedBooks((prev) => [...prev, `${code}`]);
+              setUploadingBooks((prev) => prev.filter((c) => c !== code));
+              continue;
+            }
           const formData = new FormData();
           formData.append("file", file);
       
@@ -247,8 +252,8 @@ export default function WordTranslation() {
             setUploadedBooks((prev) => [...prev, code]);
             existingCodes.add(code);
           } catch {
-            skipped.push(code);
-            setSkippedBooks((prev) => [...prev, code]);
+            skipped.push(`${code}`);
+            setSkippedBooks((prev) => [...prev, `${code}`]);
           } finally {
             // remove from uploading
             setUploadingBooks((prev) => prev.filter((c) => c !== code));
