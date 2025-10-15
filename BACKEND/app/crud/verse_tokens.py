@@ -28,9 +28,9 @@ load_dotenv()
 VACHAN_USERNAME="slimywhite2@gmail.com"
 VACHAN_PASSWORD="Demon@9827"
 
-VACHAN_LOGIN_URL = "https://api.vachanengine.org/v2/ai/token"
-VACHAN_TRANSLATE_URL = "https://api.vachanengine.org/v2/ai/model/text/translate"
-VACHAN_JOB_STATUS_URL = "https://api.vachanengine.org/v2/ai/model/job"
+VACHAN_LOGIN_URL = "https://stagingapi.vachanengine.org/v2/ai/token"
+VACHAN_TRANSLATE_URL = "https://stagingapi.vachanengine.org/v2/ai/model/text/translate"
+VACHAN_JOB_STATUS_URL = "https://stagingapi.vachanengine.org/v2/ai/model/job"
 # VACHAN_MODEL_NAME = "nllb-600M"
 
 # VACHAN_LOGIN_URL = os.getenv("VACHAN_AUTH_URL")

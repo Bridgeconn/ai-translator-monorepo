@@ -9,9 +9,9 @@ logging.basicConfig(level=logging.INFO)
 # Load environment variables
 load_dotenv()
  
-VACHAN_LOGIN_URL = "https://api.vachanengine.org/v2/ai/token"
-VACHAN_TRANSLATE_URL = "https://api.vachanengine.org/v2/ai/model/text/translate"
-VACHAN_JOB_STATUS_URL = "https://api.vachanengine.org/v2/ai/model/job"
+VACHAN_LOGIN_URL = "https://stagingapi.vachanengine.org/v2/ai/token"
+VACHAN_TRANSLATE_URL = "https://stagingapi.vachanengine.org/v2/ai/model/text/translate"
+VACHAN_JOB_STATUS_URL = "https://stagingapi.vachanengine.org/v2/ai/model/job"
  
 USERNAME = "slimywhite2@gmail.com"
 PASSWORD = "Demon@9827"

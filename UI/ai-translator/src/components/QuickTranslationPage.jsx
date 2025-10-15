@@ -27,7 +27,7 @@ import {
 } from "@ant-design/icons";
 import DownloadDraftButton from "./DownloadDraftButton";
 import LanguageSelect from "./LanguageSelect";
-import vachanApi from "../api/vachan";
+import vachanApi from "../stagingapi/vachan";
 import Papa from "papaparse"; // CSV parser
 import { useNavigate } from "react-router-dom";
 import { App } from "antd";
@@ -45,7 +45,7 @@ const LINE_SENTINEL = " ⟦LB⟧ ";
 async function getAccessToken() {
   console.log(
     "🔑 Requesting token:",
-    "https://api.vachanengine.org/v2/ai/token"
+    "https://stagingapi.vachanengine.org/v2/ai/token"
   );
   const params = new URLSearchParams();
   params.append("username", import.meta.env.VITE_VACHAN_USERNAME);
@@ -244,7 +244,7 @@ export default function QuickTranslationPage() {
       try {
         const token = localStorage.getItem("token");
         const resp = await fetch(
-          import.meta.env.VITE_BACKEND_URL + "/api/project-text-documents/",
+          import.meta.env.VITE_BACKEND_URL + "/stagingapi/project-text-documents/",
           {
             method: "GET", // explicitly tell it to use GET
             headers: {
@@ -892,7 +892,7 @@ export default function QuickTranslationPage() {
       }
 
       const response = await fetch(
-        import.meta.env.VITE_BACKEND_URL + "/api/project-text-documents/",
+        import.meta.env.VITE_BACKEND_URL + "/stagingapi/project-text-documents/",
         {
           method: "POST",
           headers: {
@@ -933,7 +933,7 @@ export default function QuickTranslationPage() {
       try {
         const token = localStorage.getItem("token");
         const resp = await fetch(
-          import.meta.env.VITE_BACKEND_URL + "/api/project-text-documents/",
+          import.meta.env.VITE_BACKEND_URL + "/stagingapi/project-text-documents/",
           {
             method: "GET",
             headers: {
@@ -1090,10 +1090,10 @@ export default function QuickTranslationPage() {
       // existing project → add files
       url =
         import.meta.env.VITE_BACKEND_URL +
-        `/api/project-text-documents/${selectedProject}/add-files`;
+        `/stagingapi/project-text-documents/${selectedProject}/add-files`;
     } else {
       // new project → create
-      url = import.meta.env.VITE_BACKEND_URL + "/api/project-text-documents/";
+      url = import.meta.env.VITE_BACKEND_URL + "/stagingapi/project-text-documents/";
     }
 
     const response = await fetch(url, {
