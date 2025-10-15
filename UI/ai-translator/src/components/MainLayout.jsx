@@ -373,9 +373,9 @@ export default function MainLayout() {
         <Content
           style={{
             marginTop: location.pathname === "/" ? 0 : 64, // only offset for other pages
-            padding: location.pathname === "/" ? 0 : 24,
+            padding: location.pathname === "/" ? 0 : 44,
             background: location.pathname === "/" ? "transparent" : "#f5f5f5",
-            minHeight: "100vh",
+            minHeight: "92vh",
           }}
         >
           <Outlet />
