@@ -90,7 +90,7 @@ function UploadProgressModal({ visible, uploading = [], uploaded = [], skipped =
 
       {skipped.length > 0 && (
         <div style={{ marginBottom: 12 }}>
-          <Text type="secondary">⚠️ Skipped (already exists) ({skipped.length}):</Text>
+          <Text type="secondary">⚠️ Skipped (already exists | wrong format ) ({skipped.length}):</Text>
           <div style={{ marginTop: 8 }}>
             {skipped.map((code) => (
               <Tag color="gold" key={`skipped-${code}`} style={{ marginBottom: 6 }}>
