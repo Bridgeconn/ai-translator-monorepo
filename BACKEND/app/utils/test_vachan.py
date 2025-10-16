@@ -1,7 +1,7 @@
 import time
 import requests
 
-BASE_URL = "https://api.vachanengine.org"
+BASE_URL = "https://stagingapi.vachanengine.org"
 LOGIN_URL = "/v2/ai/token"
 TRANSLATE_URL = "/v2/ai/model/text/translate"
 JOB_STATUS_URL = "/v2/ai/model/job"

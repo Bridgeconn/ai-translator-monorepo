@@ -28,9 +28,9 @@ load_dotenv()
 VACHAN_USERNAME="slimywhite2@gmail.com"
 VACHAN_PASSWORD="Demon@9827"
 
-VACHAN_LOGIN_URL = "https://api.vachanengine.org/v2/ai/token"
-VACHAN_TRANSLATE_URL = "https://api.vachanengine.org/v2/ai/model/text/translate"
-VACHAN_JOB_STATUS_URL = "https://api.vachanengine.org/v2/ai/model/job"
+VACHAN_LOGIN_URL = "https://stagingapi.vachanengine.org/v2/ai/token"
+VACHAN_TRANSLATE_URL = "https://stagingapi.vachanengine.org/v2/ai/model/text/translate"
+VACHAN_JOB_STATUS_URL = "https://stagingapi.vachanengine.org/v2/ai/model/job"
 # VACHAN_MODEL_NAME = "nllb-600M"
 
 # VACHAN_LOGIN_URL = os.getenv("VACHAN_AUTH_URL")
@@ -344,7 +344,7 @@ async def translate_chapter(
     request: Optional[Request] = None
 ):
     # 1. Fetch tokens for the specific chapter AND specific verses
-    ALLOWED_MODELS = ["nllb-600M", "nllb_finetuned_eng_nzm"]
+    ALLOWED_MODELS = ["nllb-600M", "nllb_finetuned_eng_nzm", "nllb-english-nagamese","nllb-gujrathi-koli_kachchi","nllb-hin-surjapuri"]
     if model_name not in ALLOWED_MODELS:
         raise HTTPException(status_code=400, detail=f"Invalid model_name: {model_name}")
     logger.info(f"Translating chapter {chapter_number} of book '{book_name}' using model: {model_name}")
