@@ -96,7 +96,7 @@ async function pollJobStatus({
   jobId,
   onStatusUpdate,
   notification,
-  maxAttempts = 200,
+  maxAttempts = 1200,
   interval = 3000,
   signal,
 }) {
