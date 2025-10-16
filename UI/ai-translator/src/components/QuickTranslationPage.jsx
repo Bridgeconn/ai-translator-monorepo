@@ -157,6 +157,73 @@ async function fetchAssets(token, jobId) {
 }
 
 export default function QuickTranslationPage() {
+  // ------------------ Daily Limit & Incognito Detection ------------------
+  const DAILY_LIMIT = 5;
+  const STORAGE_KEY = "anon_translation_usage";
+// ✅ Modern, cross-browser incognito / private detection
+async function isIncognitoMode() {
+  try {
+    const ua = navigator.userAgent.toLowerCase();
+
+    // ✅ Safari / iOS
+    if (/safari/.test(ua) && !/chrome/.test(ua)) {
+      try {
+        window.openDatabase(null, null, null, null);
+        return false;
+      } catch {
+        return true;
+      }
+    }
+
+    // ✅ Firefox
+    if (ua.includes("firefox")) {
+      try {
+        const persisted = await navigator.storage.persisted();
+        return !persisted;
+      } catch {
+        return true;
+      }
+    }
+
+     // ✅ Chrome / Edge / Brave
+     if (window.showOpenFilePicker) {
+      // Use the modern OPFS API behavior
+      try {
+        const root = await navigator.storage.getDirectory();
+        await root.getFileHandle('test', { create: true });
+        return false;
+      } catch (err) {
+        return true; // fails silently in incognito
+      }
+    }
+
+    return false; // fallback
+  } catch (err) {
+    console.error("Incognito detection failed:", err);
+    return false;
+  }
+}
+
+  // LocalStorage helpers
+  const getUsage = () => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return { count: 0, date: new Date().toDateString() };
+    return JSON.parse(stored);
+  };
+
+  const updateUsage = (count) => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ count, date: new Date().toDateString() })
+    );
+  };
+
+  const checkReset = () => {
+    const usage = getUsage();
+    const today = new Date().toDateString();
+    if (usage.date !== today) updateUsage(0);
+  };
+
   const [sourceLang, setSourceLang] = useState(null);
   const [targetLang, setTargetLang] = useState(null);
   const [sourceText, setSourceText] = useState("");
@@ -169,7 +236,9 @@ export default function QuickTranslationPage() {
   const navigate = useNavigate();
   const { openLogin } = useAuthModal();
   const controllerRef = useRef(null);
-
+  const [isIncognito, setIsIncognito] = useState(false);
+  const [dailyUsage, setDailyUsage] = useState(getUsage());
+  const [checkingIncognito, setCheckingIncognito] = useState(true);
   // Restore draft if available
   useEffect(() => {
     const draft = localStorage.getItem("quickTranslationDraft");
@@ -191,6 +260,21 @@ export default function QuickTranslationPage() {
       }
     }
   }, []);
+  // Check and initialize daily translation usage + detect incognito
+  useEffect(() => {
+    async function initUsageCheck() {
+      checkReset();
+      const incog = await isIncognitoMode();
+      setIsIncognito(incog);
+      setDailyUsage(getUsage());
+      setCheckingIncognito(false);
+    }
+    initUsageCheck();
+  }, []);
+  useEffect(() => {
+    console.log("Incognito detected?", isIncognito);
+  }, [isIncognito]);
+  
   const modelsInfo = {
     "nllb-600M": {
       tasks: "mt, text translation",
@@ -567,6 +651,31 @@ export default function QuickTranslationPage() {
   };
   // ------------------ USFM-Aware Translation Handler ------------------
   const handleTranslate = async () => {
+    // 🚫 Block incognito users completely
+    if (isIncognito) {
+      showNotification(
+        "warning",
+        "Private Browsing Disabled",
+        "Translation is not available in private/incognito mode. Please open this page in a normal browser window."
+      );
+      return;
+    }
+
+    // 🧩 Check translation limit for anonymous users
+    const usage = getUsage();
+    if (usage.count >= DAILY_LIMIT) {
+      showNotification(
+        "warning",
+        "Daily Limit Reached",
+        "Your free translation limit for today is over. Please log in to continue using the translation service."
+      );
+      return;
+    }
+
+    // ✅ Update count before translation starts
+    updateUsage(usage.count + 1);
+    setDailyUsage(getUsage());
+
     if (!sourceLang || !targetLang) {
       showNotification(
         "error",
@@ -623,7 +732,7 @@ export default function QuickTranslationPage() {
     //   fileToSend = new File([blob], "content_only.txt", { type: "text/plain" });
     //   console.log("📝 Created virtual file from typed text:", fileToSend);
     // }
-    
+
     let fileToSend;
 
     if (sourceText.trim() !== "") {
@@ -1358,7 +1467,7 @@ export default function QuickTranslationPage() {
               align="middle"
               justify="center"
               className="lang-select-row"
-              // style={{ marginTop: 0 }}
+            // style={{ marginTop: 0 }}
             >
               <Col xs={24} sm={24} md={11} lg={11}>
                 <div
@@ -1840,40 +1949,44 @@ export default function QuickTranslationPage() {
                   <Tooltip
                     title={!selectedModel ? "Please select a model first" : ""}
                     color="#fff"
-                  >
-                    <Button
-                      type="primary"
-                      danger={loading}
-                      size="medium"
-                      icon={loading ? <CloseOutlined /> : <></>}
-                      onClick={() => {
-                        if (loading) {
-                          handleCancelTranslate();
-                        } else {
-                          handleTranslate();
-                        }
-                      }}
-                      disabled={!selectedModel} // disable if loading or no model selected
-                      style={{
-                        padding: "0 32px",
-                        borderRadius: "8px",
-                        minWidth: "100px",
-                        backgroundColor: loading
-                          ? "#ff4d4f"
-                          : !selectedModel
-                          ? "#d9d9d9"
-                          : "rgb(44,141,251)",
-                        borderColor: loading
-                          ? "#ff4d4f"
-                          : !selectedModel
-                          ? "#d9d9d9"
-                          : "rgb(44,141,251)",
-                        color: "#fff",
-                      }}
+                 > </Tooltip>
+                    <Tooltip
+                      title={
+                        isIncognito
+                          ? "Translation is not available in private browsing mode.Please use normal browsers."
+                          : ""
+                      }
                     >
-                      {loading ? "Cancel Translation" : "Translate"}
-                    </Button>
-                  </Tooltip>
+                      <Button
+                        type="primary"
+                        danger={loading}
+                        size="medium"
+                        onClick={() => {
+                          if (loading) handleCancelTranslate();
+                          else handleTranslate();
+                        }}
+                        disabled={!selectedModel || isIncognito}
+                        style={{
+                          padding: "0 32px",
+                          borderRadius: "8px",
+                          minWidth: "100px",
+                          backgroundColor: loading
+                            ? "#ff4d4f"
+                            : isIncognito
+                            ? "#d9d9d9"
+                            : "rgb(44,141,251)",
+                          borderColor: loading
+                            ? "#ff4d4f"
+                            : isIncognito
+                            ? "#d9d9d9"
+                            : "rgb(44,141,251)",
+                          color: "#fff",
+                          cursor: isIncognito ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {loading ? "Cancel Translation" : "Translate"}
+                      </Button>
+                    </Tooltip>
                 </Col>
               </Row>
             </div>
