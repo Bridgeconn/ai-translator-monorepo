@@ -209,7 +209,7 @@ const [filteredTargetLangs, setFilteredTargetLangs] = useState([]);
               <Select
                 placeholder="Select a source or add a new source"
                 loading={sourcesLoading}
-                style={{ width: "calc(100% - 32px)" }}
+                style={{ width: "calc(100% - 32px)", boxShadow: "0 2px 6px rgba(0,0,0,0.15)", borderRadius: "6px" }}
                 onChange={handleSourceChange}
               >
                 {sources.map((source) => {
@@ -227,9 +227,10 @@ const [filteredTargetLangs, setFilteredTargetLangs] = useState([]);
               </Select>
               <Button
                 type="default"
+                style={{boxShadow: "0 1px 4px rgba(0,0,0,0.15)"}}
                 icon={
                   <PlusCircleOutlined
-                    style={{ color: "#1890ff", cursor: "pointer" }}
+                    style={{ color: "#1890ff", cursor: "pointer"}}
                   />
                 }
                 onClick={() => setIsSourceModalOpen(true)}
@@ -263,7 +264,7 @@ const [filteredTargetLangs, setFilteredTargetLangs] = useState([]);
             ]}
             style={{ width: "100%" }}
           >
-            <Select placeholder="Select type" style={{ width: "100%" }}>
+            <Select placeholder="Select type" style={{ width: "100%", boxShadow: "0 2px 6px rgba(0,0,0,0.15)", borderRadius: "6px" }}>
               <Option value="verse">Verse Translation</Option>
               <Option value="word">Word Translation</Option>
               <Option value="text_document">text_document Translation</Option>
