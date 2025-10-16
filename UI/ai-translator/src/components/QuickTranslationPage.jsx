@@ -1713,6 +1713,7 @@ async function isIncognitoMode() {
             title={<span>Translation</span>}
             extra={
               <Space>
+                <Tooltip title="Select Model" color="#fff">
                 <Select
                   value={selectedModel || undefined}
                   onChange={setSelectedModel}
@@ -1804,6 +1805,7 @@ async function isIncognitoMode() {
                     );
                   })}
                 </Select>
+                </Tooltip>
                 <Tooltip
                   color="#ffffff"
                   title={

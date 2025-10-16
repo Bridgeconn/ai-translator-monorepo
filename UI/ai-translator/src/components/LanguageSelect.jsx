@@ -28,7 +28,7 @@ const filteredLanguages =
     ? languages.filter((lang) => filterList.includes(lang.name))
     : languages;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+    <div style={{ display: "flex", alignItems: "center"}}>
       <strong>{label}</strong>
       <Select
         showSearch
