@@ -56,7 +56,38 @@ const MODEL_INFO = {
     License: "CC-BY-NC 4.0",
     Languages: "Zeme Naga, English",
   },
+  "nllb-english-nagamese": {
+      Model: "nllb-english-nagamese",
+      Tasks: "mt, text translation",
+      "Language Code Type": "BCP-47",
+      DevelopedBy: "Meta",
+      License: "CC-BY-NC 4.0",
+      Languages: "English, Nagamese",
+    },
+    "nllb-gujrathi-koli_kachchi": {
+      Model: "nllb-gujrathi-koli_kachchi",
+      Tasks: "mt, text translation",
+      "Language Code Type": "BCP-47",
+      DevelopedBy: "Meta",
+      License: "CC-BY-NC 4.0",
+      Languages: "Gujarati, Kachi Koli",
+    },
+    "nllb-hin-surjapuri": {
+      Model: "nllb-hin-surjapuri",
+      Tasks: "mt, text translation",
+      "Language Code Type": "BCP-47",
+      DevelopedBy: "Meta",
+      License: "CC-BY-NC 4.0",
+      Languages: "Hindi, Surjapuri",
+    },
 };
+const MODEL_OPTIONS = [
+  { label: "nllb-600M", value: "nllb-600M", tooltip: "General-purpose model for 200 languages." },
+  { label: "nllb_finetuned_eng_nzm", value: "nllb_finetuned_eng_nzm", tooltip: "This model ONLY supports English ↔ Zeme Naga." },
+  { label: "nllb-english-nagamese", value: "nllb-english-nagamese", tooltip: "This model ONLY supports English ↔ Nagamese." },
+  { label: "nllb-gujrathi-koli_kachchi", value: "nllb-gujrathi-koli_kachchi", tooltip: "This model ONLY supports Gujarati ↔ Kachi Koli." },
+  { label: "nllb-hin-surjapuri", value: "nllb-hin-surjapuri", tooltip: "This model ONLY supports Hindi ↔ Surjapuri." },
+];
 
 // ------------------  Vachan Helpers ------------------
 async function getAccessToken() {
@@ -75,13 +106,14 @@ async function requestDocTranslation(
   file,
   srcLangCode,
   tgtLangCode,
-  model_name
+  model_name,
+  output_format = "txt"
 ) {
   const formData = new FormData();
   formData.append("file", file);
 
   const resp = await vachanApi.post(
-    `/model/text/translate-document?device=cpu&model_name=${model_name}&source_language=${srcLangCode}&target_language=${tgtLangCode}`,
+    `/model/text/translate-document?device=cpu&model_name=${model_name}&source_language=${srcLangCode}&target_language=${tgtLangCode}&output_format=${output_format}`,
     formData,
     { headers: { Authorization: `Bearer ${token}` } }
   );
@@ -104,13 +136,69 @@ async function pollJobStatus({ token, jobId }) {
   throw new Error("Polling timed out");
 }
 
+// async function fetchAssets(token, jobId) {
+//   const resp = await vachanApi.get(`/assets?job_id=${jobId}`, {
+//     headers: { Authorization: `Bearer ${token}` },
+//     responseType: "blob",
+//   });
+//   return await resp.data.text();
+// }
 async function fetchAssets(token, jobId) {
   const resp = await vachanApi.get(`/assets?job_id=${jobId}`, {
     headers: { Authorization: `Bearer ${token}` },
-    responseType: "blob",
+    responseType: "text", // allow plain text response too
   });
-  return await resp.data.text();
+
+  console.log("📦 Raw assets data:", resp.data);
+
+  // 🧠 Case 1: API returned direct translation (plain text)
+  if (typeof resp.data === "string" && !resp.data.includes("asset_id")) {
+    console.log("✅ API returned plain translated text directly");
+    return resp.data.trim();
+  }
+
+  // 🧠 Case 2: API returned JSON with assets
+  let assets;
+  try {
+    const data =
+      typeof resp.data === "string" ? JSON.parse(resp.data) : resp.data;
+    assets = data?.data?.files || data?.data || [];
+  } catch (err) {
+    console.warn("⚠️ Could not parse JSON, treating as plain text output");
+    return resp.data.trim();
+  }
+
+  if (!Array.isArray(assets) || assets.length === 0) {
+    console.error("❌ No assets found. Response was:", resp.data);
+    throw new Error("No assets found for this job");
+  }
+
+  // Find the correct output file
+  const outputFile = assets.find(
+    (f) =>
+      f.file_type?.toLowerCase().includes("output") ||
+      f.asset_type?.toLowerCase().includes("output") ||
+      f.file_name?.toLowerCase().includes("translated")
+  );
+
+  if (!outputFile) {
+    console.error("❌ No output file found in assets:", assets);
+    throw new Error("No output file found in assets");
+  }
+
+  // Download the translated text file
+  const textResp = await vachanApi.get(
+    `/assets/download?asset_id=${outputFile.asset_id}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      responseType: "text",
+    }
+  );
+
+  console.log("📥 Downloaded translated text length:", textResp.data?.length);
+  return textResp.data.trim();
 }
+
 // ------------------  USFM Helpers ------------------
 function containsUSFMMarkers(text) {
   return /\\(id|c|v|s\d?|p|q\d?|m|nb|b|d|sp|pb|li\d?|pi\d?|pc|pr|cls)\b/.test(
@@ -248,22 +336,38 @@ export default function TextDocumentTranslation() {
     };
     if (projectId) fetchData();
   }, [projectId]);
-  const isNagaTranslation = (src, tgt) => {
-    const nagaLangs = ["Zeme Naga", "Zeme naga", "nzm"]; // Add language codes/names you use
-    const englishLangs = ["English", "eng"];
-    return (
-      (englishLangs.includes(src) && nagaLangs.includes(tgt)) ||
-      (nagaLangs.includes(src) && englishLangs.includes(tgt))
-    );
-  };
   useEffect(() => {
-    if (!sourceLangName || !targetLangName) return;
+    if (!project?.source_language?.code || !project?.target_language?.code) return;
   
-    if (isNagaTranslation(sourceLangName, targetLangName)) {
-      setSelectedModel("nllb_finetuned_eng_nzm"); // auto-select Naga model
-    }
-  }, [sourceLangName, targetLangName]);
-    
+    const src = project.source_language.code;
+    const tgt = project.target_language.code;
+    let modelToUse = "nllb-600M";
+  
+    const isEngNzemePair =
+      (src === "eng_Latn" && tgt === "nzm_Latn") ||
+      (src === "nzm_Latn" && tgt === "eng_Latn");
+  
+    const isEngNagPair =
+      (src === "eng_Latn" && tgt === "nag_Latn") ||
+      (src === "nag_Latn" && tgt === "eng_Latn");
+  
+    const isGujGjkPair =
+      (src === "guj_Gujr" && tgt === "gjk_Gujr") ||
+      (src === "gjk_Gujr" && tgt === "guj_Gujr");
+  
+    const isHinSjpPair =
+      (src === "hin_Deva" && tgt === "sjp_Deva") ||
+      (src === "sjp_Deva" && tgt === "hin_Deva");
+  
+    if (isEngNzemePair) modelToUse = "nllb_finetuned_eng_nzm";
+    else if (isEngNagPair) modelToUse = "nllb-english-nagamese";
+    else if (isGujGjkPair) modelToUse = "nllb-gujrathi-koli_kachchi";
+    else if (isHinSjpPair) modelToUse = "nllb-hin-surjapuri";
+  
+    setSelectedModel(modelToUse);
+    console.log(`🎯 Auto-selected model for ${src} ↔ ${tgt}: ${modelToUse}`);
+  }, [project]);
+  
   // ------------------ Handle File Selection ------------------
   const handleFileChange = async (fileId) => {
     const file = projectFiles.find((f) => f.id === fileId);
@@ -454,7 +558,10 @@ export default function TextDocumentTranslation() {
       } else {
         textToTranslate = sourceText;
       }
-      
+      // 🧩 DEBUG: Check what text is actually being sent to the API
+console.log("📤 Sending textToTranslate:", textToTranslate);
+console.log("📄 Length of textToTranslate:", textToTranslate.length);
+
 
       // 3. Prepare file
       const blob = new Blob([textToTranslate], { type: "text/plain" });
@@ -480,7 +587,8 @@ export default function TextDocumentTranslation() {
         fileToSend,
         srcCode,
         tgtCode,
-        selectedModel
+        selectedModel,
+        "txt"
       );
 
       message.info("⏳ Translating... please wait");
@@ -490,17 +598,38 @@ export default function TextDocumentTranslation() {
 
       // 6. Fetch assets
       const csvText = await fetchAssets(token, jobId);
-
+      console.log("📦 Fetched asset text:", csvText);
+      console.log("📏 Asset length:", csvText?.length);
       // 7. Parse CSV
-      const parsed = Papa.parse(csvText, {
-        header: true,
-        skipEmptyLines: true,
-      });
+      // const parsed = Papa.parse(csvText, {
+      //   header: true,
+      //   skipEmptyLines: true,
+      // });
 
-      // 8. Rebuild translation
-      const translatedText = isUSFM
-        ? reconstructUSFM(usfmStructure, parsed.data)
-        : simpleTranslation(textToTranslate, parsed.data);
+      // // 8. Rebuild translation
+      // const translatedText = isUSFM
+      //   ? reconstructUSFM(usfmStructure, parsed.data)
+      //   : simpleTranslation(textToTranslate, parsed.data);
+      let translatedText;
+
+if (
+  csvText.startsWith("{") ||  // JSON or structured data
+  csvText.includes(",Translation") || // CSV header detected
+  csvText.includes("\t") // TSV-like structure
+) {
+  // Parse CSV or TSV structured response
+  const parsed = Papa.parse(csvText, {
+    header: true,
+    skipEmptyLines: true,
+  });
+  translatedText = isUSFM
+    ? reconstructUSFM(usfmStructure, parsed.data)
+    : simpleTranslation(textToTranslate, parsed.data);
+} else {
+  // Plain translated text — use directly
+  translatedText = csvText.trim();
+}
+
 
       setTargetText(translatedText);
       message.success("Translation complete!");
@@ -701,36 +830,61 @@ export default function TextDocumentTranslation() {
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 {/* Model Dropdown */}
                 <Select
-  style={{ width: 160 }}
   value={selectedModel}
-  onChange={(value) => {
-    if (
-      isNagaTranslation(sourceLangName, targetLangName) &&
-      value === "nllb-600M"
-    ) {
-      // Keep the selection unchanged
-      setModelTooltip("This model does not support Zeme Naga language");
-      return;
-    }
-    setSelectedModel(value);
-    setModelTooltip(""); // reset tooltip if valid
+  style={{ width: 250 }}
+  dropdownRender={() => {
+    const src = project?.source_language?.code || "";
+    const tgt = project?.target_language?.code || "";
+
+    return (
+      <>
+        {MODEL_OPTIONS.map((opt) => {
+          const isSelected = opt.value === selectedModel;
+          const disabled = opt.value !== selectedModel;
+
+          return (
+            <Tooltip
+              key={opt.value}
+              title={opt.tooltip}
+              placement="right"
+              overlayInnerStyle={{
+                backgroundColor: "#fff",
+                color: "#000",
+                border: "1px solid #ddd",
+                borderRadius: "6px",
+                padding: "6px 10px",
+              }}
+            >
+              <div
+                style={{
+                  padding: "6px 12px",
+                  cursor: disabled ? "not-allowed" : "default",
+                  color: disabled ? "#999" : "#000",
+                  backgroundColor: isSelected ? "#e6f7ff" : "transparent",
+                  fontWeight: isSelected ? 600 : 400,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+                onClick={(e) => {
+                  e.stopPropagation(); // prevent changing model
+                }}
+              >
+                <span>{opt.label}</span>
+              </div>
+            </Tooltip>
+          );
+        })}
+      </>
+    );
   }}
 >
-  <Option
-      title={!isNagaTranslation ? "Model not supported for Zeme Naga" : "Default model"}
-    value="nllb-600M"
-    disabled={isNagaTranslation(sourceLangName, targetLangName)}
-  >
-    nllb-600M
-  </Option>
-  <Option 
-    title={isNagaTranslation ? "Model only supported for Zeme Naga translation" : "Default model"}
-    value="nllb_finetuned_eng_nzm"
-    disabled={!isNagaTranslation(sourceLangName, targetLangName)}
-  >
-    nllb_finetuned_eng_nzm
-  </Option>
-  </Select>
+  {MODEL_OPTIONS.map((opt) => (
+    <Option key={opt.value} value={opt.value} disabled={opt.value !== selectedModel}>
+      {opt.label}
+    </Option>
+  ))}
+</Select>
                 <Tooltip
                   title={
                     selectedModel

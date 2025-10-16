@@ -94,13 +94,42 @@ const CreateProjectModal = ({
   const handleSourceChange = (sourceId) => {
     form.setFieldsValue({ source_id: sourceId });
     updateProjectName();
-  };
+    // ✅ Find selected source object
+    const selectedSource = sources.find((s) => s.source_id === sourceId);
+  
+    // ✅ Apply filtering based on source language name
+    if (selectedSource && FILTER_MAP[selectedSource.language_name]) {
+      setFilteredTargetLangs(FILTER_MAP[selectedSource.language_name]);
+    } else {
+      setFilteredTargetLangs([]); // show all
+    }
+  
+    // ✅ Reset target if invalid
+    const currentTargetId = form.getFieldValue("target_language_id");
+    const currentTarget = languages.find((l) => l.language_id === currentTargetId);
+    if (
+      currentTarget &&
+      selectedSource &&
+      FILTER_MAP[selectedSource.language_name] &&
+      !FILTER_MAP[selectedSource.language_name].includes(currentTarget.name)
+    ) {
+      form.setFieldsValue({ target_language_id: null });
+    }
+  }; 
 
   const handleTargetLanguageChange = (langObj) => {
     form.setFieldsValue({ target_language_id: langObj.language_id });
     updateProjectName();
   };
-
+// 🔹 Restriction mapping for special source languages
+const FILTER_MAP = {
+  "Zeme Naga": ["English"],
+  "Nagamese": ["English"],
+  "Kachi Koli": ["Gujarati"],
+  "Surjapuri": ["Hindi"],
+};
+// 🔹 State to hold allowed target language list
+const [filteredTargetLangs, setFilteredTargetLangs] = useState([]);
   return (
     <>
       {contextHolder}
@@ -180,7 +209,7 @@ const CreateProjectModal = ({
               <Select
                 placeholder="Select a source or add a new source"
                 loading={sourcesLoading}
-                style={{ width: "calc(100% - 32px)" }}
+                style={{ width: "calc(100% - 32px)", boxShadow: "0 2px 6px rgba(0,0,0,0.15)", borderRadius: "6px" }}
                 onChange={handleSourceChange}
               >
                 {sources.map((source) => {
@@ -198,9 +227,10 @@ const CreateProjectModal = ({
               </Select>
               <Button
                 type="default"
+                style={{boxShadow: "0 1px 4px rgba(0,0,0,0.15)"}}
                 icon={
                   <PlusCircleOutlined
-                    style={{ color: "#1890ff", cursor: "pointer" }}
+                    style={{ color: "#1890ff", cursor: "pointer"}}
                   />
                 }
                 onClick={() => setIsSourceModalOpen(true)}
@@ -210,18 +240,20 @@ const CreateProjectModal = ({
           </Form.Item>
 
           {/* Target Language */}
-          <Form.Item
-            label="Target Language"
-            name="target_language_id"
-            rules={[
-              { required: true, message: "Please select target language" },
-            ]}
-            style={{ width: "100%" }}
-          >
-            <div className="full-width-select">
-              <LanguageSelect label="" onChange={handleTargetLanguageChange} />
-            </div>
-          </Form.Item>
+<Form.Item
+  label="Target Language"
+  name="target_language_id"
+  rules={[{ required: true, message: "Please select target language" }]}
+  style={{ width: "100%" }}
+>
+  <div className="full-width-select">
+    <LanguageSelect
+      label=""
+      onChange={handleTargetLanguageChange}
+      filterList={filteredTargetLangs}
+    />
+  </div>
+</Form.Item>
 
           {/* Translation Type */}
           <Form.Item
@@ -232,7 +264,7 @@ const CreateProjectModal = ({
             ]}
             style={{ width: "100%" }}
           >
-            <Select placeholder="Select type" style={{ width: "100%" }}>
+            <Select placeholder="Select type" style={{ width: "100%", boxShadow: "0 2px 6px rgba(0,0,0,0.15)", borderRadius: "6px" }}>
               <Option value="verse">Verse Translation</Option>
               <Option value="word">Word Translation</Option>
               <Option value="text_document">text_document Translation</Option>

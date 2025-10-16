@@ -28,10 +28,14 @@ import {
   UploadOutlined,
   DeleteOutlined,
   ExclamationCircleOutlined,
-  
 } from "@ant-design/icons";
 import api, { translateChapter } from "./api";
-import { generateDraftJson, saveDraft, fetchLatestDraft,booksAPI } from "./api";
+import {
+  generateDraftJson,
+  saveDraft,
+  fetchLatestDraft,
+  booksAPI,
+} from "./api";
 import DownloadDraftButton from "../components/DownloadDraftButton";
 import { Tooltip } from "antd";
 import { InfoCircleOutlined } from "@ant-design/icons";
@@ -40,9 +44,15 @@ const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 const { Option } = Select;
 
-
 /* ---------------- Upload Progress Modal ---------------- */
-function UploadProgressModal({ visible, uploading = [], uploaded = [], skipped = [], total = 0, onClose }) {
+function UploadProgressModal({
+  visible,
+  uploading = [],
+  uploaded = [],
+  skipped = [],
+  total = 0,
+  onClose,
+}) {
   if (!visible) return null;
 
   const isComplete = uploaded.length + skipped.length === total;
@@ -67,7 +77,11 @@ function UploadProgressModal({ visible, uploading = [], uploaded = [], skipped =
           <Text type="secondary">Currently uploading:</Text>
           <div style={{ marginTop: 8 }}>
             {uploading.map((code) => (
-              <Tag color="blue" key={`uploading-${code}`} style={{ marginBottom: 6 }}>
+              <Tag
+                color="blue"
+                key={`uploading-${code}`}
+                style={{ marginBottom: 6 }}
+              >
                 {code} <Spin size="small" style={{ marginLeft: 8 }} />
               </Tag>
             ))}
@@ -80,7 +94,11 @@ function UploadProgressModal({ visible, uploading = [], uploaded = [], skipped =
           <Text type="secondary">✅ Uploaded ({uploaded.length}):</Text>
           <div style={{ marginTop: 8 }}>
             {uploaded.map((code) => (
-              <Tag color="green" key={`uploaded-${code}`} style={{ marginBottom: 6 }}>
+              <Tag
+                color="green"
+                key={`uploaded-${code}`}
+                style={{ marginBottom: 6 }}
+              >
                 {code}
               </Tag>
             ))}
@@ -90,10 +108,16 @@ function UploadProgressModal({ visible, uploading = [], uploaded = [], skipped =
 
       {skipped.length > 0 && (
         <div style={{ marginBottom: 12 }}>
-          <Text type="secondary">⚠️ Skipped (already exists | wrong format ) ({skipped.length}):</Text>
+          <Text type="secondary">
+            ⚠️ Skipped (already exists | wrong format ) ({skipped.length}):
+          </Text>
           <div style={{ marginTop: 8 }}>
             {skipped.map((code) => (
-              <Tag color="gold" key={`skipped-${code}`} style={{ marginBottom: 6 }}>
+              <Tag
+                color="gold"
+                key={`skipped-${code}`}
+                style={{ marginBottom: 6 }}
+              >
                 {code}
               </Tag>
             ))}
@@ -111,7 +135,7 @@ function UploadProgressModal({ visible, uploading = [], uploaded = [], skipped =
     </Modal>
   );
 }
- 
+
 const VerseTranslationPage = () => {
   const { projectId } = useParams();
   const [project, setProject] = useState(null);
@@ -146,7 +170,7 @@ const VerseTranslationPage = () => {
   const [cancelTranslation, setCancelTranslation] = useState(false);
 
   const [modal, modalContextHolder] = Modal.useModal();
-  
+
   const { message } = App.useApp(); //get message instance
   const MODEL_INFO = {
     "nllb-600M": {
@@ -157,7 +181,7 @@ const VerseTranslationPage = () => {
       License: "CC-BY-NC 4.0",
       Languages: "200 languages",
     },
-    "nllb_finetuned_eng_nzm": {
+    nllb_finetuned_eng_nzm: {
       Model: "nllb_finetuned_eng_nzm",
       Tasks: "mt, text translation",
       "Language Code Type": "BCP-47",
@@ -165,47 +189,94 @@ const VerseTranslationPage = () => {
       License: "CC-BY-NC 4.0",
       Languages: "Zeme Naga, English",
     },
+    "nllb-english-nagamese": {
+      Model: "nllb-english-nagamese",
+      Tasks: "mt, text translation",
+      "Language Code Type": "BCP-47",
+      DevelopedBy: "Meta",
+      License: "CC-BY-NC 4.0",
+      Languages: "English, Nagamese",
+    },
+    "nllb-gujrathi-koli_kachchi": {
+      Model: "nllb-gujrathi-koli_kachchi",
+      Tasks: "mt, text translation",
+      "Language Code Type": "BCP-47",
+      DevelopedBy: "Meta",
+      License: "CC-BY-NC 4.0",
+      Languages: "Gujarati, Kachi Koli",
+    },
+    "nllb-hin-surjapuri": {
+      Model: "nllb-hin-surjapuri",
+      Tasks: "mt, text translation",
+      "Language Code Type": "BCP-47",
+      DevelopedBy: "Meta",
+      License: "CC-BY-NC 4.0",
+      Languages: "Hindi, Surjapuri",
+    },
   };
+  const availableModels = [
+    { label: "nllb-600M", value: "nllb-600M" },
+    { label: "nllb_finetuned_eng_nzm", value: "nllb_finetuned_eng_nzm" },
+    { label: "nllb-english-nagamese", value: "nllb-english-nagamese" },
+    {
+      label: "nllb-gujrathi-koli_kachchi",
+      value: "nllb-gujrathi-koli_kachchi",
+    },
+    { label: "nllb-hin-surjapuri", value: "nllb-hin-surjapuri" },
+  ];
   useEffect(() => {
     if (!project) return;
-  
-    const src = (project.source_language_name || "")
-      .toLowerCase()
-      .replace(/[-_]/g, " ")
-      .trim();
-    const tgt = (project.target_language_name || "")
-      .toLowerCase()
-      .replace(/[-_]/g, " ")
-      .trim();
-  
-    const isZemeNagaPair =
-      (src === "zeme naga" && tgt === "english") ||
-      (src === "english" && tgt === "zeme naga");
-  
-    setIsZemeNaga(isZemeNagaPair);
-  
-    if (isZemeNagaPair) {
-      setSelectedModel("nllb_finetuned_eng_nzm"); // auto-select finetuned model
+
+    const src = (project.source_language_name || "").toLowerCase().trim();
+    const tgt = (project.target_language_name || "").toLowerCase().trim();
+    let forcedModel = null;
+    if (
+      (src === "english" && tgt === "zeme naga") ||
+      (src === "zeme naga" && tgt === "english")
+    ) {
+      forcedModel = "nllb_finetuned_eng_nzm";
+    } else if (
+      (src === "english" && tgt === "nagamese") ||
+      (src === "nagamese" && tgt === "english")
+    ) {
+      forcedModel = "nllb-english-nagamese";
+    } else if (
+      (src === "gujarati" && tgt === "kachi koli") ||
+      (src === "kachi koli" && tgt === "gujarati")
+    ) {
+      forcedModel = "nllb-gujrathi-koli_kachchi";
+    } else if (
+      (src === "hindi" && tgt === "surjapuri") ||
+      (src === "surjapuri" && tgt === "hindi")
+    ) {
+      forcedModel = "nllb-hin-surjapuri";
+    }
+
+    if (forcedModel) {
+      setSelectedModel(forcedModel);
     } else {
-      setSelectedModel("nllb-600M"); // default model
+      setSelectedModel("nllb-600M");
     }
   }, [project]);
-  
-    // Book upload state
-    const [isBookUploadModalOpen, setIsBookUploadModalOpen] = useState(false);
-    //const [uploadProgressOpen, setUploadProgressOpen] = useState(false);
-    const [uploadProgress, setUploadProgress] = useState({ uploaded: [], skipped: [] });
-    const hiddenUploadInputRef = useRef(null);
-// Modal control
-const [uploadProgressOpen, setUploadProgressOpen] = useState(false);
 
-// Upload tracking
-const [uploadingBooks, setUploadingBooks] = useState([]);
-const [uploadedBooks, setUploadedBooks] = useState([]);
-const [skippedBooks, setSkippedBooks] = useState([]);
-const [totalBooks, setTotalBooks] = useState(0);
+  // Book upload state
+  const [isBookUploadModalOpen, setIsBookUploadModalOpen] = useState(false);
+  //const [uploadProgressOpen, setUploadProgressOpen] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({
+    uploaded: [],
+    skipped: [],
+  });
+  const hiddenUploadInputRef = useRef(null);
+  // Modal control
+  const [uploadProgressOpen, setUploadProgressOpen] = useState(false);
 
-     // ---------- Book Upload Utils (from SourcesListPage) ----------
+  // Upload tracking
+  const [uploadingBooks, setUploadingBooks] = useState([]);
+  const [uploadedBooks, setUploadedBooks] = useState([]);
+  const [skippedBooks, setSkippedBooks] = useState([]);
+  const [totalBooks, setTotalBooks] = useState(0);
+
+  // ---------- Book Upload Utils (from SourcesListPage) ----------
   const getExistingBooks = async (sourceId) => {
     try {
       const res = await api.get(`/books/by_source/${sourceId}`);
@@ -239,7 +310,8 @@ const [totalBooks, setTotalBooks] = useState(0);
   };
 
   const uploadBooksForSource = async (sourceId, files) => {
-    if (!sourceId || !files?.length) return { uploading: [], uploaded: [], skipped: [], total: 0 };
+    if (!sourceId || !files?.length)
+      return { uploading: [], uploaded: [], skipped: [], total: 0 };
 
     const existing = await getExistingBooks(sourceId);
     const existingCodes = new Set((existing || []).map((b) => b.book_code));
@@ -273,46 +345,45 @@ const [totalBooks, setTotalBooks] = useState(0);
   const handleBookUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length || !project?.source_id) return;
-  
+
     setTotalBooks(files.length);
     setUploadingBooks([]);
     setUploadedBooks([]);
     setSkippedBooks([]);
     setUploadProgressOpen(true);
-  
+
     for (const file of files) {
       const code = await guessUSFMCode(file); // Get the book code
-  
+
       // Mark as uploading (by code, not filename)
-      setUploadingBooks(prev => [...prev, code]);
-  
+      setUploadingBooks((prev) => [...prev, code]);
+
       try {
         // Call your existing API helper
         const { uploaded, skipped } = await uploadBooksForSource(
           project.source_id,
           [file] // send one at a time
         );
-  
+
         if (uploaded.length) {
-          setUploadedBooks(prev => [...prev, code]); // use code instead of file.name
+          setUploadedBooks((prev) => [...prev, code]); // use code instead of file.name
         }
         if (skipped.length) {
-          setSkippedBooks(prev => [...prev, code]); // use code instead of file.name
+          setSkippedBooks((prev) => [...prev, code]); // use code instead of file.name
         }
       } catch (err) {
-        setSkippedBooks(prev => [...prev, code]); // treat errors as skipped
+        setSkippedBooks((prev) => [...prev, code]); // treat errors as skipped
       } finally {
         // Remove from "uploading"
-        setUploadingBooks(prev => prev.filter(c => c !== code));
+        setUploadingBooks((prev) => prev.filter((c) => c !== code));
       }
     }
-  
+
     // Refresh book list after uploads complete
     await fetchAvailableBooks(project.source_id);
-  
+
     e.target.value = ""; // reset input
   };
-  
 
   const openBookUploadModal = () => {
     setIsBookUploadModalOpen(true);
@@ -338,7 +409,7 @@ const [totalBooks, setTotalBooks] = useState(0);
       const res = await api.get(`/books/by_source/${sourceId}`);
       const bookData = res.data?.data || [];
       setBooks(bookData);
-  
+
       // Show message only if empty
       if (bookData.length === 0) {
         message.info({
@@ -349,7 +420,7 @@ const [totalBooks, setTotalBooks] = useState(0);
       }
     } catch (err) {
       setBooks([]);
-  
+
       // Handle 404 (no data found)
       if (err.response?.status === 404) {
         message.info({
@@ -366,7 +437,6 @@ const [totalBooks, setTotalBooks] = useState(0);
       }
     }
   };
-  
 
   const fetchChaptersByBook = async (bookId) => {
     try {
@@ -394,45 +464,46 @@ const [totalBooks, setTotalBooks] = useState(0);
     console.log("handleDeleteBook called");
     console.log("selectedBook:", selectedBook);
     console.log("project.source_id:", project?.source_id);
-  
+
     if (!selectedBook || selectedBook === "all") {
       message.warning("No book selected to delete");
       return;
     }
-  
+
     if (!project?.source_id) {
       message.error("Cannot delete book: No source ID found");
       return;
     }
-  
+
     // Find the actual book object from the books array
     const bookObj = books.find((b) => b.book_name === selectedBook);
-    
+
     if (!bookObj) {
       message.error("Book not found");
       return;
     }
-  
+
     modal.confirm({
       title: `Delete Book: ${selectedBook}?`,
       icon: <ExclamationCircleOutlined />,
-      content: "This will permanently delete the book and all its content (chapters, verses).",
+      content:
+        "This will permanently delete the book and all its content (chapters, verses).",
       okText: "Delete",
       okType: "danger",
       cancelText: "Cancel",
       onOk: async () => {
         try {
           console.log("Confirming delete for book_id:", bookObj.book_id);
-          
+
           // Call the delete API with the actual book_id
           const response = await booksAPI.deleteBook(bookObj.book_id);
           console.log("Delete response:", response);
-          
+
           message.success(`Book "${selectedBook}" deleted successfully`);
-  
+
           // Refresh the books list from source
           await fetchAvailableBooks(project.source_id);
-          
+
           // Reset selection to "all"
           setSelectedBook("all");
           setSelectedChapter(null);
@@ -441,16 +512,19 @@ const [totalBooks, setTotalBooks] = useState(0);
           setRawBookContent("");
           setServerDraft("");
           setEditedTokens({});
-  
         } catch (err) {
           console.error("Failed to delete book:", err);
           console.error("Error details:", err.response);
-          message.error(`Failed to delete book: ${err.response?.data?.detail || err.message || "Unknown error"}`);
+          message.error(
+            `Failed to delete book: ${
+              err.response?.data?.detail || err.message || "Unknown error"
+            }`
+          );
         }
       },
       onCancel: () => {
         console.log("Delete cancelled");
-      }
+      },
     });
   };
   // ---------- Ensure tokens exist for a book (generate if missing) ----------
@@ -498,20 +572,25 @@ const [totalBooks, setTotalBooks] = useState(0);
             t.verse_token_id ||
             t.id ||
             t.token_id ||
-            `${t.book_name || "book"}-${t.chapter_number || 0}-${t.verse_number || i}`,
+            `${t.book_name || "book"}-${t.chapter_number || 0}-${
+              t.verse_number || i
+            }`,
           verse_translated_text:
             t.verse_translated_text || t.translated_text || "",
         }));
 
         // Deduplicate by verse_id + token_text
-        const uniqueTokens = merged.reduce((acc, t) => {
-          const key = `${t.verse_id}-${t.token_text}`;
-          if (!acc.map[key]) {
-            acc.map[key] = true;
-            acc.list.push(t);
-          }
-          return acc;
-        }, { map: {}, list: [] }).list;
+        const uniqueTokens = merged.reduce(
+          (acc, t) => {
+            const key = `${t.verse_id}-${t.token_text}`;
+            if (!acc.map[key]) {
+              acc.map[key] = true;
+              acc.list.push(t);
+            }
+            return acc;
+          },
+          { map: {}, list: [] }
+        ).list;
 
         setTokens(uniqueTokens);
         setIsTokenized(uniqueTokens.length > 0);
@@ -534,7 +613,9 @@ const [totalBooks, setTotalBooks] = useState(0);
       let data = [];
 
       if (chapterNumber) {
-        const chapterObj = chapters.find(ch => ch.chapter_number === chapterNumber);
+        const chapterObj = chapters.find(
+          (ch) => ch.chapter_number === chapterNumber
+        );
         if (!chapterObj) {
           setTokens([]);
           setIsTokenized(false);
@@ -543,24 +624,33 @@ const [totalBooks, setTotalBooks] = useState(0);
         }
 
         try {
-          const res = await api.get(`/api/chapters/${chapterObj.chapter_id}/tokens`, {
-            params: { project_id: projectId },
-          });
+          const res = await api.get(
+            `/api/chapters/${chapterObj.chapter_id}/tokens`,
+            {
+              params: { project_id: projectId },
+            }
+          );
           data = Array.isArray(res.data) ? res.data : [];
 
           if (data.length === 0) {
             await ensureBookTokens(bookName);
-            const res2 = await api.get(`/api/chapters/${chapterObj.chapter_id}/tokens`, {
-              params: { project_id: projectId },
-            });
+            const res2 = await api.get(
+              `/api/chapters/${chapterObj.chapter_id}/tokens`,
+              {
+                params: { project_id: projectId },
+              }
+            );
             data = Array.isArray(res2.data) ? res2.data : [];
           }
         } catch (err) {
           if (err.response?.status === 404) {
             await ensureBookTokens(bookName);
-            const res2 = await api.get(`/api/chapters/${chapterObj.chapter_id}/tokens`, {
-              params: { project_id: projectId },
-            });
+            const res2 = await api.get(
+              `/api/chapters/${chapterObj.chapter_id}/tokens`,
+              {
+                params: { project_id: projectId },
+              }
+            );
             data = Array.isArray(res2.data) ? res2.data : [];
           } else {
             throw err;
@@ -586,19 +676,25 @@ const [totalBooks, setTotalBooks] = useState(0);
           t.verse_token_id ||
           t.id ||
           t.token_id ||
-          `${bookName}-${chapterNumber || t.chapter_number || 0}-${t.verse_number || i}`,
-        verse_translated_text: t.verse_translated_text || t.translated_text || "",
+          `${bookName}-${chapterNumber || t.chapter_number || 0}-${
+            t.verse_number || i
+          }`,
+        verse_translated_text:
+          t.verse_translated_text || t.translated_text || "",
       }));
 
       // Deduplicate here as well
-      const uniqueTokens = merged.reduce((acc, t) => {
-        const key = `${t.verse_id}-${t.token_text}`;
-        if (!acc.map[key]) {
-          acc.map[key] = true;
-          acc.list.push(t);
-        }
-        return acc;
-      }, { map: {}, list: [] }).list;
+      const uniqueTokens = merged.reduce(
+        (acc, t) => {
+          const key = `${t.verse_id}-${t.token_text}`;
+          if (!acc.map[key]) {
+            acc.map[key] = true;
+            acc.list.push(t);
+          }
+          return acc;
+        },
+        { map: {}, list: [] }
+      ).list;
 
       setTokens(uniqueTokens);
       setIsTokenized(uniqueTokens.length > 0);
@@ -625,11 +721,9 @@ const [totalBooks, setTotalBooks] = useState(0);
       const res = await api.patch(
         `/verse_tokens/manual-update/${tokenId}?project_id=${projectId}`,
         {
-          translated_text: newText,   // body
+          translated_text: newText, // body
         }
       );
-
-
 
       // 2. Update local tokens state
       setTokens((prev) =>
@@ -637,7 +731,7 @@ const [totalBooks, setTotalBooks] = useState(0);
           t.verse_token_id === tokenId ? { ...t, ...res.data.data } : t
         )
       );
-      setServerDraft(prev => {
+      setServerDraft((prev) => {
         if (!prev) return prev;
         // Optional: update the verse in the draft content if needed
         return prev.replace(/oldVerseText/, newText);
@@ -676,15 +770,20 @@ const [totalBooks, setTotalBooks] = useState(0);
           null,
           { params: { skip, limit: 10, chapter: selectedChapter || "" } }
         );
-        const newTokens = (Array.isArray(res.data) ? res.data : []).map((t, i) => ({
-          ...t,
-          verse_token_id:
-            t.verse_token_id ||
-            t.id ||
-            t.token_id ||
-            `${selectedBook}-${t.chapter_number || selectedChapter || "all"}-${t.verse_number || i}-${skip}`,
-          verse_translated_text: t.verse_translated_text || t.translated_text || "",
-        }));
+        const newTokens = (Array.isArray(res.data) ? res.data : []).map(
+          (t, i) => ({
+            ...t,
+            verse_token_id:
+              t.verse_token_id ||
+              t.id ||
+              t.token_id ||
+              `${selectedBook}-${
+                t.chapter_number || selectedChapter || "all"
+              }-${t.verse_number || i}-${skip}`,
+            verse_translated_text:
+              t.verse_translated_text || t.translated_text || "",
+          })
+        );
 
         setTokens((prev) =>
           prev.map((tok) => {
@@ -704,8 +803,7 @@ const [totalBooks, setTotalBooks] = useState(0);
     } catch (err) {
       console.error("Translation error:", err);
       message.error({ key, content: `Error: ${err.message || "Failed"}` });
-    }
-    finally {
+    } finally {
       setLoadingTranslate(false);
       setCancelTranslation(false);
     }
@@ -729,14 +827,14 @@ const [totalBooks, setTotalBooks] = useState(0);
       message.info("Please select a specific book and chapter to translate.");
       return;
     }
-   // Reset all translations to empty when starting new translation
-  setTokens(prev =>
-    prev.map(tok => ({ ...tok, verse_translated_text: "" }))
-  );
-  
-  setLoadingTranslate(true);
-  setCancelTranslation(false);
-  // setTranslationAttempted(true); // Create a new AbortController
+    // Reset all translations to empty when starting new translation
+    setTokens((prev) =>
+      prev.map((tok) => ({ ...tok, verse_translated_text: "" }))
+    );
+
+    setLoadingTranslate(true);
+    setCancelTranslation(false);
+    // setTranslationAttempted(true); // Create a new AbortController
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
@@ -763,8 +861,8 @@ const [totalBooks, setTotalBooks] = useState(0);
         const batch = uniqueVerseNumbers.slice(i, i + batchSize);
 
         // Show placeholder while batch in progress
-        setTokens(prev =>
-          prev.map(tok =>
+        setTokens((prev) =>
+          prev.map((tok) =>
             batch.includes(tok.verse_number)
               ? { ...tok, verse_translated_text: "Translating…" }
               : tok
@@ -782,18 +880,23 @@ const [totalBooks, setTotalBooks] = useState(0);
         );
 
         if (newTokens?.length > 0) {
-          setTokens(prev => {
+          setTokens((prev) => {
             // build updated array (always new reference)
-            const updated = prev.map(tok => {
+            const updated = prev.map((tok) => {
               const match = newTokens.find(
-                nt => nt.verse_number === tok.verse_number && nt.token_text === tok.token_text
+                (nt) =>
+                  nt.verse_number === tok.verse_number &&
+                  nt.token_text === tok.token_text
               );
               return match
                 ? {
-                  ...tok,
-                  verse_translated_text: match.verse_translated_text || match.translated_text || "",
-                  lastUpdated: Date.now(),
-                }
+                    ...tok,
+                    verse_translated_text:
+                      match.verse_translated_text ||
+                      match.translated_text ||
+                      "",
+                    lastUpdated: Date.now(),
+                  }
                 : tok;
             });
             return [...updated]; // <-- ensures React sees a new array
@@ -801,7 +904,7 @@ const [totalBooks, setTotalBooks] = useState(0);
         }
 
         // let React paint updates
-        await new Promise(r => setTimeout(r, 0));
+        await new Promise((r) => setTimeout(r, 0));
 
         // Update progress
         const done = Math.min(i + batchSize, total);
@@ -816,16 +919,15 @@ const [totalBooks, setTotalBooks] = useState(0);
       if (!cancelTranslation) {
         message.success({ key, content: "Chapter translated successfully!" });
       }
-
     } catch (err) {
       const key = "translating";
-    
+
       if (err.name === "CanceledError" || err.name === "AbortError") {
         console.log("Translation aborted");
         message.destroy(key); // Clear the "Starting translation..." message
         // Reset tokens that were showing "Translating…"
-        setTokens(prev =>
-          prev.map(tok =>
+        setTokens((prev) =>
+          prev.map((tok) =>
             tok.verse_translated_text === "Translating…"
               ? { ...tok, verse_translated_text: "" }
               : tok
@@ -840,15 +942,14 @@ const [totalBooks, setTotalBooks] = useState(0);
         console.error("Translation error:", err);
         message.error({ key, content: `Error: ${err.message || "Failed"}` });
       }
-    }
-    finally {
+    } finally {
       setLoadingTranslate(false); // ✅ translation finished, dropdown enables
       setCancelTranslation(false); // Reset cancel state
       abortControllerRef.current = null;
     }
   };
 
-  // fetch draft from server  
+  // fetch draft from server
 
   const updateServerDraft = async () => {
     if (!projectId || selectedBook === "all") {
@@ -895,7 +996,6 @@ const [totalBooks, setTotalBooks] = useState(0);
   //   }
   // }, [activeTab, selectedBook]);
 
-
   // ---------- Progress / Draft ----------
   const chapterStats = useMemo(() => {
     if (!tokens || tokens.length === 0) return { translated: 0, total: 0 };
@@ -903,7 +1003,6 @@ const [totalBooks, setTotalBooks] = useState(0);
     const translated = tokens.filter((t) => t.verse_translated_text).length;
     return { translated, total };
   }, [tokens]);
-
 
   const filteredTokens = showOnlyTranslated
     ? tokens.filter((t) => t.verse_translated_text)
@@ -938,7 +1037,10 @@ const [totalBooks, setTotalBooks] = useState(0);
           const success = document.execCommand("copy");
           if (success) {
             message.success("Draft copied to clipboard");
-            console.log("Draft copied (fallback):", contentToCopy.slice(0, 100));
+            console.log(
+              "Draft copied (fallback):",
+              contentToCopy.slice(0, 100)
+            );
           } else {
             throw new Error("execCommand returned false");
           }
@@ -954,7 +1056,6 @@ const [totalBooks, setTotalBooks] = useState(0);
       message.error("Failed to copy draft: " + (err.message || err));
     }
   };
-
 
   // ---------- Effects ----------
   useEffect(() => {
@@ -999,7 +1100,9 @@ const [totalBooks, setTotalBooks] = useState(0);
   }, [selectedBook, selectedChapter]);
 
   const hasExistingTranslations = useMemo(() => {
-    return tokens.some(t => t.verse_translated_text && t.verse_translated_text.trim() !== "");
+    return tokens.some(
+      (t) => t.verse_translated_text && t.verse_translated_text.trim() !== ""
+    );
   }, [tokens]);
 
   // ---------- UI ----------
@@ -1012,26 +1115,25 @@ const [totalBooks, setTotalBooks] = useState(0);
         paddingLeft: 20,
       }}
     >
-          {/* Upload Summary Toast */}
-          {/* <UploadSummaryToast
+      {/* Upload Summary Toast */}
+      {/* <UploadSummaryToast
         visible={summaryOpen}
         uploaded={summaryData.uploaded}
         skipped={summaryData.skipped}
         onClose={() => setSummaryOpen(false)}
       /> */}
-     {modalContextHolder}
-   <UploadProgressModal
-  visible={uploadProgressOpen}
-  uploading={uploadingBooks}
-  uploaded={uploadedBooks}
-  skipped={skippedBooks}
-  total={totalBooks}
-  onClose={() => setUploadProgressOpen(false)}
-/>
+      {modalContextHolder}
+      <UploadProgressModal
+        visible={uploadProgressOpen}
+        uploading={uploadingBooks}
+        uploaded={uploadedBooks}
+        skipped={skippedBooks}
+        total={totalBooks}
+        onClose={() => setUploadProgressOpen(false)}
+      />
 
-
-         {/* Hidden file input for book upload */}
-         <input
+      {/* Hidden file input for book upload */}
+      <input
         type="file"
         ref={hiddenUploadInputRef}
         style={{ display: "none" }}
@@ -1054,19 +1156,21 @@ const [totalBooks, setTotalBooks] = useState(0);
       </Breadcrumb>
 
       <Space direction="vertical" style={{ width: "100%" }} size="small">
-      <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: '#1f2937' }}>
-       Verse Translation ({project?.name})
-        </h2>        
+        <h2
+          style={{ margin: 0, fontSize: 24, fontWeight: 600, color: "#1f2937" }}
+        >
+          Verse Translation ({project?.name})
+        </h2>
         {/* {project && (
           <Text>
             Source: {project.source_language_name} | Target:{" "}
             {project.target_language_name}
           </Text>
         )} */}
- 
-   {/* Book + Chapter Selectors with Upload Plus Icon */}
-   <Space>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
+
+        {/* Book + Chapter Selectors with Upload Plus Icon */}
+        <Space>
+          <div style={{ display: "flex", alignItems: "center" }}>
             <Select
               value={selectedBook}
               onChange={(val) => setSelectedBook(val)}
@@ -1079,41 +1183,51 @@ const [totalBooks, setTotalBooks] = useState(0);
                 </Option>
               ))}
             </Select>
-            
+
             {/* Plus icon for book upload - only show when "All Books" is selected */}
             {/* {selectedBook === "all" && ( */}
+            <Button
+              type="text"
+              //shape="circle"
+              icon={
+                <UploadOutlined
+                  style={{ color: "#1890ff", cursor: "pointer", fontSize: 20 }}
+                />
+              }
+              onClick={openFileDialog}
+              title="Upload Books"
+              style={{
+                marginLeft: 8,
+                //backgroundColor: 'rgb(44, 141, 251)',
+                //  borderColor: 'rgb(44, 141, 251)',
+              }}
+            />
+            {selectedBook && selectedBook !== "all" && (
               <Button
                 type="text"
-                //shape="circle"
-                icon={<UploadOutlined
-                  style={{ color: "#1890ff", cursor: "pointer" ,fontSize: 20}}
-                />}
-                onClick={openFileDialog}
-                title="Upload Books"
-                style={{ 
-                  marginLeft: 8,
-                //backgroundColor: 'rgb(44, 141, 251)',
-              //  borderColor: 'rgb(44, 141, 251)',
-                }}
+                icon={
+                  <DeleteOutlined
+                    style={{ color: "red", cursor: "pointer", fontSize: 20 }}
+                  />
+                }
+                onClick={handleDeleteBook}
+                title="Delete Selected Book"
+                danger
               />
-        {selectedBook && selectedBook !== "all" && (
-                <Button
-                  type="text"
-                  icon={<DeleteOutlined style={{ color: "red", cursor: "pointer",fontSize: 20 }} />}
-                  onClick={handleDeleteBook}
-                  title="Delete Selected Book"
-                  danger
-                />
-              )}
+            )}
             {/* )} */}
           </div>
- 
+
           {selectedBook !== "all" && chapters.length > 0 && (
             <Space>
               {/* Prev Button */}
               <Button
                 type="text"
-                disabled={!selectedChapter || selectedChapter === 1 || activeTab === "draft"}
+                disabled={
+                  !selectedChapter ||
+                  selectedChapter === 1 ||
+                  activeTab === "draft"
+                }
                 onClick={() =>
                   setSelectedChapter((prev) => Math.max(1, prev - 1))
                 }
@@ -1138,7 +1252,11 @@ const [totalBooks, setTotalBooks] = useState(0);
               {/* Next Button */}
               <Button
                 type="text"
-                disabled={!selectedChapter || selectedChapter === chapters.length || activeTab === "draft"}
+                disabled={
+                  !selectedChapter ||
+                  selectedChapter === chapters.length ||
+                  activeTab === "draft"
+                }
                 onClick={() =>
                   setSelectedChapter((prev) =>
                     Math.min(chapters.length, prev + 1)
@@ -1157,10 +1275,12 @@ const [totalBooks, setTotalBooks] = useState(0);
             percent:
               chapterStats.total === 0
                 ? 0
-                : Math.round((chapterStats.translated / chapterStats.total) * 100),
+                : Math.round(
+                    (chapterStats.translated / chapterStats.total) * 100
+                  ),
           }}
           format={() => (
-            <span style={{ color: '#000' }}>
+            <span style={{ color: "#000" }}>
               {chapterStats.translated} / {chapterStats.total} verses
             </span>
           )}
@@ -1169,144 +1289,221 @@ const [totalBooks, setTotalBooks] = useState(0);
         />
       </Space>
 
-      <Tabs
-        activeKey={activeTab}
-        onChange={(key) => setActiveTab(key)}
-      >
-
+      <Tabs activeKey={activeTab} onChange={(key) => setActiveTab(key)}>
         {/* Editor */}
 
         <TabPane tab="Translation Editor" key="editor">
-          <Row justify="end" align="middle" gutter={12} style={{ marginBottom: 12 }}>
+          <Row
+            justify="end"
+            align="middle"
+            gutter={12}
+            style={{ marginBottom: 12 }}
+          >
             <Col>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <Tooltip
                   title={
                     selectedModel ? (
                       <div style={{ textAlign: "left", fontSize: 12 }}>
-                        {Object.entries(MODEL_INFO[selectedModel]).map(([key, val]) => (
-                          <div key={key}>
-                            <b>{key}:</b> {val}
-                          </div>
-                        ))}
+                        {Object.entries(MODEL_INFO[selectedModel]).map(
+                          ([key, val]) => (
+                            <div key={key}>
+                              <b>{key}:</b> {val}
+                            </div>
+                          )
+                        )}
                       </div>
-                    ) : "Select a model to see info"
+                    ) : (
+                      "Select a model to see info"
+                    )
                   }
                   placement="left"
                   color="#f0f0f0"
                 >
                   <Button
                     type="text"
-                    icon={<InfoCircleOutlined style={{ fontSize: 18, color: "#2c8dfb" }} />}
+                    icon={
+                      <InfoCircleOutlined
+                        style={{ fontSize: 18, color: "#2c8dfb" }}
+                      />
+                    }
                     disabled={!selectedModel} // disabled until a model is selected
                   />
                 </Tooltip>
                 <Select
-  style={{ width: 220 }}
-  value={selectedModel || undefined}
-  onChange={(val) => {
-    if (val === "nllb-600M" && isZemeNaga) {
-      message.warning("nllb-600M not supported for Zeme Naga");
-      return; // block selection
-    }
-    setSelectedModel(val);
-  }}
-  disabled={loadingTranslate}
->
-<Option value="nllb-600M" disabled={isZemeNaga}>
-    <Tooltip
-      title="This model does NOT support Zeme Naga language."
-      placement="left"
-      overlayInnerStyle={{
-        backgroundColor: "#fff",
-        color: "#000",
-        border: "1px solid #ddd",
-        borderRadius: "6px",
-        padding: "6px 10px",
-      }}
-    >
-      nllb-600M
-    </Tooltip>
-  </Option>
+                  style={{ width: 240 }}
+                  value={selectedModel || undefined}
+                  onChange={(val) => setSelectedModel(val)}
+                  disabled={loadingTranslate}
+                >
+                  <Option
+                    value="nllb-600M"
+                    disabled={selectedModel !== "nllb-600M"}
+                  >
+                    <Tooltip
+                      title="General-purpose model for 200 languages."
+                      overlayInnerStyle={{
+                        backgroundColor: "#fff",
+                        color: "#000",
+                        border: "1px solid #ddd",
+                        borderRadius: "6px",
+                        padding: "6px 10px",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                      }}
+                    >
+                      nllb-600M
+                    </Tooltip>
+                  </Option>
 
-  <Option value="nllb_finetuned_eng_nzm" disabled={!isZemeNaga}>
-    <Tooltip
-      title="This model ONLY supports Zeme Naga language."
-      placement="left"
-      overlayInnerStyle={{
-        backgroundColor: "#fff",
-        color: "#000",
-        border: "1px solid #ddd",
-        borderRadius: "6px",
-        padding: "6px 10px",
-      }}
-    >
-      nllb-finetuned-eng-nzm
-    </Tooltip>
-  </Option>
-</Select>
+                  <Option
+                    value="nllb_finetuned_eng_nzm"
+                    disabled={selectedModel !== "nllb_finetuned_eng_nzm"}
+                  >
+                    <Tooltip
+                      title="This model ONLY supports English ↔ Zeme Naga."
+                      overlayInnerStyle={{
+                        backgroundColor: "#fff",
+                        color: "#000",
+                        border: "1px solid #ddd",
+                        borderRadius: "6px",
+                        padding: "6px 10px",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                      }}
+                    >
+                      nllb-finetuned-eng-nzm
+                    </Tooltip>
+                  </Option>
+
+                  <Option
+                    value="nllb-english-nagamese"
+                    disabled={selectedModel !== "nllb-english-nagamese"}
+                  >
+                    <Tooltip
+                      title="This model ONLY supports English ↔ Nagamese."
+                      overlayInnerStyle={{
+                        backgroundColor: "#fff",
+                        color: "#000",
+                        border: "1px solid #ddd",
+                        borderRadius: "6px",
+                        padding: "6px 10px",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                      }}
+                    >
+                      nllb-english-nagamese
+                    </Tooltip>
+                  </Option>
+
+                  <Option
+                    value="nllb-gujrathi-koli_kachchi"
+                    disabled={selectedModel !== "nllb-gujrathi-koli_kachchi"}
+                  >
+                    <Tooltip
+                      title="This model ONLY supports Gujarati ↔ Kachi Koli."
+                      overlayInnerStyle={{
+                        backgroundColor: "#fff",
+                        color: "#000",
+                        border: "1px solid #ddd",
+                        borderRadius: "6px",
+                        padding: "6px 10px",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                      }}
+                    >
+                      nllb-gujrathi-koli_kachchi
+                    </Tooltip>
+                  </Option>
+
+                  <Option
+                    value="nllb-hin-surjapuri"
+                    disabled={selectedModel !== "nllb-hin-surjapuri"}
+                  >
+                    <Tooltip
+                      title="This model ONLY supports Hindi ↔ Surjapuri."
+                      overlayInnerStyle={{
+                        backgroundColor: "#fff",
+                        color: "#000",
+                        border: "1px solid #ddd",
+                        borderRadius: "6px",
+                        padding: "6px 10px",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                      }}
+                    >
+                      nllb-hin-surjapuri
+                    </Tooltip>
+                  </Option>
+                </Select>
               </div>
             </Col>
             <Col>
-            <Tooltip
-  title={
-    !selectedModel && selectedBook !== "all" && selectedChapter
-      ? "Please select a model first"
-      : ""
-  }
-  placement="top"
->
-  <span style={{ display: "inline-block" }}>
-    {loadingTranslate ? (
-      <Button
-        type="dashed"
-        icon={<ThunderboltOutlined />}
-        onClick={() => {
-          setCancelTranslation(true);
-          abortControllerRef.current?.abort();
-        }}
-        style={{ color: "red", borderColor: "red" }}
-      >
-        Cancel Translation
-      </Button>
-    ) : hasExistingTranslations ? (
-      <Popconfirm
-        title="Re-translate Chapter"
-        description="This chapter already has translations. Do you want to translate again? This will replace existing translations."
-        onConfirm={() => {
-          selectedChapter ? handleTranslateChapter() : handleTranslateAllChunks();
-        }}
-        okText="Yes, Translate Again"
-        cancelText="Cancel"
-        overlayInnerStyle={{
-          width: '400px',  // Adjust width
-          fontSize: '14px', // Adjust font size
-        }}
-      >
-        <Button
-          type="dashed"
-          icon={<ThunderboltOutlined />}
-          disabled={!selectedModel || selectedBook === "all" || !selectedChapter}
-        >
-          Translate
-        </Button>
-      </Popconfirm>
-    ) : (
-      <Button
-        type="dashed"
-        icon={<ThunderboltOutlined />}
-        onClick={() => {
-          selectedChapter ? handleTranslateChapter() : handleTranslateAllChunks();
-        }}
-        disabled={!selectedModel || selectedBook === "all" || !selectedChapter}
-      >
-        Translate
-      </Button>
-    )}
-  </span>
-</Tooltip>
+              <Tooltip
+                title={
+                  !selectedModel && selectedBook !== "all" && selectedChapter
+                    ? "Please select a model first"
+                    : ""
+                }
+                placement="top"
+              >
+                <span style={{ display: "inline-block" }}>
+                  {loadingTranslate ? (
+                    <Button
+                      type="dashed"
+                      icon={<ThunderboltOutlined />}
+                      onClick={() => {
+                        setCancelTranslation(true);
+                        abortControllerRef.current?.abort();
+                      }}
+                      style={{ color: "red", borderColor: "red" }}
+                    >
+                      Cancel Translation
+                    </Button>
+                  ) : hasExistingTranslations ? (
+                    <Popconfirm
+                      title="Re-translate Chapter"
+                      description="This chapter already has translations. Do you want to translate again? This will replace existing translations."
+                      onConfirm={() => {
+                        selectedChapter
+                          ? handleTranslateChapter()
+                          : handleTranslateAllChunks();
+                      }}
+                      okText="Yes, Translate Again"
+                      cancelText="Cancel"
+                      overlayInnerStyle={{
+                        width: "400px", // Adjust width
+                        fontSize: "14px", // Adjust font size
+                      }}
+                    >
+                      <Button
+                        type="dashed"
+                        icon={<ThunderboltOutlined />}
+                        disabled={
+                          !selectedModel ||
+                          selectedBook === "all" ||
+                          !selectedChapter
+                        }
+                      >
+                        Translate
+                      </Button>
+                    </Popconfirm>
+                  ) : (
+                    <Button
+                      type="dashed"
+                      icon={<ThunderboltOutlined />}
+                      onClick={() => {
+                        selectedChapter
+                          ? handleTranslateChapter()
+                          : handleTranslateAllChunks();
+                      }}
+                      disabled={
+                        !selectedModel ||
+                        selectedBook === "all" ||
+                        !selectedChapter
+                      }
+                    >
+                      Translate
+                    </Button>
+                  )}
+                </span>
+              </Tooltip>
             </Col>
-
           </Row>
 
           <Row gutter={16}>
@@ -1351,7 +1548,6 @@ const [totalBooks, setTotalBooks] = useState(0);
                         </Text>
                         <p style={{ margin: 0 }}>{t.token_text}</p>
                       </div>
-
                     ))}
                   </>
                 ) : (
@@ -1386,7 +1582,6 @@ const [totalBooks, setTotalBooks] = useState(0);
               >
                 {isTokenized ? (
                   tokens.map((t, index) => (
-
                     <div
                       key={t.verse_token_id}
                       style={{
@@ -1422,7 +1617,7 @@ const [totalBooks, setTotalBooks] = useState(0);
                                   ...prev,
                                   [t.verse_token_id]: {
                                     old: t.verse_translated_text, // saved/original
-                                    new: newText,                 // current edit
+                                    new: newText, // current edit
                                   },
                                 };
                               }
@@ -1465,9 +1660,11 @@ const [totalBooks, setTotalBooks] = useState(0);
                                     prev.map((tok) =>
                                       tok.verse_token_id === t.verse_token_id
                                         ? {
-                                          ...tok,
-                                          verse_translated_text: editedTokens[t.verse_token_id].old,
-                                        }
+                                            ...tok,
+                                            verse_translated_text:
+                                              editedTokens[t.verse_token_id]
+                                                .old,
+                                          }
                                         : tok
                                     )
                                   );
@@ -1482,7 +1679,6 @@ const [totalBooks, setTotalBooks] = useState(0);
                               </Button>
                             </>
                           )}
-
                         </Space>
                       </>
                     </div>
@@ -1522,9 +1718,7 @@ const [totalBooks, setTotalBooks] = useState(0);
                 extra={
                   <Space>
                     {/* Download → icon only */}
-                    <DownloadDraftButton
-                      content={serverDraft}
-                    />
+                    <DownloadDraftButton content={serverDraft} />
 
                     {/* Copy → icon only */}
                     <CopyOutlined
@@ -1555,13 +1749,19 @@ const [totalBooks, setTotalBooks] = useState(0);
                           setLoadingDraft(true);
 
                           // 1️⃣ If there are unsaved edits in editor, merge them into tokens
-                          const mergedTokens = tokens.map(t => {
+                          const mergedTokens = tokens.map((t) => {
                             const edited = editedTokens[t.verse_token_id];
-                            return edited ? { ...t, verse_translated_text: edited.new } : t;
+                            return edited
+                              ? { ...t, verse_translated_text: edited.new }
+                              : t;
                           });
 
                           // 2️⃣ Call API to generate draft using latest translations
-                          const draft = await generateDraftJson(projectId, selectedBook, mergedTokens);
+                          const draft = await generateDraftJson(
+                            projectId,
+                            selectedBook,
+                            mergedTokens
+                          );
 
                           // 3️⃣ Update state
                           setServerDraft(draft.content || "");
@@ -1607,46 +1807,57 @@ const [totalBooks, setTotalBooks] = useState(0);
                         <Input.TextArea
                           value={editedDraft || serverDraft}
                           autoSize={{ minRows: 8, maxRows: 20 }}
-                          style={{ whiteSpace: "pre-wrap", fontFamily: "monospace" }}
+                          style={{
+                            whiteSpace: "pre-wrap",
+                            fontFamily: "monospace",
+                          }}
                           onChange={(e) => setEditedDraft(e.target.value)}
                         />
 
                         {/* Save & Discard Buttons */}
-                        {editedDraft !== null && editedDraft !== serverDraft && (
-                          <Space>
-                            <Button
-                              type="primary"
-                              icon={<SaveOutlined />}
-                              onClick={async () => {
-                                try {
-                                  if (draftId) {
-                                    // Save draft to backend
-                                    const res = await saveDraft(draftId, editedDraft);
-                                    setServerDraft(res.content);
-                                    setEditedDraft(null);               // Reset edit mode
+                        {editedDraft !== null &&
+                          editedDraft !== serverDraft && (
+                            <Space>
+                              <Button
+                                type="primary"
+                                icon={<SaveOutlined />}
+                                onClick={async () => {
+                                  try {
+                                    if (draftId) {
+                                      // Save draft to backend
+                                      const res = await saveDraft(
+                                        draftId,
+                                        editedDraft
+                                      );
+                                      setServerDraft(res.content);
+                                      setEditedDraft(null); // Reset edit mode
 
-                                    message.success("Draft saved successfully!");
-                                  } else {
-                                    message.warning("No draftId found to save");
+                                      message.success(
+                                        "Draft saved successfully!"
+                                      );
+                                    } else {
+                                      message.warning(
+                                        "No draftId found to save"
+                                      );
+                                    }
+                                  } catch (err) {
+                                    console.error("Save draft error:", err);
+                                    message.error("Failed to save draft");
                                   }
-                                } catch (err) {
-                                  console.error("Save draft error:", err);
-                                  message.error("Failed to save draft");
-                                }
-                              }}
-                            >
-                              Save
-                            </Button>
-                            <Button
-                              onClick={() => {
-                                setEditedDraft(originalDraft); // discard edits
-                                message.info("Changes discarded");
-                              }}
-                            >
-                              Discard
-                            </Button>
-                          </Space>
-                        )}
+                                }}
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                onClick={() => {
+                                  setEditedDraft(originalDraft); // discard edits
+                                  message.info("Changes discarded");
+                                }}
+                              >
+                                Discard
+                              </Button>
+                            </Space>
+                          )}
                       </Space>
                     </Col>
                   ) : (
@@ -1656,13 +1867,12 @@ const [totalBooks, setTotalBooks] = useState(0);
                         style={{ maxHeight: "70vh", overflowY: "scroll" }}
                       >
                         <p style={{ fontStyle: "italic", color: "#888" }}>
-                          No translation draft available yet. Run translation to generate one.
+                          No translation draft available yet. Run translation to
+                          generate one.
                         </p>
                       </Card>
                     </Col>
-                  )
-                  }
-
+                  )}
                 </Row>
               </Card>
             </Col>

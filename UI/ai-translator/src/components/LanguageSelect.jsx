@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 
 const { Option } = Select;
 
-export default function LanguageSelect({ label, value, onChange, disabled = false,placeholder = "Select language"}) {
+export default function LanguageSelect({ label, value, onChange, disabled = false,placeholder = "Select language",filterList = []}) {
   // React Query for fetching languages
   const {
     data: languages = [],
@@ -22,9 +22,13 @@ export default function LanguageSelect({ label, value, onChange, disabled = fals
   if (isError) {
     return <div>Error loading languages</div>;
   }
-
+// Apply dynamic filtering (for paired language logic)
+const filteredLanguages =
+  filterList.length > 0
+    ? languages.filter((lang) => filterList.includes(lang.name))
+    : languages;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+    <div style={{ display: "flex", alignItems: "center"}}>
       <strong>{label}</strong>
       <Select
         showSearch
@@ -49,11 +53,11 @@ export default function LanguageSelect({ label, value, onChange, disabled = fals
         }}
         disabled={disabled || isLoading} // ✅ disable while translating
       >
-        {languages.map((lang) => (
-          <Option key={lang.language_id} value={lang.language_id}>
-            {lang.name} ({lang.ISO_code})
-          </Option>
-        ))}
+        {filteredLanguages.map((lang) => (
+  <Option key={lang.language_id} value={lang.language_id}>
+    {lang.name}
+  </Option>
+))}
       </Select>
     </div>
   );

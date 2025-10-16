@@ -11,7 +11,7 @@ def load_languages_from_csv():
             print("Languages already loaded. Skipping.")
             return  # Skip if data exists
 
-        file_path = os.path.join("docs", "languages.csv")
+        file_path = os.path.join("docs", "nllb-supported-languages.csv")
         if not os.path.exists(file_path):
             print(f"CSV file not found: {file_path}")
             return
