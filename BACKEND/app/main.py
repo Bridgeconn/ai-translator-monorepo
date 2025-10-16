@@ -60,8 +60,10 @@ app.add_middleware(
         "https://mt.vachanengine.org", "localhost:3000", "http://localhost:3000","https://vachan-ai-ui-v2.vercel.app"
     ],
     allow_credentials=True,
-    allow_methods=["*"],
+    # allow_methods=["*"],
+    allow_methods = ['GET','POST','PUT','DELETE','OPTIONS', 'UPDATE'],
     allow_headers=["*"],
+   # allowedHeaders: ['Content-Type','Authorization'],
 )
 
 @app.get("/", summary="Root Endpoint")
