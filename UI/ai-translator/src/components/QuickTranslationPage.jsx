@@ -1604,6 +1604,7 @@ export default function QuickTranslationPage() {
             title={<span>Translation</span>}
             extra={
               <Space>
+                <Tooltip title="Select Model" color="#fff">
                 <Select
                   value={selectedModel || undefined}
                   onChange={setSelectedModel}
@@ -1695,6 +1696,7 @@ export default function QuickTranslationPage() {
                     );
                   })}
                 </Select>
+                </Tooltip>
                 <Tooltip
                   color="#ffffff"
                   title={
