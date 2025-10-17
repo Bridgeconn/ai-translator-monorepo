@@ -62,8 +62,8 @@ function UploadProgressModal({
       open={visible}
       title="Book upload status"
       footer={null}
-      closable={isComplete}
-      onCancel={isComplete ? onClose : undefined}
+      closable={false}
+      onCancel={undefined}
       maskClosable={false}
     >
       <div style={{ marginBottom: 16 }}>
@@ -342,49 +342,94 @@ const VerseTranslationPage = () => {
     return { uploaded, skipped };
   };
 
+  // const handleBookUpload = async (e) => {
+  //   const files = Array.from(e.target.files || []);
+  //   if (!files.length || !project?.source_id) return;
+
+  //   setTotalBooks(files.length);
+  //   setUploadingBooks([]);
+  //   setUploadedBooks([]);
+  //   setSkippedBooks([]);
+  //   setUploadProgressOpen(true);
+
+  //   for (const file of files) {
+  //     const code = await guessUSFMCode(file); // Get the book code
+
+  //     // Mark as uploading (by code, not filename)
+  //     setUploadingBooks((prev) => [...prev, code]);
+
+  //     try {
+  //       // Call your existing API helper
+  //       const { uploaded, skipped } = await uploadBooksForSource(
+  //         project.source_id,
+  //         [file] // send one at a time
+  //       );
+
+  //       if (uploaded.length) {
+  //         setUploadedBooks((prev) => [...prev, code]); // use code instead of file.name
+  //       }
+  //       if (skipped.length) {
+  //         setSkippedBooks((prev) => [...prev, code]); // use code instead of file.name
+  //       }
+  //     } catch (err) {
+  //       setSkippedBooks((prev) => [...prev, code]); // treat errors as skipped
+  //     } finally {
+  //       // Remove from "uploading"
+  //       setUploadingBooks((prev) => prev.filter((c) => c !== code));
+  //     }
+  //   }
+
+  //   // Refresh book list after uploads complete
+  //   await fetchAvailableBooks(project.source_id);
+
+  //   e.target.value = ""; // reset input
+  // };
   const handleBookUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length || !project?.source_id) return;
-
-    setTotalBooks(files.length);
+  
     setUploadingBooks([]);
     setUploadedBooks([]);
     setSkippedBooks([]);
+    setTotalBooks(files.length);
     setUploadProgressOpen(true);
-
+  
+    const existingBooks = await getExistingBooks(project.source_id);
+    const existingCodes = new Set(existingBooks.map((b) => b.book_code));
+  
     for (const file of files) {
-      const code = await guessUSFMCode(file); // Get the book code
-
-      // Mark as uploading (by code, not filename)
+      const code = await guessUSFMCode(file);
       setUploadingBooks((prev) => [...prev, code]);
-
+  
+      // Skip duplicates
+      if (existingCodes.has(code)) {
+        setSkippedBooks((prev) => [...prev, code]);
+        setUploadingBooks((prev) => prev.filter((c) => c !== code));
+        continue;
+      }
+  
+      const formData = new FormData();
+      formData.append("file", file);
+  
       try {
-        // Call your existing API helper
-        const { uploaded, skipped } = await uploadBooksForSource(
-          project.source_id,
-          [file] // send one at a time
-        );
-
-        if (uploaded.length) {
-          setUploadedBooks((prev) => [...prev, code]); // use code instead of file.name
-        }
-        if (skipped.length) {
-          setSkippedBooks((prev) => [...prev, code]); // use code instead of file.name
-        }
+        await api.post(`/books/upload_books/?source_id=${project.source_id}`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        setUploadedBooks((prev) => [...prev, code]);
+        existingCodes.add(code);
       } catch (err) {
-        setSkippedBooks((prev) => [...prev, code]); // treat errors as skipped
+        console.error("Upload failed for", code, err);
+        setSkippedBooks((prev) => [...prev, code]);
       } finally {
-        // Remove from "uploading"
         setUploadingBooks((prev) => prev.filter((c) => c !== code));
       }
     }
-
-    // Refresh book list after uploads complete
+  
+    // Refresh list
     await fetchAvailableBooks(project.source_id);
-
-    e.target.value = ""; // reset input
+    e.target.value = "";
   };
-
+  
   const openBookUploadModal = () => {
     setIsBookUploadModalOpen(true);
   };
