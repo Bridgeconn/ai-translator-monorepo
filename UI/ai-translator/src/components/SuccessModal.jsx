@@ -9,6 +9,9 @@ const SuccessModal = ({ isVisible, message, onClose }) => {
       title="Success"
       open={isVisible}
       onOk={onClose}
+      onCancel={onClose} // ✅ makes the ❌ and outside click work
+      closable={true}    // ✅ shows the X icon
+      maskClosable={true} // ✅ allow closing by clicking outside
       cancelButtonProps={{ style: { display: "none" } }}
       width={250}
     >
