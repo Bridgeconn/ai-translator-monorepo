@@ -38,7 +38,6 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
-
 // A token that marks line boundaries. The MT model won’t translate this.
 const LINE_SENTINEL = " ⟦LB⟧ ";
 // ------------------ API Helpers ------------------
@@ -178,7 +177,7 @@ async function isIncognitoMode() {
     // ✅ Firefox
     if (ua.includes("firefox")) {
       try {
-        const persisted = await navigator.storage.persisted();
+        const persisted = await navigator.storage.persist();
         return !persisted;
       } catch {
         return true;
@@ -223,7 +222,6 @@ async function isIncognitoMode() {
     const today = new Date().toDateString();
     if (usage.date !== today) updateUsage(0);
   };
-
   const [sourceLang, setSourceLang] = useState(null);
   const [targetLang, setTargetLang] = useState(null);
   const [sourceText, setSourceText] = useState("");
@@ -239,6 +237,21 @@ async function isIncognitoMode() {
   const [isIncognito, setIsIncognito] = useState(false);
   const [dailyUsage, setDailyUsage] = useState(getUsage());
   const [checkingIncognito, setCheckingIncognito] = useState(true);
+  const [userLoggedIn, setUserLoggedIn] = useState(false); // declare first
+  const [unauthTranslationCount, setUnauthTranslationCount] = useState(0);
+  // Check login status on component mount
+  useEffect(() => {
+    const user = localStorage.getItem("user");
+    if (user) setUserLoggedIn(true);
+  }, []);
+
+  // Reset unauthorized translation count whenever user logs in
+  useEffect(() => {
+    if (userLoggedIn) {
+      setUnauthTranslationCount(0);
+    }
+  }, [userLoggedIn]);
+
   // Restore draft if available
   useEffect(() => {
     const draft = localStorage.getItem("quickTranslationDraft");
@@ -660,10 +673,11 @@ async function isIncognitoMode() {
       );
       return;
     }
-
-    // 🧩 Check translation limit for anonymous users
+    const token = localStorage.getItem("token"); // detect logged-in user
     const usage = getUsage();
-    if (usage.count >= DAILY_LIMIT) {
+    
+    // Block anonymous users if they reached limit
+    if (!token && usage.count >= DAILY_LIMIT) {
       showNotification(
         "warning",
         "Daily Limit Reached",
@@ -671,11 +685,14 @@ async function isIncognitoMode() {
       );
       return;
     }
-
-    // ✅ Update count before translation starts
-    updateUsage(usage.count + 1);
-    setDailyUsage(getUsage());
-
+    
+    // ✅ Increment only if user is NOT logged in
+    if (!token) {
+      updateUsage(usage.count + 1);
+      setDailyUsage(getUsage());
+    }
+    
+    // Proceed with translation    
     if (!sourceLang || !targetLang) {
       showNotification(
         "error",
