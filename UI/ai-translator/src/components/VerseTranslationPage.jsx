@@ -63,13 +63,14 @@ function UploadProgressModal({
       open={visible}
       title="Book upload status"
       footer={null}
-      closable={isComplete}
+      // closable={isComplete}
       onCancel={isComplete ? onClose : undefined}
       maskClosable={false}
+      closeIcon={null}
     >
       <div style={{ marginBottom: 16 }}>
         <Text strong>
-          Uploaded: {uploaded.length + skipped.length}/{total}
+          Uploaded: {uploaded.length}/{total}
         </Text>
       </div>
 
@@ -126,13 +127,13 @@ function UploadProgressModal({
         </div>
       )}
 
-      {isComplete && (
+      {/* {isComplete && ( */}
         <div style={{ textAlign: "right", marginTop: 16 }}>
           <Button type="primary" onClick={onClose}>
             Close
           </Button>
         </div>
-      )}
+      {/* )} */}
     </Modal>
   );
 }
@@ -297,7 +298,7 @@ const VerseTranslationPage = () => {
           if (m && m[1]) {
             return resolve(m[1].replace(/[^0-9A-Za-z]/g, "").toUpperCase());
           }
-        } catch {}
+        } catch { }
         const name = file.name.split(".")[0] || file.name;
         resolve(name.replace(/[^0-9A-Za-z]/g, "").toUpperCase());
       };
@@ -1307,7 +1308,7 @@ const VerseTranslationPage = () => {
             </Space>
           )}
         </Space>
-
+        {selectedBook !== "all" && chapters.length > 0 && (
         <Progress
           percent={100} // always full width
           success={{
@@ -1326,8 +1327,10 @@ const VerseTranslationPage = () => {
           strokeColor="#d9d9d9" // always grey
           style={{ marginTop: 8, marginBottom: 8 }}
         />
+        )}
       </Space>
 
+      {selectedBook !== "all" && chapters.length > 0 && (
       <Tabs activeKey={activeTab} onChange={(key) => setActiveTab(key)}>
         {/* Editor */}
 
@@ -1566,9 +1569,16 @@ const VerseTranslationPage = () => {
                     ))}
                   </>
                 ) : (
-                  <pre style={{ whiteSpace: "pre-wrap" }}>
-                    {"No content available, please select a book"}
-                  </pre>
+                  <div style={{
+                    fontFamily: 'Roboto, sans-serif',
+                    fontSize: 14,
+                    fontStyle: 'normal',
+                    color: '#333333',
+                    whiteSpace: 'pre-wrap',
+                    margin: 0,
+                  }}>
+                    No content available, please select a book
+                  </div>
                 )}
               </Card>
             </Col>
@@ -1699,8 +1709,16 @@ const VerseTranslationPage = () => {
                     </div>
                   ))
                 ) : (
-                  <p>Select a book to start translation</p>
-                )}
+                  <div style={{
+                    fontFamily: 'Roboto, sans-serif',
+                    fontSize: 14,
+                    fontStyle: 'normal',
+                    color: '#333333',
+                    whiteSpace: 'pre-wrap',
+                    margin: 0,
+                  }}>
+                    No content available, please select a book
+                  </div>)}
               </Card>
             </Col>
           </Row>
@@ -1894,6 +1912,7 @@ const VerseTranslationPage = () => {
           </Row>
         </TabPane>
       </Tabs>
+      )}
     </div>
   );
 };
