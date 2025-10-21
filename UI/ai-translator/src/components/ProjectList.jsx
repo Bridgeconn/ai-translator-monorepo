@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState,useEffect  } from "react";
 import {
   Row,
   Col,
@@ -23,6 +23,13 @@ const ProjectList = ({
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 8; // cards per page
+// ✅ useEffect must be declared before any return
+useEffect(() => {
+  const maxPage = Math.ceil(projects.length / pageSize) || 1;
+  if (currentPage > maxPage) {
+    setCurrentPage(maxPage);
+  }
+}, [projects.length, currentPage]);
 
   if (loading) {
     return (
