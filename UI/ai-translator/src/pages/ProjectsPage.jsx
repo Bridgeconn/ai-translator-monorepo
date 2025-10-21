@@ -240,6 +240,7 @@ const ZeroDraftGenerator = () => {
           prefix={<SearchOutlined />}
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
+          allowClear
         />
       </div>
 
