@@ -110,6 +110,7 @@ export default function WordTranslation() {
   const { message: appMessage } = App.useApp();
   const eventSourceRef = useRef(null);
   const translationNotificationKey = useRef(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
     // Book upload states
     const [uploadSummaryOpen, setUploadSummaryOpen] = useState(false);
@@ -583,15 +584,13 @@ export default function WordTranslation() {
     if (!selected?.book_id) return; // ✅ Check for book_id
     await fetchTokens(selected.book_id); // ✅ Pass book_id
   };
-
-  // ------------------ Generate Translations ------------------//
-
   // ------------------ Generate Translations ------------------//
   const handleCancelTranslation = () => {
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
       setIsGenerating(false);
+      setIsModalVisible(false);             // hide modal if open
       
       // Close the ongoing translation notification
       if (translationNotificationKey.current) {
@@ -609,7 +608,7 @@ export default function WordTranslation() {
     }
   };
 
-  const handleGenerateTranslationsSSEWithPreserveEdits = async () => {
+  const handleGenerateTranslationsSSEWithPreserveEdits = async ({ fullRegenerate = true } = {}) => {
     if (!selectedBook?.book_id) return; // ✅ Check for bookId
     setIsGenerating(true);
     // Show persistent "Translating..." notification
@@ -622,19 +621,38 @@ export default function WordTranslation() {
     duration: 0, // Don't auto-close
     icon: <Spin />,
   });
-    if (hasGenerated) {
-      setTokens(prev => {
-        const cleared = prev.map(t => ({ ...t, translation: "" }));
-        setTranslatedCount(0);  // 🔹 reset immediately after clearing tokens
-        return cleared;          // ✅ return the cleared tokens array to update state
-      });
-    }
+  if (fullRegenerate && hasGenerated) {
+    setTokens(prev => {
+      const cleared = prev.map(t => ({ ...t, translation: "" }));
+      setTranslatedCount(0);  
+      return cleared;          
+    });
+  }  // Determine token IDs to translate based on No Continue
+  const tokenIdsToTranslate = fullRegenerate
+    ? undefined  // translate all tokens
+    : tokens
+        .filter(t => !t.translation?.trim())  // only untranslated tokens
+        .map(t => t.word_token_id);
+  
     try {
-      const eventSource = new EventSource(
-        // import.meta.env.VITE_BACKEND_URL + `/api/generate_batch_stream/${projectId}?book_id=${encodeURIComponent(selectedBook.book_id)}`
-        `${import.meta.env.VITE_BACKEND_URL}/api/generate_batch_stream/${projectId}?book_id=${encodeURIComponent(selectedBook.book_id)}&model_name=${encodeURIComponent(selectedModel)}`
+      const params = new URLSearchParams({
+        book_id: selectedBook.book_id,
+        model_name: selectedModel,
+      });
+      
+      // Include token IDs only if in No Continue mode
+      if (tokenIdsToTranslate) {
+        tokenIdsToTranslate.forEach(id => params.append("token_ids", id));
+      }
+      // const eventSource = new EventSource(
+      //   // import.meta.env.VITE_BACKEND_URL + `/api/generate_batch_stream/${projectId}?book_id=${encodeURIComponent(selectedBook.book_id)}`
+      //   `${import.meta.env.VITE_BACKEND_URL}/api/generate_batch_stream/${projectId}?book_id=${encodeURIComponent(selectedBook.book_id)}&model_name=${encodeURIComponent(selectedModel)}`
 
+      // );
+      const eventSource = new EventSource(
+        `${import.meta.env.VITE_BACKEND_URL}/api/generate_batch_stream/${projectId}?${params.toString()}`
       );
+      
       eventSourceRef.current = eventSource;
       let hasError = false;
       eventSource.onmessage = (event) => {
@@ -1139,7 +1157,7 @@ export default function WordTranslation() {
   if (projectLoading) return <div>Loading project...</div>;
   if (projectError) return <div>Error loading project</div>;
 
-  const hasTranslation = tokens?.length > 0 && tokens.some(t => t.translation?.trim() !== "");
+  const hasPreviousTranslations = tokens.some(token => token.translation?.trim() !== "");
   return (
     <div style={{ padding: '4px', position: 'relative', height: "100vh", display: "flex", flexDirection: "column" }}>
       {/* {contextHolder} */}
@@ -1168,11 +1186,12 @@ export default function WordTranslation() {
       <div style={{
         marginBottom: 24,
       }}>
-        {/* Breadcrumb */}
-        <Breadcrumb
+       {/* Breadcrumb */}
+       <Breadcrumb
           items={[
             { title: <Link to="/projects" style={{ color: 'rgb(44, 141, 251)', fontWeight: 500 }}>Projects</Link> },
             { title: <span style={{ fontWeight: 500 }}>{project?.name}</span> },
+            ...(selectedBook ? [{ title: <span style={{ fontWeight: 500, color: '#8c8c8c' }}>{selectedBook.book_name}</span> }] : [])
           ]}
           style={{ marginBottom: '12px' }}
         />
@@ -1463,7 +1482,7 @@ export default function WordTranslation() {
 </Select>
                     </div>
 
-                    {hasGenerated ? (
+                    {/* {hasGenerated ? (
   isGenerating ? (
     <Button 
       danger 
@@ -1498,26 +1517,69 @@ export default function WordTranslation() {
       </Tooltip>
     </Popconfirm>
   )
-) : isGenerating ? (
-  <Button 
-    danger 
-    size="large"
-    onClick={handleCancelTranslation}
-  >
-    Cancel Translation
-  </Button>
-) : (
-  <Tooltip title={!selectedModel ? "Please select a model first" : ""}>
-                        <Button
-                          type="primary"
-                          size="large"
-                          onClick={handleGenerateTranslationsSSEWithPreserveEdits}
-                          loading={isGenerating}
-                          disabled={!selectedModel || isGenerating}
-                        >{isGenerating ? "Generating..." : "Generate Translations"}
-                        </Button>
-                      </Tooltip>
-)}
+) : isGenerating ? ( */}
+<div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+  {isGenerating ? (
+    // Cancel button while generating
+    <Button danger size="large" onClick={handleCancelTranslation}>
+      Cancel Translation
+    </Button>
+  ) : (
+    // Generate / Regenerate button
+    <Tooltip title={!selectedModel ? "Please select a model first" : ""}>
+    <Button
+      type="primary"
+      disabled={!selectedModel || isGenerating}
+      onClick={() => {
+        if (hasPreviousTranslations) {
+          // Book has translations → show modal
+          setIsModalVisible(true);
+        } else {
+          // New book → directly generate
+          handleGenerateTranslationsSSEWithPreserveEdits({ fullRegenerate: true });
+        }
+      }}
+    >
+      {hasPreviousTranslations ? "Regenerate Translations" : "Generate Translations"}
+    </Button>
+  </Tooltip>
+  
+  )}
+  {/* 3-option modal (only renders for existing translations) */}
+  {tokens.length > 0 && (
+    <Modal
+      visible={isModalVisible}
+      title="Regenerate Translations"
+      closable={false}
+      onCancel={() => setIsModalVisible(false)}
+      footer={[
+        <Button key="cancel" onClick={() => setIsModalVisible(false)}>Cancel</Button>,
+        <Button
+          key="no"
+          onClick={() => {
+            setIsModalVisible(false);
+            handleGenerateTranslationsSSEWithPreserveEdits({ fullRegenerate: false });
+          }}
+        >
+          No, Continue
+        </Button>,
+        <Button
+          key="yes"
+          type="primary"
+          danger
+          onClick={() => {
+            setIsModalVisible(false);
+            handleGenerateTranslationsSSEWithPreserveEdits({ fullRegenerate: true });
+          }}
+        >
+          Yes, Regenerate
+        </Button>
+      ]}
+    >
+      Do you want to regenerate all translations, or continue from where you left off?
+    </Modal>
+  )}
+</div>
                   </>
                 ) : (
                   <>
