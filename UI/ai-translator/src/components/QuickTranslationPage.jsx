@@ -352,9 +352,10 @@ export default function QuickTranslationPage() {
   }, [saveModalVisible]);
 
   // ------------------ Enhanced notification helper ------------------
-  const showNotification = (type, title, description, duration = 4) => {
+  const showNotification = (type, title, description, duration = 2) => {
     try {
       notification[type]({
+        key: 1,
         message: title,
         description: description,
         duration: duration,
