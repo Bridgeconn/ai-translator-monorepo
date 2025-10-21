@@ -1173,7 +1173,7 @@ const VerseTranslationPage = () => {
               onChange={(val) => setSelectedBook(val)}
               style={{ minWidth: 200 }}
             >
-              <Option value="all">All Books</Option>
+              <Option value="all">Select a Book</Option>
               {books.map((b) => (
                 <Option key={b.book_id} value={b.book_name}>
                   {b.book_name}
