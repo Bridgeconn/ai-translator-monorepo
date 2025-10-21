@@ -140,7 +140,7 @@ const CreateProjectModal = ({
         throw new Error("Failed to get source_id from response");
       }
 
-      msgApi.success({ content: "Source created successfully!", key: "creating" });
+      // msgApi.success({ content: "Source created successfully!", key: "creating" });
 
       // 3️⃣ Prepare project payload
       let payload = {
