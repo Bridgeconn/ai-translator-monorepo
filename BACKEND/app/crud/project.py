@@ -138,6 +138,8 @@ def create_project(db: Session, project: ProjectCreate, user_id: UUID, files: Li
                 source_models.Source.language_id == source_lang_id,
                 project_models.Project.target_language_id == project.target_language_id,
                 project_models.Project.translation_type == project.translation_type,
+                project_models.Project.owner_id == user_id
+
             )
             .first()
         )
