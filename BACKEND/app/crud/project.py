@@ -38,7 +38,6 @@ def create_project(db: Session, project: ProjectCreate, user_id: UUID, files: Li
         )
 
     # ---------------- Handle text_document ----------------
-    # ---------------- Handle text_document ----------------
     if project.translation_type == "text_document":
         # Resolve source + target BCP codes
         source_lang = db.query(language_models.Language).filter(
@@ -87,8 +86,8 @@ def create_project(db: Session, project: ProjectCreate, user_id: UUID, files: Li
                     project_type="text_document",
                     translation_type="text_document",
                     file_name=file_dict.get("file_name", "sample.txt"),
-                    source_id=source_bcp_code,  # ✅ stored as BCP code
-                    target_id=target_bcp_code,  # ✅ stored as BCP code
+                    source_id=source_bcp_code,
+                    target_id=target_bcp_code, 
                     source_text=file_dict.get("source_text", ""),
                     target_text=file_dict.get("target_text", ""),
                     created_at=datetime.utcnow(),
@@ -115,17 +114,41 @@ def create_project(db: Session, project: ProjectCreate, user_id: UUID, files: Li
 
     # ---------------- Handle verse/word projects ----------------
     elif project.translation_type in ["verse", "word"]:
-        existing = db.query(project_models.Project).filter(
-            project_models.Project.name == project.name,
-            project_models.Project.source_id == project.source_id,
-            project_models.Project.target_language_id == project.target_language_id,
-            project_models.Project.translation_type == project.translation_type
+        source_lang_id = db.query(source_models.Source.language_id).filter(
+            source_models.Source.source_id == project.source_id
+        ).scalar()
+
+        if not source_lang_id:
+            raise HTTPException(status_code=400, detail="Invalid source_id or missing language_id")
+
+        source_lang = db.query(language_models.Language).filter(
+            language_models.Language.language_id == source_lang_id
         ).first()
+        target_lang = db.query(language_models.Language).filter(
+            language_models.Language.language_id == project.target_language_id
+        ).first()
+
+        source_lang_name = source_lang.name if source_lang else "Unknown Source Language"
+        target_lang_name = target_lang.name if target_lang else "Unknown Target Language"
+
+        existing = (
+            db.query(project_models.Project)
+            .join(source_models.Source, source_models.Source.source_id == project_models.Project.source_id)
+            .filter(
+                source_models.Source.language_id == source_lang_id,
+                project_models.Project.target_language_id == project.target_language_id,
+                project_models.Project.translation_type == project.translation_type,
+            )
+            .first()
+        )
+
         if existing:
             raise HTTPException(
                 status_code=400,
-                detail=f"Project with name '{project.name}', source '{project.source_id}', "
-                       f"target '{project.target_language_id}' and type '{project.translation_type}' already exists"
+                detail=(
+                    f"A project already exists with the same source language ({source_lang_name}), "
+                    f"target language ({target_lang_name}), and translation type ({project.translation_type})."
+                ),
             )
 
         db_project = project_models.Project(
@@ -139,12 +162,14 @@ def create_project(db: Session, project: ProjectCreate, user_id: UUID, files: Li
             total_items=0,
             completed_items=0,
             is_active=True,
-            owner_id=user_id
+            owner_id=user_id,
         )
         db.add(db_project)
         db.commit()
         db.refresh(db_project)
         return get_project_by_id(db, db_project.project_id)
+
+
 
     else:
         raise HTTPException(

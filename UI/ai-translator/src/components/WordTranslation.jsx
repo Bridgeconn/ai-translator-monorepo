@@ -445,21 +445,48 @@ export default function WordTranslation() {
           console.log("Delete response:", response);
           
           messageApi.success(`Book "${selectedBook.book_name}" deleted successfully`);
-  
+      
           // Refresh the books list from source
-          const refreshedBooks = await booksAPI.getBooksBySourceId(project.source_id);
+          let refreshedBooks = [];
+          try {
+            refreshedBooks = await booksAPI.getBooksBySourceId(project.source_id);
+          } catch (err) {
+            // If no books found after deletion, that's expected - set empty array
+            if (err.response?.status === 404 || err.response?.data?.detail === "No books found for this source_id") {
+              refreshedBooks = [];
+            } else {
+              throw err; // Re-throw unexpected errors
+            }
+          }
+          
           console.log("Refreshed books after delete:", refreshedBooks);
           setProjectBooks(refreshedBooks);
           
-          // Reset selectedBook and related states
+          // Reset ALL states to clean slate
           setSelectedBook(null);
           setTokens([]);
+          setSourceText(""); // Clear source text
           setDraftContent("");
           setOriginalDraft("");
           setEditedTokens({});
           setTranslatedCount(0);
           setHasGenerated(false);
-  
+          setCurrentDraft(null); 
+          setIsDraftEdited(false); 
+          setLoadingTokens(false); 
+          setIsGenerating(false);
+          setLoadingDraft(false);
+          
+          // Show friendly message if no books left
+          if (refreshedBooks.length === 0) {
+            notificationApi.info({
+              message: "No Books Found",
+              description: "No books found. Please upload books to start translation.",
+              placement: "top",
+              duration: 4,
+            });
+          }
+      
         } catch (err) {
           console.error("Failed to delete book:", err);
           console.error("Error details:", err.response);

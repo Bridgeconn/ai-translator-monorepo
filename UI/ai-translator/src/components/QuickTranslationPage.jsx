@@ -427,9 +427,10 @@ async function isIncognitoMode() {
   }, [saveModalVisible]);
 
   // ------------------ Enhanced notification helper ------------------
-  const showNotification = (type, title, description, duration = .5) => {
+  const showNotification = (type, title, description, duration = 2) => {
     try {
       notification[type]({
+        key: 1,
         message: title,
         description: description,
         duration: duration,
