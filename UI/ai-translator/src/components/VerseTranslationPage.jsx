@@ -69,7 +69,7 @@ function UploadProgressModal({
     >
       <div style={{ marginBottom: 16 }}>
         <Text strong>
-          Uploaded: {uploaded.length + skipped.length}/{total}
+          Uploaded: {uploaded.length}/{total}
         </Text>
       </div>
 
@@ -126,13 +126,13 @@ function UploadProgressModal({
         </div>
       )}
 
-      {isComplete && (
+      {/* {isComplete && ( */}
         <div style={{ textAlign: "right", marginTop: 16 }}>
           <Button type="primary" onClick={onClose}>
             Close
           </Button>
         </div>
-      )}
+      {/* )} */}
     </Modal>
   );
 }
