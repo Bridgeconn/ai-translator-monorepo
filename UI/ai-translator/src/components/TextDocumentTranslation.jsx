@@ -8,7 +8,7 @@ import {
   Typography,
   Spin,
   Button,
-  message,
+  // message,
   Breadcrumb,
   Tooltip,
   App,
@@ -276,8 +276,34 @@ export default function TextDocumentTranslation() {
   const getTempSourceKey = (projectId) => `tempSource_${projectId}`;
   const [selectedModel, setSelectedModel] = useState("nllb-600M");
 
-  const { message } = App.useApp();
+  const { message, notification } = App.useApp();
   const [modal, modalContextHolder] = Modal.useModal();
+
+  const showNotification = (type, title, description, duration = 2) => {
+    try {
+      notification[type]({
+        key: 1,
+        message: title,
+        description: description,
+        duration: duration,
+        placement: "top", // appears top-center
+        style: {
+          fontSize: "13px", // smaller than 14px
+          padding: "6px 12px", // tighter padding
+          borderRadius: "4px", // subtle rounded corners
+          maxWidth: "350px", // restrict width
+          boxShadow: "0 2px 6px rgba(0,0,0,0.15)", // subtle shadow
+        },
+      });
+
+      // Method 3: Console log for debugging
+      console.log(`${type.toUpperCase()}: ${title} - ${description}`);
+    } catch (err) {
+      console.error("Notification error:", err);
+      // Fallback to browser alert
+      alert(`${type.toUpperCase()}: ${description}`);
+    }
+  };
 
   // ------------------ Fetch Project + Files ------------------
   useEffect(() => {
@@ -391,6 +417,8 @@ export default function TextDocumentTranslation() {
     }
   };
 
+
+  
   // ------------------ Draft Editing ------------------
   const handleDraftChange = (e) => {
     setTargetText(e.target.value);
@@ -410,7 +438,11 @@ export default function TextDocumentTranslation() {
           f.id === selectedFile.id ? { ...f, target_text: targetText } : f
         )
       );
-      message.success("Translation saved!");
+      showNotification(
+        "success",
+        "Translation Saved",
+        "Translation saved successfully!"
+      );  
       setIsEdited(false);
       // setIsEditing(false);
     } catch (err) {
@@ -1083,7 +1115,7 @@ if (
                         icon={<CopyOutlined />}
                         onClick={() => {
                           navigator.clipboard.writeText(targetText || "");
-                          message.success("Copied to clipboard!");
+                          showNotification("success", "Copied", "Text copied to clipboard!"); // 3.success("Copied to clipboard!");
                         }}
                         size="middle"
                       />
