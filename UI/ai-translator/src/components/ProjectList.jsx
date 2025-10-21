@@ -1,4 +1,4 @@
-import React, { useState,useEffect  } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Row,
   Col,
@@ -23,13 +23,13 @@ const ProjectList = ({
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 8; // cards per page
-// ✅ useEffect must be declared before any return
-useEffect(() => {
-  const maxPage = Math.ceil(projects.length / pageSize) || 1;
-  if (currentPage > maxPage) {
-    setCurrentPage(maxPage);
-  }
-}, [projects.length, currentPage]);
+  // ✅ useEffect must be declared before any return
+  useEffect(() => {
+    const maxPage = Math.ceil(projects.length / pageSize) || 1;
+    if (currentPage > maxPage) {
+      setCurrentPage(maxPage);
+    }
+  }, [projects.length, currentPage]);
 
   if (loading) {
     return (
@@ -63,59 +63,44 @@ useEffect(() => {
     <>
       <Row gutter={[20, 20]}>
         {paginatedProjects.map((project) => {
-          const langs =
-            extractLanguagesFromName(project.name || "") || {
-              source_language: "Source",
-              target_language: "Target",
-            };
+          const langs = extractLanguagesFromName(project.name || "") || {
+            source_language: "Source",
+            target_language: "Target",
+          };
 
           return (
             <Col xs={24} sm={12} md={8} lg={6} key={project.project_id}>
               <Card
                 hoverable
                 style={{
-                  position: "relative", // for absolute overlay/action placement
+                  position: "relative",
                   borderRadius: 10,
                   border: "1px solid #e6e8eb",
-                  cursor: "pointer", // cursor controlled by overlay
+                  cursor: "pointer",
                   minHeight: 108,
                   padding: 0,
                   overflow: "hidden",
                 }}
-                bodyStyle={{
-                  padding: 14,
-                }}
+                bodyStyle={{ padding: 14 }}
               >
-                {/* FULL-CARD CLICKABLE OVERLAY (invisible) */}
-                <div
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Open project ${project.name || ""}`}
-                  onClick={() => handleCardClick(project)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleCardClick(project);
-                  }}
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    zIndex: 1,
-                    // overlay is fully transparent but receives clicks
-                    background: "transparent",
-                  }}
-                />
-
-                {/* CONTENT (above overlay visually) */}
+                {/* CONTENT (below overlay visually) */}
                 <div
                   style={{
                     position: "relative",
-                    zIndex: 2,
+                    zIndex: 1, // keep content underneath the overlay
                     display: "flex",
                     flexDirection: "column",
                     height: "100%",
                   }}
                 >
                   {/* Top row: icon + title */}
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 12,
+                    }}
+                  >
                     <div
                       style={{
                         width: 36,
@@ -129,7 +114,9 @@ useEffect(() => {
                         flexShrink: 0,
                       }}
                     >
-                      <FolderOpenOutlined style={{ fontSize: 18, color: "#2c8dfb" }} />
+                      <FolderOpenOutlined
+                        style={{ fontSize: 18, color: "#2c8dfb" }}
+                      />
                     </div>
 
                     <div style={{ minWidth: 0, flex: 1 }}>
@@ -147,15 +134,40 @@ useEffect(() => {
                           `${langs.source_language} - ${langs.target_language}`}
                       </Text>
 
-                      <Text type="secondary" style={{ fontSize: 12, display: "block", marginTop: 6 }}>
-                        {project.translation_type ? `${project.translation_type} translation` : ""}
+                      <Text
+                        type="secondary"
+                        style={{ fontSize: 12, display: "block", marginTop: 6 }}
+                      >
+                        {project.translation_type
+                          ? `${project.translation_type} translation`
+                          : ""}
                       </Text>
                     </div>
                   </div>
 
-                  {/* spacer pushes the delete action to the bottom */}
                   <div style={{ flex: 1 }} />
                 </div>
+
+                {/* FULL-CARD CLICKABLE OVERLAY (on top of content) */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Open project ${project.name || ""}`}
+                  onClick={() => handleCardClick(project)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleCardClick(project);
+                    }
+                  }}
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    zIndex: 2, // higher than content so it receives clicks
+                    background: "transparent",
+                    cursor: "pointer", // shows it's clickable
+                  }}
+                />
 
                 {/* ACTIONS: placed above overlay so they capture clicks */}
                 <div
@@ -163,12 +175,11 @@ useEffect(() => {
                     position: "absolute",
                     right: 12,
                     bottom: 12,
-                    zIndex: 3, // higher than overlay
+                    zIndex: 3, // higher than overlay so action buttons remain clickable
                     display: "flex",
                     gap: 8,
                     alignItems: "center",
                   }}
-                  // stop propagation so clicking the action DOES NOT trigger the overlay navigation
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Popconfirm
@@ -182,7 +193,11 @@ useEffect(() => {
                     <Button
                       type="text"
                       aria-label={`Delete ${project.name || "project"}`}
-                      icon={<DeleteOutlined style={{ color: "#ff4d4f", fontSize: 16 }} />}
+                      icon={
+                        <DeleteOutlined
+                          style={{ color: "#ff4d4f", fontSize: 16 }}
+                        />
+                      }
                       style={{ padding: 6 }}
                     />
                   </Popconfirm>
