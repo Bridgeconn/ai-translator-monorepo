@@ -62,9 +62,10 @@ function UploadProgressModal({
       open={visible}
       title="Book upload status"
       footer={null}
-      closable={isComplete}
+      // closable={isComplete}
       onCancel={isComplete ? onClose : undefined}
       maskClosable={false}
+      closeIcon={null}
     >
       <div style={{ marginBottom: 16 }}>
         <Text strong>
@@ -1264,7 +1265,7 @@ const VerseTranslationPage = () => {
             </Space>
           )}
         </Space>
-
+        {selectedBook !== "all" && chapters.length > 0 && (
         <Progress
           percent={100} // always full width
           success={{
@@ -1283,8 +1284,10 @@ const VerseTranslationPage = () => {
           strokeColor="#d9d9d9" // always grey
           style={{ marginTop: 8, marginBottom: 8 }}
         />
+        )}
       </Space>
 
+      {selectedBook !== "all" && chapters.length > 0 && (
       <Tabs activeKey={activeTab} onChange={(key) => setActiveTab(key)}>
         {/* Editor */}
 
@@ -1695,7 +1698,7 @@ const VerseTranslationPage = () => {
                     whiteSpace: 'pre-wrap',
                     margin: 0,
                   }}>
-                    Select a book to start translation
+                    No content available, please select a book
                   </div>)}
               </Card>
             </Col>
@@ -1890,6 +1893,7 @@ const VerseTranslationPage = () => {
           </Row>
         </TabPane>
       </Tabs>
+      )}
     </div>
   );
 };
