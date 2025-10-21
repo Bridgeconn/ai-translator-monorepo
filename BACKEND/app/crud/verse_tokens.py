@@ -341,7 +341,9 @@ async def translate_chapter(
     chapter_number: int,
     verse_numbers: List[int],
     model_name: str = "nllb-600M",
-    request: Optional[Request] = None
+    request: Optional[Request] = None,
+    token_ids: Optional[List[UUID]] = None,
+    full_regenerate: bool = True
 ):
     # 1. Fetch tokens for the specific chapter AND specific verses
     ALLOWED_MODELS = ["nllb-600M", "nllb_finetuned_eng_nzm", "nllb-english-nagamese","nllb-gujrathi-koli_kachchi","nllb-hin-surjapuri"]
@@ -362,8 +364,12 @@ async def translate_chapter(
         )
         .order_by(Verse.verse_number)
     )
+    if token_ids:
+      query = query.filter(VerseTokenTranslation.verse_token_id.in_(token_ids))
 
     tokens = query.all()
+    if not full_regenerate:
+       tokens = [t for t in tokens if not t.verse_translated_text]
     if not tokens:
         raise HTTPException(status_code=404, detail="No tokens found for this selection.")
 

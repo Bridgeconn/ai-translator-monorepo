@@ -19,6 +19,7 @@ import {
   Modal,
   Tag,
   Divider,
+  Radio,
 } from "antd";
 import {
   ThunderboltOutlined,
@@ -168,7 +169,7 @@ const VerseTranslationPage = () => {
   const [selectedModel, setSelectedModel] = useState("nllb-600M");
   const abortControllerRef = useRef(null);
   const [cancelTranslation, setCancelTranslation] = useState(false);
-
+  const [isModalVisible, setIsModalVisible] = useState(false);
   const [modal, modalContextHolder] = Modal.useModal();
 
   const { message } = App.useApp(); //get message instance
@@ -258,7 +259,6 @@ const VerseTranslationPage = () => {
       setSelectedModel("nllb-600M");
     }
   }, [project]);
-
   // Book upload state
   const [isBookUploadModalOpen, setIsBookUploadModalOpen] = useState(false);
   //const [uploadProgressOpen, setUploadProgressOpen] = useState(false);
@@ -516,8 +516,7 @@ const VerseTranslationPage = () => {
           console.error("Failed to delete book:", err);
           console.error("Error details:", err.response);
           message.error(
-            `Failed to delete book: ${
-              err.response?.data?.detail || err.message || "Unknown error"
+            `Failed to delete book: ${err.response?.data?.detail || err.message || "Unknown error"
             }`
           );
         }
@@ -572,8 +571,7 @@ const VerseTranslationPage = () => {
             t.verse_token_id ||
             t.id ||
             t.token_id ||
-            `${t.book_name || "book"}-${t.chapter_number || 0}-${
-              t.verse_number || i
+            `${t.book_name || "book"}-${t.chapter_number || 0}-${t.verse_number || i
             }`,
           verse_translated_text:
             t.verse_translated_text || t.translated_text || "",
@@ -676,8 +674,7 @@ const VerseTranslationPage = () => {
           t.verse_token_id ||
           t.id ||
           t.token_id ||
-          `${bookName}-${chapterNumber || t.chapter_number || 0}-${
-            t.verse_number || i
+          `${bookName}-${chapterNumber || t.chapter_number || 0}-${t.verse_number || i
           }`,
         verse_translated_text:
           t.verse_translated_text || t.translated_text || "",
@@ -777,8 +774,7 @@ const VerseTranslationPage = () => {
               t.verse_token_id ||
               t.id ||
               t.token_id ||
-              `${selectedBook}-${
-                t.chapter_number || selectedChapter || "all"
+              `${selectedBook}-${t.chapter_number || selectedChapter || "all"
               }-${t.verse_number || i}-${skip}`,
             verse_translated_text:
               t.verse_translated_text || t.translated_text || "",
@@ -822,15 +818,17 @@ const VerseTranslationPage = () => {
     return res.data; // [1, 2, 3, ...]
   };
   // chapter Translate---------------------------------
-  const handleTranslateChapter = async () => {
+  const handleTranslateChapter = async (fullRegenerate = true) => {
     if (selectedBook === "all" || !selectedChapter) {
       message.info("Please select a specific book and chapter to translate.");
       return;
     }
-    // Reset all translations to empty when starting new translation
+  // ✅ Only reset tokens if fullRegenerate is true
+  if (fullRegenerate) {
     setTokens((prev) =>
       prev.map((tok) => ({ ...tok, verse_translated_text: "" }))
     );
+  }
 
     setLoadingTranslate(true);
     setCancelTranslation(false);
@@ -876,7 +874,8 @@ const VerseTranslationPage = () => {
           selectedChapter,
           batch,
           selectedModel,
-          controller.signal
+          controller.signal,
+          fullRegenerate  // <-- pass it here
         );
 
         if (newTokens?.length > 0) {
@@ -890,13 +889,13 @@ const VerseTranslationPage = () => {
               );
               return match
                 ? {
-                    ...tok,
-                    verse_translated_text:
-                      match.verse_translated_text ||
-                      match.translated_text ||
-                      "",
-                    lastUpdated: Date.now(),
-                  }
+                  ...tok,
+                  verse_translated_text:
+                    match.verse_translated_text ||
+                    match.translated_text ||
+                    "",
+                  lastUpdated: Date.now(),
+                }
                 : tok;
             });
             return [...updated]; // <-- ensures React sees a new array
@@ -1131,6 +1130,46 @@ const VerseTranslationPage = () => {
         total={totalBooks}
         onClose={() => setUploadProgressOpen(false)}
       />
+       {/* Verse Translation Modal */}
+       <Modal
+  visible={isModalVisible}
+  title="Regenerate Translations"
+  onCancel={() => setIsModalVisible(false)}
+  footer={[
+    <Button key="cancel" onClick={() => setIsModalVisible(false)}>Cancel</Button>,
+    <Button
+      key="no"
+      onClick={() => {
+        setIsModalVisible(false);
+        handleTranslateChapter(false); // continue from existing
+      }}
+    >
+      No, Continue
+    </Button>,
+    <Button
+      key="yes"
+      type="primary"
+      danger
+      onClick={() => {
+        setIsModalVisible(false);
+        handleTranslateChapter(true); // full regenerate
+      }}
+    >
+      Yes, Regenerate
+    </Button>
+  ]}
+>
+  Do you want to regenerate all translations, or continue from where you left off?
+</Modal>
+  {modalContextHolder}
+  <UploadProgressModal
+    visible={uploadProgressOpen}
+    uploading={uploadingBooks}
+    uploaded={uploadedBooks}
+    skipped={skippedBooks}
+    total={totalBooks}
+    onClose={() => setUploadProgressOpen(false)}
+  />
 
       {/* Hidden file input for book upload */}
       <input
@@ -1276,8 +1315,8 @@ const VerseTranslationPage = () => {
               chapterStats.total === 0
                 ? 0
                 : Math.round(
-                    (chapterStats.translated / chapterStats.total) * 100
-                  ),
+                  (chapterStats.translated / chapterStats.total) * 100
+                ),
           }}
           format={() => (
             <span style={{ color: "#000" }}>
@@ -1455,44 +1494,20 @@ const VerseTranslationPage = () => {
                     >
                       Cancel Translation
                     </Button>
-                  ) : hasExistingTranslations ? (
-                    <Popconfirm
-                      title="Re-translate Chapter"
-                      description="This chapter already has translations. Do you want to translate again? This will replace existing translations."
-                      onConfirm={() => {
-                        selectedChapter
-                          ? handleTranslateChapter()
-                          : handleTranslateAllChunks();
-                      }}
-                      okText="Yes, Translate Again"
-                      cancelText="Cancel"
-                      overlayInnerStyle={{
-                        width: "400px", // Adjust width
-                        fontSize: "14px", // Adjust font size
-                      }}
-                    >
-                      <Button
-                        type="dashed"
-                        icon={<ThunderboltOutlined />}
-                        disabled={
-                          !selectedModel ||
-                          selectedBook === "all" ||
-                          !selectedChapter
-                        }
-                      >
-                        Translate
-                      </Button>
-                    </Popconfirm>
-                  ) : (
+                  ) 
+                  : (
                     <Button
                       type="dashed"
                       icon={<ThunderboltOutlined />}
                       onClick={() => {
-                        selectedChapter
-                          ? handleTranslateChapter()
-                          : handleTranslateAllChunks();
-                      }}
-                      disabled={
+                        if (!hasExistingTranslations) {
+                          // No previous translations → start immediately
+                          handleTranslateChapter(true); // full regenerate
+                        } else {
+                          // Existing translations → show modal
+                          setIsModalVisible(true);
+                        }
+                      }}                      disabled={
                         !selectedModel ||
                         selectedBook === "all" ||
                         !selectedChapter
@@ -1660,11 +1675,11 @@ const VerseTranslationPage = () => {
                                     prev.map((tok) =>
                                       tok.verse_token_id === t.verse_token_id
                                         ? {
-                                            ...tok,
-                                            verse_translated_text:
-                                              editedTokens[t.verse_token_id]
-                                                .old,
-                                          }
+                                          ...tok,
+                                          verse_translated_text:
+                                            editedTokens[t.verse_token_id]
+                                              .old,
+                                        }
                                         : tok
                                     )
                                   );

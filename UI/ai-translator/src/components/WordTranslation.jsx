@@ -109,6 +109,7 @@ export default function WordTranslation() {
   const { message: appMessage } = App.useApp();
   const eventSourceRef = useRef(null);
   const translationNotificationKey = useRef(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
     // Book upload states
     const [uploadSummaryOpen, setUploadSummaryOpen] = useState(false);
@@ -581,7 +582,7 @@ export default function WordTranslation() {
     }
   };
 
-  const handleGenerateTranslationsSSEWithPreserveEdits = async () => {
+  const handleGenerateTranslationsSSEWithPreserveEdits = async ({ fullRegenerate = true } = {}) => {
     if (!selectedBook?.book_id) return; // ✅ Check for bookId
     setIsGenerating(true);
     // Show persistent "Translating..." notification
@@ -594,19 +595,38 @@ export default function WordTranslation() {
     duration: 0, // Don't auto-close
     icon: <Spin />,
   });
-    if (hasGenerated) {
-      setTokens(prev => {
-        const cleared = prev.map(t => ({ ...t, translation: "" }));
-        setTranslatedCount(0);  // 🔹 reset immediately after clearing tokens
-        return cleared;          // ✅ return the cleared tokens array to update state
-      });
-    }
+  if (fullRegenerate && hasGenerated) {
+    setTokens(prev => {
+      const cleared = prev.map(t => ({ ...t, translation: "" }));
+      setTranslatedCount(0);  
+      return cleared;          
+    });
+  }  // Determine token IDs to translate based on No Continue
+  const tokenIdsToTranslate = fullRegenerate
+    ? undefined  // translate all tokens
+    : tokens
+        .filter(t => !t.translation?.trim())  // only untranslated tokens
+        .map(t => t.word_token_id);
+  
     try {
-      const eventSource = new EventSource(
-        // import.meta.env.VITE_BACKEND_URL + `/api/generate_batch_stream/${projectId}?book_id=${encodeURIComponent(selectedBook.book_id)}`
-        `${import.meta.env.VITE_BACKEND_URL}/api/generate_batch_stream/${projectId}?book_id=${encodeURIComponent(selectedBook.book_id)}&model_name=${encodeURIComponent(selectedModel)}`
+      const params = new URLSearchParams({
+        book_id: selectedBook.book_id,
+        model_name: selectedModel,
+      });
+      
+      // Include token IDs only if in No Continue mode
+      if (tokenIdsToTranslate) {
+        tokenIdsToTranslate.forEach(id => params.append("token_ids", id));
+      }
+      // const eventSource = new EventSource(
+      //   // import.meta.env.VITE_BACKEND_URL + `/api/generate_batch_stream/${projectId}?book_id=${encodeURIComponent(selectedBook.book_id)}`
+      //   `${import.meta.env.VITE_BACKEND_URL}/api/generate_batch_stream/${projectId}?book_id=${encodeURIComponent(selectedBook.book_id)}&model_name=${encodeURIComponent(selectedModel)}`
 
+      // );
+      const eventSource = new EventSource(
+        `${import.meta.env.VITE_BACKEND_URL}/api/generate_batch_stream/${projectId}?${params.toString()}`
       );
+      
       eventSourceRef.current = eventSource;
       let hasError = false;
       eventSource.onmessage = (event) => {
@@ -1435,7 +1455,7 @@ export default function WordTranslation() {
 </Select>
                     </div>
 
-                    {hasGenerated ? (
+                    {/* {hasGenerated ? (
   isGenerating ? (
     <Button 
       danger 
@@ -1469,6 +1489,62 @@ export default function WordTranslation() {
       </Button>
       </Tooltip>
     </Popconfirm>
+  )
+) : isGenerating ? ( */}
+{hasGenerated ? (
+  isGenerating ? (
+    <Button 
+      danger 
+      size="large"
+      onClick={handleCancelTranslation}
+    >
+      Cancel Translation
+    </Button>
+  ) : (
+    <>
+      {/* Button to open modal */}
+      <Tooltip title={!selectedModel ? "Please select a model first" : ""}>
+        <Button
+          type="primary"
+          disabled={!selectedModel || isGenerating}
+          onClick={() => setIsModalVisible(true)}
+        >
+          {isGenerating ? "Translating..." : "Regenerate Translations"}
+        </Button>
+      </Tooltip>
+
+      {/* 3-option modal */}
+      <Modal
+        visible={isModalVisible}
+        title="Regenerate Translations"
+        onCancel={() => setIsModalVisible(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setIsModalVisible(false)}>Cancel</Button>,
+          <Button
+            key="no"
+            onClick={() => {
+              setIsModalVisible(false);
+              handleGenerateTranslationsSSEWithPreserveEdits({ fullRegenerate: false });
+            }}
+          >
+            No, Continue
+          </Button>,
+          <Button
+            key="yes"
+            type="primary"
+            danger
+            onClick={() => {
+              setIsModalVisible(false);
+              handleGenerateTranslationsSSEWithPreserveEdits({ fullRegenerate: true });
+            }}
+          >
+            Yes, Regenerate
+          </Button>
+        ]}
+      >
+        Do you want to regenerate all translations, or continue from where you left off?
+      </Modal>
+    </>
   )
 ) : isGenerating ? (
   <Button 
