@@ -113,72 +113,65 @@ const CreateProjectModal = ({
   /* -------- Project Submission with Auto Source Creation -------- */
   const handleProjectSubmit = async (values) => {
     try {
+      // 1️⃣ Get source and target language details
       const sourceLang = languages.find(l => l.language_id === values.source_language_id);
       const targetLang = languages.find(l => l.language_id === values.target_language_id);
       const version = versions.find(v => v.version_id === values.version_id);
-  
+
       if (!sourceLang || !targetLang || !version) {
         msgApi.error("Missing required language or version information");
         return;
       }
-  
-      // ✅ Step 1: Fetch existing projects from API
-      const { data: existingProjectsRes } = await api.get("/projects/");
-      const existingProjects = existingProjectsRes?.data || existingProjectsRes;
-  
-      // ✅ Step 2: Check for duplicates (same source, target, and type)
-      const duplicate = existingProjects.find(
-        (proj) =>
-          proj.source_language_id === values.source_language_id &&
-          proj.target_language_id === values.target_language_id &&
-          proj.translation_type === values.translation_type
-      );
-  
-      if (duplicate) {
-        msgApi.error(
-          `Project "${duplicate.project_name}" with same source, target, and type already exists!`
-        );
-        return;
-      }
-  
-      // ✅ Step 3: Create dedicated source
+
+      // 2️⃣ Create a dedicated source for this project
       const sourceName = `${sourceLang.name} - ${version.version_abbr} (${values.translation_type})`;
-  
+      
       msgApi.loading({ content: "Creating dedicated source...", key: "creating", duration: 0 });
-  
+      
       const sourceResponse = await api.post("/sources/", {
         language_id: values.source_language_id,
         version_id: values.version_id,
-        name: sourceName,
+        name: sourceName, // Optional: if your API accepts a custom name
       });
-  
+
       const newSource = sourceResponse.data.data || sourceResponse.data;
-  
-      if (!newSource?.source_id) throw new Error("Failed to get source_id from response");
-  
+
+      if (!newSource?.source_id) {
+        throw new Error("Failed to get source_id from response");
+      }
+
       msgApi.success({ content: "Source created successfully!", key: "creating" });
-  
-      // ✅ Step 4: Build payload and submit
+
+      // 3️⃣ Prepare project payload
       let payload = {
         ...values,
-        source_id: newSource.source_id,
+        source_id: newSource.source_id, // Use the newly created source
       };
-  
+
+      // Handle text_document special case
       if (values.translation_type === "text_document") {
         payload = {
           ...payload,
-          source_language: { code: sourceLang.code, name: sourceLang.name },
-          target_language: { code: targetLang.code, name: targetLang.name, script: targetLang.script || null },
+          source_language: {
+            code: sourceLang.code,
+            name: sourceLang.name,
+          },
+          target_language: {
+            code: targetLang.code,
+            name: targetLang.name,
+            script: targetLang.script || null,
+          },
         };
       }
-  
+
+      // 4️⃣ Call parent's onSubmit with the payload
       onSubmit(payload);
+
     } catch (err) {
       console.error("Error creating project with source:", err);
       msgApi.error(err.response?.data?.detail || "Failed to create project");
     }
   };
-  
 
   return (
     <>
@@ -218,8 +211,8 @@ const CreateProjectModal = ({
             <Input />
           </Form.Item>
 
-          {/* Info Alert about Dedicated Source
-          <Alert
+          {/* Info Alert about Dedicated Source */}
+          {/* <Alert
             message="Dedicated Source"
             description="A unique source will be automatically created for this project. You can upload books after creating the project."
             type="info"
