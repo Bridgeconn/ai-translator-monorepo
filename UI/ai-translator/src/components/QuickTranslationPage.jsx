@@ -34,7 +34,7 @@ import { App } from "antd";
 import { InfoCircleOutlined } from "@ant-design/icons";
 import { useAuthModal } from "./AuthModalContext";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf";
-pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;

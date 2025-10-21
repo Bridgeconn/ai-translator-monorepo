@@ -9,7 +9,12 @@ const SuccessModal = ({ isVisible, message, onClose }) => {
       title="Success"
       open={isVisible}
       onOk={onClose}
+      onCancel={onClose}
+      // closable={true}
+      // maskClosable={true}
       cancelButtonProps={{ style: { display: "none" } }}
+      // okButtonProps={{style: {display: "none" }}}
+      closeIcon={null}
       width={250}
     >
       <div style={{ textAlign: "center", padding: "16px 0" }}>

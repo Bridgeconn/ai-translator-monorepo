@@ -23,9 +23,10 @@ function UploadProgressModal({ visible, uploading = [], uploaded = [], skipped =
       open={visible}
       title="Book upload status"
       footer={null}
-      closable={false}
-      onCancel={undefined}
+      // closable={isComplete}
+      onCancel={isComplete ? onClose : undefined}
       maskClosable={false}
+      closeIcon={null}
     >
       <div style={{ marginBottom: 16 }}>
         <Text strong>

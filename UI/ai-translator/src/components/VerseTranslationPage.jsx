@@ -62,9 +62,10 @@ function UploadProgressModal({
       open={visible}
       title="Book upload status"
       footer={null}
-      closable={false}
-      onCancel={undefined}
+      // closable={isComplete}
+      onCancel={isComplete ? onClose : undefined}
       maskClosable={false}
+      closeIcon={null}
     >
       <div style={{ marginBottom: 16 }}>
         <Text strong>
@@ -297,7 +298,7 @@ const VerseTranslationPage = () => {
           if (m && m[1]) {
             return resolve(m[1].replace(/[^0-9A-Za-z]/g, "").toUpperCase());
           }
-        } catch {}
+        } catch { }
         const name = file.name.split(".")[0] || file.name;
         resolve(name.replace(/[^0-9A-Za-z]/g, "").toUpperCase());
       };
@@ -561,8 +562,7 @@ const VerseTranslationPage = () => {
           console.error("Failed to delete book:", err);
           console.error("Error details:", err.response);
           message.error(
-            `Failed to delete book: ${
-              err.response?.data?.detail || err.message || "Unknown error"
+            `Failed to delete book: ${err.response?.data?.detail || err.message || "Unknown error"
             }`
           );
         }
@@ -617,8 +617,7 @@ const VerseTranslationPage = () => {
             t.verse_token_id ||
             t.id ||
             t.token_id ||
-            `${t.book_name || "book"}-${t.chapter_number || 0}-${
-              t.verse_number || i
+            `${t.book_name || "book"}-${t.chapter_number || 0}-${t.verse_number || i
             }`,
           verse_translated_text:
             t.verse_translated_text || t.translated_text || "",
@@ -721,8 +720,7 @@ const VerseTranslationPage = () => {
           t.verse_token_id ||
           t.id ||
           t.token_id ||
-          `${bookName}-${chapterNumber || t.chapter_number || 0}-${
-            t.verse_number || i
+          `${bookName}-${chapterNumber || t.chapter_number || 0}-${t.verse_number || i
           }`,
         verse_translated_text:
           t.verse_translated_text || t.translated_text || "",
@@ -822,8 +820,7 @@ const VerseTranslationPage = () => {
               t.verse_token_id ||
               t.id ||
               t.token_id ||
-              `${selectedBook}-${
-                t.chapter_number || selectedChapter || "all"
+              `${selectedBook}-${t.chapter_number || selectedChapter || "all"
               }-${t.verse_number || i}-${skip}`,
             verse_translated_text:
               t.verse_translated_text || t.translated_text || "",
@@ -935,13 +932,13 @@ const VerseTranslationPage = () => {
               );
               return match
                 ? {
-                    ...tok,
-                    verse_translated_text:
-                      match.verse_translated_text ||
-                      match.translated_text ||
-                      "",
-                    lastUpdated: Date.now(),
-                  }
+                  ...tok,
+                  verse_translated_text:
+                    match.verse_translated_text ||
+                    match.translated_text ||
+                    "",
+                  lastUpdated: Date.now(),
+                }
                 : tok;
             });
             return [...updated]; // <-- ensures React sees a new array
@@ -1313,7 +1310,7 @@ const VerseTranslationPage = () => {
             </Space>
           )}
         </Space>
-
+        {selectedBook !== "all" && chapters.length > 0 && (
         <Progress
           percent={100} // always full width
           success={{
@@ -1321,8 +1318,8 @@ const VerseTranslationPage = () => {
               chapterStats.total === 0
                 ? 0
                 : Math.round(
-                    (chapterStats.translated / chapterStats.total) * 100
-                  ),
+                  (chapterStats.translated / chapterStats.total) * 100
+                ),
           }}
           format={() => (
             <span style={{ color: "#000" }}>
@@ -1332,8 +1329,10 @@ const VerseTranslationPage = () => {
           strokeColor="#d9d9d9" // always grey
           style={{ marginTop: 8, marginBottom: 8 }}
         />
+        )}
       </Space>
 
+      {selectedBook !== "all" && chapters.length > 0 && (
       <Tabs activeKey={activeTab} onChange={(key) => setActiveTab(key)}>
         {/* Editor */}
 
@@ -1596,9 +1595,16 @@ const VerseTranslationPage = () => {
                     ))}
                   </>
                 ) : (
-                  <pre style={{ whiteSpace: "pre-wrap" }}>
-                    {"No content available, please select a book"}
-                  </pre>
+                  <div style={{
+                    fontFamily: 'Roboto, sans-serif',
+                    fontSize: 14,
+                    fontStyle: 'normal',
+                    color: '#333333',
+                    whiteSpace: 'pre-wrap',
+                    margin: 0,
+                  }}>
+                    No content available, please select a book
+                  </div>
                 )}
               </Card>
             </Col>
@@ -1705,11 +1711,11 @@ const VerseTranslationPage = () => {
                                     prev.map((tok) =>
                                       tok.verse_token_id === t.verse_token_id
                                         ? {
-                                            ...tok,
-                                            verse_translated_text:
-                                              editedTokens[t.verse_token_id]
-                                                .old,
-                                          }
+                                          ...tok,
+                                          verse_translated_text:
+                                            editedTokens[t.verse_token_id]
+                                              .old,
+                                        }
                                         : tok
                                     )
                                   );
@@ -1729,8 +1735,16 @@ const VerseTranslationPage = () => {
                     </div>
                   ))
                 ) : (
-                  <p>Select a book to start translation</p>
-                )}
+                  <div style={{
+                    fontFamily: 'Roboto, sans-serif',
+                    fontSize: 14,
+                    fontStyle: 'normal',
+                    color: '#333333',
+                    whiteSpace: 'pre-wrap',
+                    margin: 0,
+                  }}>
+                    No content available, please select a book
+                  </div>)}
               </Card>
             </Col>
           </Row>
@@ -1924,6 +1938,7 @@ const VerseTranslationPage = () => {
           </Row>
         </TabPane>
       </Tabs>
+      )}
     </div>
   );
 };
