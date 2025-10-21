@@ -1186,11 +1186,12 @@ export default function WordTranslation() {
       <div style={{
         marginBottom: 24,
       }}>
-        {/* Breadcrumb */}
-        <Breadcrumb
+       {/* Breadcrumb */}
+       <Breadcrumb
           items={[
             { title: <Link to="/projects" style={{ color: 'rgb(44, 141, 251)', fontWeight: 500 }}>Projects</Link> },
             { title: <span style={{ fontWeight: 500 }}>{project?.name}</span> },
+            ...(selectedBook ? [{ title: <span style={{ fontWeight: 500, color: '#8c8c8c' }}>{selectedBook.book_name}</span> }] : [])
           ]}
           style={{ marginBottom: '12px' }}
         />

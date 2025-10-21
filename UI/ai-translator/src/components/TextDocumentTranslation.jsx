@@ -711,27 +711,25 @@ if (
           boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
         }}
       >
-        <Breadcrumb
-          items={[
-            {
-              title: (
-                <Link
-                  to="/projects"
-                  style={{ color: "#2c8dfb", fontWeight: 500 }}
-                >
-                  Projects
-                </Link>
-              ),
-            },
-            {
-              title: (
-                <span style={{ fontWeight: 500 }}>{project?.project_name}</span>
-              ),
-            },
-          ]}
-          style={{ marginBottom: 8, fontSize: 14 }}
-        />
+     <Breadcrumb
+  style={{ marginBottom: 16 }}
+  items={[
 
+    {
+      title: <Link to="/projects">Projects</Link>,
+    },
+    {
+      title: project?.project_name || "Project",
+    },
+    ...(selectedFile
+      ? [
+          {
+            title: selectedFile.file_name,
+          },
+        ]
+      : []),
+  ]}
+/>
         <h2
           style={{ margin: 0, fontSize: 24, fontWeight: 600, color: "#1f2937" }}
         >
