@@ -235,23 +235,6 @@ async function isIncognitoMode() {
   const { openLogin } = useAuthModal();
   const controllerRef = useRef(null);
   const [isIncognito, setIsIncognito] = useState(false);
-  const [dailyUsage, setDailyUsage] = useState(getUsage());
-  const [checkingIncognito, setCheckingIncognito] = useState(true);
-  const [userLoggedIn, setUserLoggedIn] = useState(false); // declare first
-  const [unauthTranslationCount, setUnauthTranslationCount] = useState(0);
-  // Check login status on component mount
-  useEffect(() => {
-    const user = localStorage.getItem("user");
-    if (user) setUserLoggedIn(true);
-  }, []);
-
-  // Reset unauthorized translation count whenever user logs in
-  useEffect(() => {
-    if (userLoggedIn) {
-      setUnauthTranslationCount(0);
-    }
-  }, [userLoggedIn]);
-
   // Restore draft if available
   useEffect(() => {
     const draft = localStorage.getItem("quickTranslationDraft");
@@ -279,8 +262,6 @@ async function isIncognitoMode() {
       checkReset();
       const incog = await isIncognitoMode();
       setIsIncognito(incog);
-      setDailyUsage(getUsage());
-      setCheckingIncognito(false);
     }
     initUsageCheck();
   }, []);
@@ -325,9 +306,6 @@ async function isIncognitoMode() {
       languages: "Hindi, Surjapuri (sjp_Deva)",
     },
   };
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const showInfo = () => setIsModalVisible(true);
-  const handleClose = () => setIsModalVisible(false);
 
   // ------------------ Additional state for error handling ------------------
   const [saveError, setSaveError] = useState("");
@@ -359,15 +337,15 @@ async function isIncognitoMode() {
     },
     { label: "nllb-hin-surjapuri", value: "nllb-hin-surjapuri" },
   ];
-  const LANGUAGE_PAIRS = {
-    "Zeme Naga": ["English"],
-    English: ["Zeme Naga", "Nagamese"],
-    Nagamese: ["English"],
-    "Kachi Koli": ["Gujarati"],
-    Gujarati: ["Kachi Koli"],
-    Surjapuri: ["Hindi"],
-    Hindi: ["Surjapuri"],
-  };
+  // const LANGUAGE_PAIRS = {
+  //   "Zeme Naga": ["English"],
+  //   English: ["Zeme Naga", "Nagamese"],
+  //   Nagamese: ["English"],
+  //   "Kachi Koli": ["Gujarati"],
+  //   Gujarati: ["Kachi Koli"],
+  //   Surjapuri: ["Hindi"],
+  //   Hindi: ["Surjapuri"],
+  // };
   // One-way filter mapping (special languages restrict pairing)
   const FILTER_MAP = {
     "Zeme Naga": ["English"],
@@ -689,7 +667,6 @@ async function isIncognitoMode() {
     // ✅ Increment only if user is NOT logged in
     if (!token) {
       updateUsage(usage.count + 1);
-      setDailyUsage(getUsage());
     }
     
     // Proceed with translation    
