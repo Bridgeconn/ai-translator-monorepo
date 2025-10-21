@@ -557,15 +557,13 @@ export default function WordTranslation() {
     if (!selected?.book_id) return; // ✅ Check for book_id
     await fetchTokens(selected.book_id); // ✅ Pass book_id
   };
-
-  // ------------------ Generate Translations ------------------//
-
   // ------------------ Generate Translations ------------------//
   const handleCancelTranslation = () => {
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
       setIsGenerating(false);
+      setIsModalVisible(false);             // hide modal if open
       
       // Close the ongoing translation notification
       if (translationNotificationKey.current) {
@@ -1132,7 +1130,7 @@ export default function WordTranslation() {
   if (projectLoading) return <div>Loading project...</div>;
   if (projectError) return <div>Error loading project</div>;
 
-  const hasTranslation = tokens?.length > 0 && tokens.some(t => t.translation?.trim() !== "");
+  const hasPreviousTranslations = tokens.some(token => token.translation?.trim() !== "");
   return (
     <div style={{ padding: '4px', position: 'relative', height: "100vh", display: "flex", flexDirection: "column" }}>
       {/* {contextHolder} */}
@@ -1492,81 +1490,68 @@ export default function WordTranslation() {
     </Popconfirm>
   )
 ) : isGenerating ? ( */}
-{hasGenerated ? (
-  isGenerating ? (
-    <Button 
-      danger 
-      size="large"
-      onClick={handleCancelTranslation}
-    >
+<div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+  {isGenerating ? (
+    // Cancel button while generating
+    <Button danger size="large" onClick={handleCancelTranslation}>
       Cancel Translation
     </Button>
   ) : (
-    <>
-      {/* Button to open modal */}
-      <Tooltip title={!selectedModel ? "Please select a model first" : ""}>
+    // Generate / Regenerate button
+    <Tooltip title={!selectedModel ? "Please select a model first" : ""}>
+    <Button
+      type="primary"
+      disabled={!selectedModel || isGenerating}
+      onClick={() => {
+        if (hasPreviousTranslations) {
+          // Book has translations → show modal
+          setIsModalVisible(true);
+        } else {
+          // New book → directly generate
+          handleGenerateTranslationsSSEWithPreserveEdits({ fullRegenerate: true });
+        }
+      }}
+    >
+      {hasPreviousTranslations ? "Regenerate Translations" : "Generate Translations"}
+    </Button>
+  </Tooltip>
+  
+  )}
+  {/* 3-option modal (only renders for existing translations) */}
+  {tokens.length > 0 && (
+    <Modal
+      visible={isModalVisible}
+      title="Regenerate Translations"
+      closable={false}
+      onCancel={() => setIsModalVisible(false)}
+      footer={[
+        <Button key="cancel" onClick={() => setIsModalVisible(false)}>Cancel</Button>,
         <Button
-          type="primary"
-          disabled={!selectedModel || isGenerating}
-          onClick={() => setIsModalVisible(true)}
+          key="no"
+          onClick={() => {
+            setIsModalVisible(false);
+            handleGenerateTranslationsSSEWithPreserveEdits({ fullRegenerate: false });
+          }}
         >
-          {isGenerating ? "Translating..." : "Regenerate Translations"}
+          No, Continue
+        </Button>,
+        <Button
+          key="yes"
+          type="primary"
+          danger
+          onClick={() => {
+            setIsModalVisible(false);
+            handleGenerateTranslationsSSEWithPreserveEdits({ fullRegenerate: true });
+          }}
+        >
+          Yes, Regenerate
         </Button>
-      </Tooltip>
-
-      {/* 3-option modal */}
-      <Modal
-        visible={isModalVisible}
-        title="Regenerate Translations"
-        onCancel={() => setIsModalVisible(false)}
-        footer={[
-          <Button key="cancel" onClick={() => setIsModalVisible(false)}>Cancel</Button>,
-          <Button
-            key="no"
-            onClick={() => {
-              setIsModalVisible(false);
-              handleGenerateTranslationsSSEWithPreserveEdits({ fullRegenerate: false });
-            }}
-          >
-            No, Continue
-          </Button>,
-          <Button
-            key="yes"
-            type="primary"
-            danger
-            onClick={() => {
-              setIsModalVisible(false);
-              handleGenerateTranslationsSSEWithPreserveEdits({ fullRegenerate: true });
-            }}
-          >
-            Yes, Regenerate
-          </Button>
-        ]}
-      >
-        Do you want to regenerate all translations, or continue from where you left off?
-      </Modal>
-    </>
-  )
-) : isGenerating ? (
-  <Button 
-    danger 
-    size="large"
-    onClick={handleCancelTranslation}
-  >
-    Cancel Translation
-  </Button>
-) : (
-  <Tooltip title={!selectedModel ? "Please select a model first" : ""}>
-                        <Button
-                          type="primary"
-                          size="large"
-                          onClick={handleGenerateTranslationsSSEWithPreserveEdits}
-                          loading={isGenerating}
-                          disabled={!selectedModel || isGenerating}
-                        >{isGenerating ? "Generating..." : "Generate Translations"}
-                        </Button>
-                      </Tooltip>
-)}
+      ]}
+    >
+      Do you want to regenerate all translations, or continue from where you left off?
+    </Modal>
+  )}
+</div>
                   </>
                 ) : (
                   <>

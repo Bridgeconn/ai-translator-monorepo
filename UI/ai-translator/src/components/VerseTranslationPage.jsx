@@ -1115,13 +1115,6 @@ const VerseTranslationPage = () => {
         paddingLeft: 20,
       }}
     >
-      {/* Upload Summary Toast */}
-      {/* <UploadSummaryToast
-        visible={summaryOpen}
-        uploaded={summaryData.uploaded}
-        skipped={summaryData.skipped}
-        onClose={() => setSummaryOpen(false)}
-      /> */}
       {modalContextHolder}
       <UploadProgressModal
         visible={uploadProgressOpen}
@@ -1135,6 +1128,7 @@ const VerseTranslationPage = () => {
        <Modal
   visible={isModalVisible}
   title="Regenerate Translations"
+  closable={false}
   onCancel={() => setIsModalVisible(false)}
   footer={[
     <Button key="cancel" onClick={() => setIsModalVisible(false)}>Cancel</Button>,
