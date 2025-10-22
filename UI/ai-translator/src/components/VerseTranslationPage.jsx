@@ -19,6 +19,7 @@ import {
   Modal,
   Tag,
   Divider,
+  Radio,
 } from "antd";
 import {
   ThunderboltOutlined,
@@ -171,6 +172,7 @@ const VerseTranslationPage = () => {
   const [cancelTranslation, setCancelTranslation] = useState(false);
   const [draftChapter, setDraftChapter] = useState(null);
 
+  const [isModalVisible, setIsModalVisible] = useState(false);
   const [modal, modalContextHolder] = Modal.useModal();
 
   const { message } = App.useApp(); //get message instance
@@ -260,7 +262,6 @@ const VerseTranslationPage = () => {
       setSelectedModel("nllb-600M");
     }
   }, [project]);
-
   // Book upload state
   const [isBookUploadModalOpen, setIsBookUploadModalOpen] = useState(false);
   //const [uploadProgressOpen, setUploadProgressOpen] = useState(false);
@@ -820,15 +821,17 @@ const VerseTranslationPage = () => {
     return res.data; // [1, 2, 3, ...]
   };
   // chapter Translate---------------------------------
-  const handleTranslateChapter = async () => {
+  const handleTranslateChapter = async (fullRegenerate = true) => {
     if (selectedBook === "all" || !selectedChapter) {
       message.info("Please select a specific book and chapter to translate.");
       return;
     }
-    // Reset all translations to empty when starting new translation
+  // ✅ Only reset tokens if fullRegenerate is true
+  if (fullRegenerate) {
     setTokens((prev) =>
       prev.map((tok) => ({ ...tok, verse_translated_text: "" }))
     );
+  }
 
     setLoadingTranslate(true);
     setCancelTranslation(false);
@@ -874,7 +877,8 @@ const VerseTranslationPage = () => {
           selectedChapter,
           batch,
           selectedModel,
-          controller.signal
+          controller.signal,
+          fullRegenerate  // <-- pass it here
         );
 
         if (newTokens?.length > 0) {
@@ -1183,13 +1187,6 @@ const VerseTranslationPage = () => {
         paddingLeft: 20,
       }}
     >
-      {/* Upload Summary Toast */}
-      {/* <UploadSummaryToast
-        visible={summaryOpen}
-        uploaded={summaryData.uploaded}
-        skipped={summaryData.skipped}
-        onClose={() => setSummaryOpen(false)}
-      /> */}
       {modalContextHolder}
       <UploadProgressModal
         visible={uploadProgressOpen}
@@ -1199,6 +1196,47 @@ const VerseTranslationPage = () => {
         total={totalBooks}
         onClose={() => setUploadProgressOpen(false)}
       />
+       {/* Verse Translation Modal */}
+       <Modal
+  visible={isModalVisible}
+  title="Regenerate Translations"
+  closable={false}
+  onCancel={() => setIsModalVisible(false)}
+  footer={[
+    <Button key="cancel" onClick={() => setIsModalVisible(false)}>Cancel</Button>,
+    <Button
+      key="no"
+      onClick={() => {
+        setIsModalVisible(false);
+        handleTranslateChapter(false); // continue from existing
+      }}
+    >
+      No, Continue
+    </Button>,
+    <Button
+      key="yes"
+      type="primary"
+      danger
+      onClick={() => {
+        setIsModalVisible(false);
+        handleTranslateChapter(true); // full regenerate
+      }}
+    >
+      Yes, Regenerate
+    </Button>
+  ]}
+>
+  Do you want to regenerate all translations, or continue from where you left off?
+</Modal>
+  {modalContextHolder}
+  <UploadProgressModal
+    visible={uploadProgressOpen}
+    uploading={uploadingBooks}
+    uploaded={uploadedBooks}
+    skipped={skippedBooks}
+    total={totalBooks}
+    onClose={() => setUploadProgressOpen(false)}
+  />
 
       {/* Hidden file input for book upload */}
       <input
@@ -1551,44 +1589,20 @@ const VerseTranslationPage = () => {
                     >
                       Cancel Translation
                     </Button>
-                  ) : hasExistingTranslations ? (
-                    <Popconfirm
-                      title="Re-translate Chapter"
-                      description="This chapter already has translations. Do you want to translate again? This will replace existing translations."
-                      onConfirm={() => {
-                        selectedChapter
-                          ? handleTranslateChapter()
-                          : handleTranslateAllChunks();
-                      }}
-                      okText="Yes, Translate Again"
-                      cancelText="Cancel"
-                      overlayInnerStyle={{
-                        width: "400px", // Adjust width
-                        fontSize: "14px", // Adjust font size
-                      }}
-                    >
-                      <Button
-                        type="dashed"
-                        icon={<ThunderboltOutlined />}
-                        disabled={
-                          !selectedModel ||
-                          selectedBook === "all" ||
-                          !selectedChapter
-                        }
-                      >
-                        Translate
-                      </Button>
-                    </Popconfirm>
-                  ) : (
+                  ) 
+                  : (
                     <Button
                       type="dashed"
                       icon={<ThunderboltOutlined />}
                       onClick={() => {
-                        selectedChapter
-                          ? handleTranslateChapter()
-                          : handleTranslateAllChunks();
-                      }}
-                      disabled={
+                        if (!hasExistingTranslations) {
+                          // No previous translations → start immediately
+                          handleTranslateChapter(true); // full regenerate
+                        } else {
+                          // Existing translations → show modal
+                          setIsModalVisible(true);
+                        }
+                      }}                      disabled={
                         !selectedModel ||
                         selectedBook === "all" ||
                         !selectedChapter

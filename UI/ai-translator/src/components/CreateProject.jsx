@@ -126,7 +126,7 @@ const CreateProjectModal = ({
       // 2️⃣ Create a dedicated source for this project
       const sourceName = `${sourceLang.name} - ${version.version_abbr} (${values.translation_type})`;
       
-      msgApi.loading({ content: "Creating dedicated source...", key: "creating", duration: 0 });
+      // msgApi.loading({ content: "Creating dedicated source...", key: "creating", duration: 0 });
       
       const sourceResponse = await api.post("/sources/", {
         language_id: values.source_language_id,
@@ -140,7 +140,7 @@ const CreateProjectModal = ({
         throw new Error("Failed to get source_id from response");
       }
 
-      msgApi.success({ content: "Source created successfully!", key: "creating" });
+      // msgApi.success({ content: "Source created successfully!", key: "creating" });
 
       // 3️⃣ Prepare project payload
       let payload = {
