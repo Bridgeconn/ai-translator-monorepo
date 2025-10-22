@@ -169,6 +169,7 @@ const VerseTranslationPage = () => {
   const [selectedModel, setSelectedModel] = useState("nllb-600M");
   const abortControllerRef = useRef(null);
   const [cancelTranslation, setCancelTranslation] = useState(false);
+  const [draftChapter, setDraftChapter] = useState(null);
 
   const [modal, modalContextHolder] = Modal.useModal();
 
@@ -1000,7 +1001,72 @@ const VerseTranslationPage = () => {
     const translated = tokens.filter((t) => t.verse_translated_text).length;
     return { translated, total };
   }, [tokens]);
-
+  const parseUSFMContent = (content) => {
+    if (!content) return {};
+    
+    const chapters = {};
+    const lines = content.split('\n');
+    let currentChapter = null;
+    let currentContent = [];
+    
+    lines.forEach(line => {
+      const chapterMatch = line.match(/\\c\s+(\d+)/);
+      if (chapterMatch) {
+        // Save previous chapter if exists
+        if (currentChapter !== null) {
+          chapters[currentChapter] = currentContent.join('\n');
+        }
+        // Start new chapter
+        currentChapter = parseInt(chapterMatch[1]);
+        currentContent = [line];
+      } else if (currentChapter !== null) {
+        currentContent.push(line);
+      } else {
+        // Header content before first chapter
+        if (!chapters['header']) chapters['header'] = [];
+        chapters['header'].push(line);
+      }
+    });
+    
+    // Save last chapter
+    if (currentChapter !== null) {
+      chapters[currentChapter] = currentContent.join('\n');
+    }
+    
+    // Convert header array to string
+    if (chapters['header']) {
+      chapters['header'] = chapters['header'].join('\n');
+    }
+    
+    return chapters;
+  };
+  
+  const parsedDraftChapters = useMemo(() => {
+    return parseUSFMContent(serverDraft);
+  }, [serverDraft]);
+  
+  const parsedSourceChapters = useMemo(() => {
+    return parseUSFMContent(rawBookContent);
+  }, [rawBookContent]);
+  const currentDraftContent = useMemo(() => {
+    if (!serverDraft) return '';
+    if (!draftChapter) return serverDraft; // Show full draft if no chapter selected
+    
+    const header = parsedDraftChapters['header'] || '';
+    const chapterContent = parsedDraftChapters[draftChapter] || '';
+    
+    return header ? `${header}\n\n${chapterContent}` : chapterContent;
+  }, [serverDraft, draftChapter, parsedDraftChapters]);
+  
+  const currentSourceContent = useMemo(() => {
+    if (!rawBookContent) return '';
+    if (!draftChapter) return rawBookContent; // Show full source if no chapter selected
+    
+    const header = parsedSourceChapters['header'] || '';
+    const chapterContent = parsedSourceChapters[draftChapter] || '';
+    
+    return header ? `${header}\n\n${chapterContent}` : chapterContent;
+  }, [rawBookContent, draftChapter, parsedSourceChapters]);
   const filteredTokens = showOnlyTranslated
     ? tokens.filter((t) => t.verse_translated_text)
     : tokens;
@@ -1101,6 +1167,11 @@ const VerseTranslationPage = () => {
       (t) => t.verse_translated_text && t.verse_translated_text.trim() !== ""
     );
   }, [tokens]);
+  useEffect(() => {
+    if (activeTab === 'draft' && selectedChapter) {
+      setDraftChapter(selectedChapter);
+    }
+  }, [activeTab, selectedChapter]);
 
   // ---------- UI ----------
   return (
@@ -1216,54 +1287,80 @@ const VerseTranslationPage = () => {
           </div>
 
           {selectedBook !== "all" && chapters.length > 0 && (
-            <Space>
-              {/* Prev Button */}
-              <Button
-                type="text"
-                disabled={
-                  !selectedChapter ||
-                  selectedChapter === 1 ||
-                  activeTab === "draft"
-                }
-                onClick={() =>
-                  setSelectedChapter((prev) => Math.max(1, prev - 1))
-                }
-              >
-                ◀
-              </Button>
+  <Space>
+    {/* Prev Button */}
+    <Button
+      type="text"
+      disabled={
+        activeTab === "draft"
+          ? draftChapter === null || draftChapter === 1
+          : !selectedChapter || selectedChapter === 1
+      }
+      onClick={() => {
+        if (activeTab === "draft") {
+          setDraftChapter((prev) =>
+            prev === null ? 1 : Math.max(1, prev - 1)
+          );
+        } else {
+          setSelectedChapter((prev) => Math.max(1, prev - 1));
+        }
+      }}
+    >
+      ◀
+    </Button>
 
-              {/* Chapter Dropdown */}
-              <Select
-                value={selectedChapter}
-                style={{ minWidth: 120 }}
-                onChange={(val) => setSelectedChapter(val)}
-                disabled={activeTab === "draft"}
-              >
-                {chapters.map((ch) => (
-                  <Option key={ch.chapter_id} value={ch.chapter_number}>
-                    Chapter {ch.chapter_number}
-                  </Option>
-                ))}
-              </Select>
+    {/* Unified Chapter Dropdown */}
+    <Select
+      value={activeTab === "draft" ? draftChapter : selectedChapter}
+      style={{ minWidth: 150 }}
+      onChange={(val) => {
+        if (activeTab === "draft") {
+          setDraftChapter(val);
+        } else {
+          setSelectedChapter(val);
+        }
+      }}
+      placeholder="Select Chapter"
+      disabled={chapters.length === 0}
+    >
+      {/* Show “All Chapters” only for Draft View */}
+      {activeTab === "draft" && (
+        <Option key="all" value={null}>
+          All Chapters
+        </Option>
+      )}
+      {chapters.map((ch) => (
+        <Option key={ch.chapter_id} value={ch.chapter_number}>
+          Chapter {ch.chapter_number}
+        </Option>
+      ))}
+    </Select>
 
-              {/* Next Button */}
-              <Button
-                type="text"
-                disabled={
-                  !selectedChapter ||
-                  selectedChapter === chapters.length ||
-                  activeTab === "draft"
-                }
-                onClick={() =>
-                  setSelectedChapter((prev) =>
-                    Math.min(chapters.length, prev + 1)
-                  )
-                }
-              >
-                ▶
-              </Button>
-            </Space>
-          )}
+    {/* Next Button */}
+    <Button
+      type="text"
+      disabled={
+        activeTab === "draft"
+          ? draftChapter !== null && draftChapter === chapters.length
+          : !selectedChapter || selectedChapter === chapters.length
+      }
+      onClick={() => {
+        if (activeTab === "draft") {
+          setDraftChapter((prev) => {
+            if (prev === null) return 1;
+            return Math.min(chapters.length, prev + 1);
+          });
+        } else {
+          setSelectedChapter((prev) => Math.min(chapters.length, prev + 1));
+        }
+      }}
+    >
+      ▶
+    </Button>
+  </Space>
+)}
+
+
         </Space>
         {selectedBook !== "all" && chapters.length > 0 && (
         <Progress
@@ -1706,24 +1803,26 @@ const VerseTranslationPage = () => {
         </TabPane>
 
         <TabPane tab="Draft View" key="draft">
-          <Row gutter={16}>
+  {/* Chapter selector for draft view */}
+  <Row gutter={16}>
+   
             {/* --- New Source Draft Card --- */}
-            {selectedBook !== "all" && (
-              <Col span={12}>
-                <Card
-                  title="Source Draft"
-                  style={{ maxHeight: "70vh", overflowY: "scroll" }}
-                >
-                  {rawBookContent ? (
-                    <pre style={{ whiteSpace: "pre-wrap" }}>
-                      {rawBookContent}
-                    </pre>
-                  ) : (
-                    <p>No USFM content available for this book.</p>
-                  )}
-                </Card>
-              </Col>
-            )}
+{selectedBook !== "all" && (
+  <Col span={12}>
+    <Card
+      title="Source Draft"
+      style={{ maxHeight: "70vh", overflowY: "scroll" }}
+    >
+      {rawBookContent ? (
+        <pre style={{ whiteSpace: "pre-wrap" }}>
+          {currentSourceContent}
+        </pre>
+      ) : (
+        <p>No USFM content available for this book.</p>
+      )}
+    </Card>
+  </Col>
+)}
 
             {/* --- Existing Translation Draft Card --- */}
             <Col span={12}>
@@ -1819,7 +1918,7 @@ const VerseTranslationPage = () => {
                     <Col span={24}>
                       <Space direction="vertical" style={{ width: "100%" }}>
                         <Input.TextArea
-                          value={editedDraft || serverDraft}
+                         value={editedDraft || currentDraftContent}
                           autoSize={{ minRows: 8, maxRows: 20 }}
                           style={{
                             whiteSpace: "pre-wrap",
@@ -1862,14 +1961,14 @@ const VerseTranslationPage = () => {
                               >
                                 Save
                               </Button>
-                              <Button
-                                onClick={() => {
-                                  setEditedDraft(originalDraft); // discard edits
-                                  message.info("Changes discarded");
-                                }}
-                              >
-                                Discard
-                              </Button>
+                             <Button
+  onClick={() => {
+    setEditedDraft(currentDraftContent); // Changed from originalDraft
+    message.info("Changes discarded");
+  }}
+>
+  Discard
+</Button>
                             </Space>
                           )}
                       </Space>
