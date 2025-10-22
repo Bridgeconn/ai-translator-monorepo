@@ -19,6 +19,7 @@ import {
   Modal,
   Tag,
   Divider,
+  Radio,
 } from "antd";
 import {
   ThunderboltOutlined,
@@ -169,7 +170,9 @@ const VerseTranslationPage = () => {
   const [selectedModel, setSelectedModel] = useState("nllb-600M");
   const abortControllerRef = useRef(null);
   const [cancelTranslation, setCancelTranslation] = useState(false);
+  const [draftChapter, setDraftChapter] = useState(null);
 
+  const [isModalVisible, setIsModalVisible] = useState(false);
   const [modal, modalContextHolder] = Modal.useModal();
 
   const { message } = App.useApp(); //get message instance
@@ -285,7 +288,6 @@ const VerseTranslationPage = () => {
       setSelectedModel("nllb-600M");
     }
   }, [project]);
-
   // Book upload state
   const [isBookUploadModalOpen, setIsBookUploadModalOpen] = useState(false);
   //const [uploadProgressOpen, setUploadProgressOpen] = useState(false);
@@ -845,15 +847,17 @@ const VerseTranslationPage = () => {
     return res.data; // [1, 2, 3, ...]
   };
   // chapter Translate---------------------------------
-  const handleTranslateChapter = async () => {
+  const handleTranslateChapter = async (fullRegenerate = true) => {
     if (selectedBook === "all" || !selectedChapter) {
       message.info("Please select a specific book and chapter to translate.");
       return;
     }
-    // Reset all translations to empty when starting new translation
+  // ✅ Only reset tokens if fullRegenerate is true
+  if (fullRegenerate) {
     setTokens((prev) =>
       prev.map((tok) => ({ ...tok, verse_translated_text: "" }))
     );
+  }
 
     setLoadingTranslate(true);
     setCancelTranslation(false);
@@ -899,7 +903,8 @@ const VerseTranslationPage = () => {
           selectedChapter,
           batch,
           selectedModel,
-          controller.signal
+          controller.signal,
+          fullRegenerate  // <-- pass it here
         );
 
         if (newTokens?.length > 0) {
@@ -1026,7 +1031,72 @@ const VerseTranslationPage = () => {
     const translated = tokens.filter((t) => t.verse_translated_text).length;
     return { translated, total };
   }, [tokens]);
-
+  const parseUSFMContent = (content) => {
+    if (!content) return {};
+    
+    const chapters = {};
+    const lines = content.split('\n');
+    let currentChapter = null;
+    let currentContent = [];
+    
+    lines.forEach(line => {
+      const chapterMatch = line.match(/\\c\s+(\d+)/);
+      if (chapterMatch) {
+        // Save previous chapter if exists
+        if (currentChapter !== null) {
+          chapters[currentChapter] = currentContent.join('\n');
+        }
+        // Start new chapter
+        currentChapter = parseInt(chapterMatch[1]);
+        currentContent = [line];
+      } else if (currentChapter !== null) {
+        currentContent.push(line);
+      } else {
+        // Header content before first chapter
+        if (!chapters['header']) chapters['header'] = [];
+        chapters['header'].push(line);
+      }
+    });
+    
+    // Save last chapter
+    if (currentChapter !== null) {
+      chapters[currentChapter] = currentContent.join('\n');
+    }
+    
+    // Convert header array to string
+    if (chapters['header']) {
+      chapters['header'] = chapters['header'].join('\n');
+    }
+    
+    return chapters;
+  };
+  
+  const parsedDraftChapters = useMemo(() => {
+    return parseUSFMContent(serverDraft);
+  }, [serverDraft]);
+  
+  const parsedSourceChapters = useMemo(() => {
+    return parseUSFMContent(rawBookContent);
+  }, [rawBookContent]);
+  const currentDraftContent = useMemo(() => {
+    if (!serverDraft) return '';
+    if (!draftChapter) return serverDraft; // Show full draft if no chapter selected
+    
+    const header = parsedDraftChapters['header'] || '';
+    const chapterContent = parsedDraftChapters[draftChapter] || '';
+    
+    return header ? `${header}\n\n${chapterContent}` : chapterContent;
+  }, [serverDraft, draftChapter, parsedDraftChapters]);
+  
+  const currentSourceContent = useMemo(() => {
+    if (!rawBookContent) return '';
+    if (!draftChapter) return rawBookContent; // Show full source if no chapter selected
+    
+    const header = parsedSourceChapters['header'] || '';
+    const chapterContent = parsedSourceChapters[draftChapter] || '';
+    
+    return header ? `${header}\n\n${chapterContent}` : chapterContent;
+  }, [rawBookContent, draftChapter, parsedSourceChapters]);
   const filteredTokens = showOnlyTranslated
     ? tokens.filter((t) => t.verse_translated_text)
     : tokens;
@@ -1127,6 +1197,11 @@ const VerseTranslationPage = () => {
       (t) => t.verse_translated_text && t.verse_translated_text.trim() !== ""
     );
   }, [tokens]);
+  useEffect(() => {
+    if (activeTab === 'draft' && selectedChapter) {
+      setDraftChapter(selectedChapter);
+    }
+  }, [activeTab, selectedChapter]);
 
   // ---------- UI ----------
   return (
@@ -1138,13 +1213,6 @@ const VerseTranslationPage = () => {
         paddingLeft: 20,
       }}
     >
-      {/* Upload Summary Toast */}
-      {/* <UploadSummaryToast
-        visible={summaryOpen}
-        uploaded={summaryData.uploaded}
-        skipped={summaryData.skipped}
-        onClose={() => setSummaryOpen(false)}
-      /> */}
       {modalContextHolder}
       <UploadProgressModal
         visible={uploadProgressOpen}
@@ -1154,6 +1222,47 @@ const VerseTranslationPage = () => {
         total={totalBooks}
         onClose={() => setUploadProgressOpen(false)}
       />
+       {/* Verse Translation Modal */}
+       <Modal
+  visible={isModalVisible}
+  title="Regenerate Translations"
+  closable={false}
+  onCancel={() => setIsModalVisible(false)}
+  footer={[
+    <Button key="cancel" onClick={() => setIsModalVisible(false)}>Cancel</Button>,
+    <Button
+      key="no"
+      onClick={() => {
+        setIsModalVisible(false);
+        handleTranslateChapter(false); // continue from existing
+      }}
+    >
+      No, Continue
+    </Button>,
+    <Button
+      key="yes"
+      type="primary"
+      danger
+      onClick={() => {
+        setIsModalVisible(false);
+        handleTranslateChapter(true); // full regenerate
+      }}
+    >
+      Yes, Regenerate
+    </Button>
+  ]}
+>
+  Do you want to regenerate all translations, or continue from where you left off?
+</Modal>
+  {modalContextHolder}
+  <UploadProgressModal
+    visible={uploadProgressOpen}
+    uploading={uploadingBooks}
+    uploaded={uploadedBooks}
+    skipped={skippedBooks}
+    total={totalBooks}
+    onClose={() => setUploadProgressOpen(false)}
+  />
 
       {/* Hidden file input for book upload */}
       <input
@@ -1242,54 +1351,80 @@ const VerseTranslationPage = () => {
           </div>
 
           {selectedBook !== "all" && chapters.length > 0 && (
-            <Space>
-              {/* Prev Button */}
-              <Button
-                type="text"
-                disabled={
-                  !selectedChapter ||
-                  selectedChapter === 1 ||
-                  activeTab === "draft"
-                }
-                onClick={() =>
-                  setSelectedChapter((prev) => Math.max(1, prev - 1))
-                }
-              >
-                ◀
-              </Button>
+  <Space>
+    {/* Prev Button */}
+    <Button
+      type="text"
+      disabled={
+        activeTab === "draft"
+          ? draftChapter === null || draftChapter === 1
+          : !selectedChapter || selectedChapter === 1
+      }
+      onClick={() => {
+        if (activeTab === "draft") {
+          setDraftChapter((prev) =>
+            prev === null ? 1 : Math.max(1, prev - 1)
+          );
+        } else {
+          setSelectedChapter((prev) => Math.max(1, prev - 1));
+        }
+      }}
+    >
+      ◀
+    </Button>
 
-              {/* Chapter Dropdown */}
-              <Select
-                value={selectedChapter}
-                style={{ minWidth: 120 }}
-                onChange={(val) => setSelectedChapter(val)}
-                disabled={activeTab === "draft"}
-              >
-                {chapters.map((ch) => (
-                  <Option key={ch.chapter_id} value={ch.chapter_number}>
-                    Chapter {ch.chapter_number}
-                  </Option>
-                ))}
-              </Select>
+    {/* Unified Chapter Dropdown */}
+    <Select
+      value={activeTab === "draft" ? draftChapter : selectedChapter}
+      style={{ minWidth: 150 }}
+      onChange={(val) => {
+        if (activeTab === "draft") {
+          setDraftChapter(val);
+        } else {
+          setSelectedChapter(val);
+        }
+      }}
+      placeholder="Select Chapter"
+      disabled={chapters.length === 0}
+    >
+      {/* Show “All Chapters” only for Draft View */}
+      {activeTab === "draft" && (
+        <Option key="all" value={null}>
+          All Chapters
+        </Option>
+      )}
+      {chapters.map((ch) => (
+        <Option key={ch.chapter_id} value={ch.chapter_number}>
+          Chapter {ch.chapter_number}
+        </Option>
+      ))}
+    </Select>
 
-              {/* Next Button */}
-              <Button
-                type="text"
-                disabled={
-                  !selectedChapter ||
-                  selectedChapter === chapters.length ||
-                  activeTab === "draft"
-                }
-                onClick={() =>
-                  setSelectedChapter((prev) =>
-                    Math.min(chapters.length, prev + 1)
-                  )
-                }
-              >
-                ▶
-              </Button>
-            </Space>
-          )}
+    {/* Next Button */}
+    <Button
+      type="text"
+      disabled={
+        activeTab === "draft"
+          ? draftChapter !== null && draftChapter === chapters.length
+          : !selectedChapter || selectedChapter === chapters.length
+      }
+      onClick={() => {
+        if (activeTab === "draft") {
+          setDraftChapter((prev) => {
+            if (prev === null) return 1;
+            return Math.min(chapters.length, prev + 1);
+          });
+        } else {
+          setSelectedChapter((prev) => Math.min(chapters.length, prev + 1));
+        }
+      }}
+    >
+      ▶
+    </Button>
+  </Space>
+)}
+
+
         </Space>
         {selectedBook !== "all" && chapters.length > 0 && (
         <Progress
@@ -1516,44 +1651,20 @@ const VerseTranslationPage = () => {
                     >
                       Cancel Translation
                     </Button>
-                  ) : hasExistingTranslations ? (
-                    <Popconfirm
-                      title="Re-translate Chapter"
-                      description="This chapter already has translations. Do you want to translate again? This will replace existing translations."
-                      onConfirm={() => {
-                        selectedChapter
-                          ? handleTranslateChapter()
-                          : handleTranslateAllChunks();
-                      }}
-                      okText="Yes, Translate Again"
-                      cancelText="Cancel"
-                      overlayInnerStyle={{
-                        width: "400px", // Adjust width
-                        fontSize: "14px", // Adjust font size
-                      }}
-                    >
-                      <Button
-                        type="dashed"
-                        icon={<ThunderboltOutlined />}
-                        disabled={
-                          !selectedModel ||
-                          selectedBook === "all" ||
-                          !selectedChapter
-                        }
-                      >
-                        Translate
-                      </Button>
-                    </Popconfirm>
-                  ) : (
+                  ) 
+                  : (
                     <Button
                       type="dashed"
                       icon={<ThunderboltOutlined />}
                       onClick={() => {
-                        selectedChapter
-                          ? handleTranslateChapter()
-                          : handleTranslateAllChunks();
-                      }}
-                      disabled={
+                        if (!hasExistingTranslations) {
+                          // No previous translations → start immediately
+                          handleTranslateChapter(true); // full regenerate
+                        } else {
+                          // Existing translations → show modal
+                          setIsModalVisible(true);
+                        }
+                      }}                      disabled={
                         !selectedModel ||
                         selectedBook === "all" ||
                         !selectedChapter
@@ -1768,24 +1879,26 @@ const VerseTranslationPage = () => {
         </TabPane>
 
         <TabPane tab="Draft View" key="draft">
-          <Row gutter={16}>
+  {/* Chapter selector for draft view */}
+  <Row gutter={16}>
+   
             {/* --- New Source Draft Card --- */}
-            {selectedBook !== "all" && (
-              <Col span={12}>
-                <Card
-                  title="Source Draft"
-                  style={{ maxHeight: "70vh", overflowY: "scroll" }}
-                >
-                  {rawBookContent ? (
-                    <pre style={{ whiteSpace: "pre-wrap" }}>
-                      {rawBookContent}
-                    </pre>
-                  ) : (
-                    <p>No USFM content available for this book.</p>
-                  )}
-                </Card>
-              </Col>
-            )}
+{selectedBook !== "all" && (
+  <Col span={12}>
+    <Card
+      title="Source Draft"
+      style={{ maxHeight: "70vh", overflowY: "scroll" }}
+    >
+      {rawBookContent ? (
+        <pre style={{ whiteSpace: "pre-wrap" }}>
+          {currentSourceContent}
+        </pre>
+      ) : (
+        <p>No USFM content available for this book.</p>
+      )}
+    </Card>
+  </Col>
+)}
 
             {/* --- Existing Translation Draft Card --- */}
             <Col span={12}>
@@ -1881,7 +1994,7 @@ const VerseTranslationPage = () => {
                     <Col span={24}>
                       <Space direction="vertical" style={{ width: "100%" }}>
                         <Input.TextArea
-                          value={editedDraft || serverDraft}
+                         value={editedDraft || currentDraftContent}
                           autoSize={{ minRows: 8, maxRows: 20 }}
                           style={{
                             whiteSpace: "pre-wrap",
@@ -1924,14 +2037,14 @@ const VerseTranslationPage = () => {
                               >
                                 Save
                               </Button>
-                              <Button
-                                onClick={() => {
-                                  setEditedDraft(originalDraft); // discard edits
-                                  message.info("Changes discarded");
-                                }}
-                              >
-                                Discard
-                              </Button>
+                             <Button
+  onClick={() => {
+    setEditedDraft(currentDraftContent); // Changed from originalDraft
+    message.info("Changes discarded");
+  }}
+>
+  Discard
+</Button>
                             </Space>
                           )}
                       </Space>

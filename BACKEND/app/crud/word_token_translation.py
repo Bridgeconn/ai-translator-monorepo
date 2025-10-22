@@ -105,7 +105,7 @@ HARDCODED_PAIRS = {
 }
 
 def generate_tokens_batch_stream(
-    db: Session, project_id: UUID, book_id: UUID,model_name: str = "nllb-600M"
+    db: Session, project_id: UUID, book_id: UUID,model_name: str = "nllb-600M", token_ids: list[UUID] = None
 ) -> Generator[str, None, None]:
     """
     Stream translation of tokens batch by batch.
@@ -161,9 +161,11 @@ def generate_tokens_batch_stream(
         return
 
     # 3️⃣ Fetch tokens for this book
-    tokens = db.query(WordTokenTranslation).filter_by(
-        project_id=project_id, book_id=book_id
-    ).all()
+    query = db.query(WordTokenTranslation).filter_by(project_id=project_id, book_id=book_id)
+    if token_ids:
+      query = query.filter(WordTokenTranslation.word_token_id.in_(token_ids))
+    tokens = query.all()
+
     total = len(tokens)
     if not tokens:
         yield f"data: {json.dumps({'error': 'No tokens found for this project/book'})}\n\n"
@@ -209,6 +211,7 @@ def generate_tokens_batch_stream(
                     "batch": i // batch_size + 1,
                     "done": i + idx + 1,
                     "total": total,
+                    "continuation": bool(token_ids),  # True if partial translation
                     "token": {
                         "word_token_id": str(token_obj.word_token_id),
                         "token_text": token_obj.token_text,
