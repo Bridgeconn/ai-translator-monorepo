@@ -58,26 +58,62 @@ async function getAccessToken() {
   return resp.data.access_token;
 }
 
-async function requestDocTranslation(
-  token,
-  file,
-  srcLangCode,
-  tgtLangCode,
-  model_name
-) {
+// async function requestDocTranslation(
+//   token,
+//   file,
+//   srcLangCode,
+//   tgtLangCode,
+//   model_name
+// ) {
+//   const formData = new FormData();
+//   formData.append("file", file);
+
+//   const resp = await vachanApi.post(
+//     `/model/text/translate-document?device=cpu&model_name=${model_name}&source_language=${srcLangCode}&target_language=${tgtLangCode}&output_format=txt`,
+//     formData,
+//     {
+//       headers: {
+//         Authorization: `Bearer ${token}`,
+//         "Content-Type": "multipart/form-data",
+//       },
+//     }
+//   );
+
+//   console.log("📥 Doc translation response:", resp.data);
+//   return resp.data.data.jobId;
+// }
+async function requestDocTranslation(token, file, srcLangCode, tgtLangCode, model_name) {
   const formData = new FormData();
   formData.append("file", file);
 
-  const resp = await vachanApi.post(
-    `/model/text/translate-document?device=cpu&model_name=${model_name}&source_language=${srcLangCode}&target_language=${tgtLangCode}&output_format=txt`,
-    formData,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "multipart/form-data",
-      },
-    }
-  );
+  // 🔹 Hardcoded pairs for fine-tuned models
+  const hardcodedPairs = {
+    "nllb-english-zeme": { src: "eng_Latn", tgt: "nzm_Latn" },
+    "nllb-english-nagamese": { src: "eng_Latn", tgt: "nag_Latn" },
+    "nllb-gujrathi-koli_kachchi": { src: "guj_Gujr", tgt: "gjk_Gujr" },
+    "nllb-hindi-surjapuri": { src: "hin_Deva", tgt: "sjp_Deva" },
+    "nllb-gujarati-kukna": { src: "guj_Gujr", tgt: "kex_Gujr" },
+    "nllb-gujarati-kutchi": { src: "guj_Gujr", tgt: "kfr_Gujr" },
+  };
+
+  let url = `/model/text/translate-document?device=cpu&model_name=${model_name}&output_format=txt`;
+
+  // 🧩 Only add source/target if using default model
+  if (model_name === "nllb-600M") {
+    url += `&source_language=${srcLangCode}&target_language=${tgtLangCode}`;
+  } else if (hardcodedPairs[model_name]) {
+    const { src, tgt } = hardcodedPairs[model_name];
+    url += `&source_language=${src}&target_language=${tgt}`;
+  }
+
+  console.log("📤 Translation API URL:", url);
+
+  const resp = await vachanApi.post(url, formData, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "multipart/form-data",
+    },
+  });
 
   console.log("📥 Doc translation response:", resp.data);
   return resp.data.data.jobId;
@@ -277,7 +313,7 @@ async function isIncognitoMode() {
       license: "CC-BY-NC 4.0",
       languages: "200 languages",
     },
-    nllb_finetuned_eng_nzm: {
+    "nllb-english-zeme": {
       tasks: "mt, text translation",
       languageCodeType: "BCP-47",
       developedBy: "Meta",
@@ -298,12 +334,27 @@ async function isIncognitoMode() {
       license: "CC-BY-NC 4.0",
       languages: "Gujarati, Kachi Koli (gjk_Gujr)",
     },
-    "nllb-hin-surjapuri": {
+    "nllb-hindi-surjapuri": {
       tasks: "mt, text translation",
       languageCodeType: "BCP-47",
       developedBy: "Meta",
       license: "CC-BY-NC 4.0",
       languages: "Hindi, Surjapuri (sjp_Deva)",
+
+    },
+    "nllb-gujarati-kukna": {
+      tasks: "mt, text translation",
+      languageCodeType: "BCP-47",
+      developedBy: "Meta",
+      license: "CC-BY-NC 4.0",
+      languages: "Gujarati, Kukna (gjk_Gujr)",
+    },
+    "nllb-gujarati-kutchi": {
+      tasks: "mt, text translation",
+      languageCodeType: "BCP-47",
+      developedBy: "Meta",
+      license: "CC-BY-NC 4.0",
+      languages: "Gujarati, Kutchi (gjk_Gujr)",
     },
   };
 
@@ -329,14 +380,17 @@ async function isIncognitoMode() {
 
   const availableModels = [
     { label: "nllb-600M", value: "nllb-600M" },
-    { label: "nllb_finetuned_eng_nzm", value: "nllb_finetuned_eng_nzm" },
+    { label: "nllb-english-zeme", value: "nllb-english-zeme" },
     { label: "nllb-english-nagamese", value: "nllb-english-nagamese" },
     {
       label: "nllb-gujrathi-koli_kachchi",
       value: "nllb-gujrathi-koli_kachchi",
     },
-    { label: "nllb-hin-surjapuri", value: "nllb-hin-surjapuri" },
+    { label: "nllb-hindi-surjapuri", value: "nllb-hindi-surjapuri" },
+    { label: "nllb-gujarati-kukna", value: "nllb-gujarati-kukna" },
+    { label: "nllb-gujarati-kutchi", value: "nllb-gujarati-kutchi" },
   ];
+  
   // const LANGUAGE_PAIRS = {
   //   "Zeme Naga": ["English"],
   //   English: ["Zeme Naga", "Nagamese"],
@@ -348,41 +402,55 @@ async function isIncognitoMode() {
   // };
   // One-way filter mapping (special languages restrict pairing)
   const FILTER_MAP = {
-    "Zeme Naga": ["English"],
     Nagamese: ["English"],
-    "Kachi Koli": ["Gujarati"],
     Surjapuri: ["Hindi"],
-  };
+    kukna: ["Gujarati"],
+    Kutchi: ["Gujarati"],
+    "Zeme Naga": ["English"],     // English only as target
+  "Kachi Koli": ["Gujarati"],   // Gujarati only as target
+  };  
   useEffect(() => {
     if (!sourceLang || !targetLang) {
       setIsInvalidPair(false);
       return;
     }
-
-    const specialPairs = {
-      "Zeme Naga": "English",
-      Nagamese: "English",
-      "Kachi Koli": "Gujarati",
-      Surjapuri: "Hindi",
-    };
-
+  
     const src = sourceLang.name;
     const tgt = targetLang.name;
-
-    const isSourceSpecial = Object.keys(specialPairs).includes(src);
-    const isTargetSpecial = Object.keys(specialPairs).includes(tgt);
-
+  
+    // ❌ These specific one-way pairs are NOT allowed
+    const disallowedPairs = [
+      ["Zeme Naga", "English"], // disallow reverse
+      ["Kachi Koli", "Gujarati"], // disallow reverse
+    ];
+  
+    // ✅ Allowed special pairs (two-way unless disallowed above)
+    const specialPairs = {
+      Nagamese: "English",
+      Surjapuri: "Hindi",
+      Kukna: "Gujarati",
+      // Kutchi: "Gujarati",
+      // "Zeme Naga": "English", // forward allowed (English → Zeme)
+      // "Kachi Koli": "Gujarati", // forward allowed (Gujarati → Kachi)
+    };
+  
     let invalid = false;
-
-    // ✅ Check only when either side is special
-    if (isSourceSpecial) {
-      invalid = specialPairs[src] !== tgt;
-    } else if (isTargetSpecial) {
-      invalid = specialPairs[tgt] !== src;
-    } else {
-      invalid = false; // ✅ other combinations are allowed
+  
+    // 🔍 1️⃣ Check disallowed pairs first
+    invalid = disallowedPairs.some(([s, t]) => s === src && t === tgt);
+  
+    // 🔍 2️⃣ Check normal special-pair rules (only if not already invalid)
+    if (!invalid) {
+      const isSourceSpecial = Object.keys(specialPairs).includes(src);
+      const isTargetSpecial = Object.keys(specialPairs).includes(tgt);
+  
+      if (isSourceSpecial) {
+        invalid = specialPairs[src] !== tgt;
+      } else if (isTargetSpecial) {
+        invalid = specialPairs[tgt] !== src;
+      }
     }
-
+  
     if (invalid) {
       setIsInvalidPair(true);
       notification.error({
@@ -394,7 +462,7 @@ async function isIncognitoMode() {
       setIsInvalidPair(false);
     }
   }, [sourceLang, targetLang]);
-
+  
   useEffect(() => {
     if (!saveModalVisible) return;
 
@@ -459,8 +527,7 @@ async function isIncognitoMode() {
     const tgt = targetLang.BCP_code;
     // Check for English ↔ Zeme Naga
     const isEngNzemePair =
-      (src === "eng_Latn" && tgt === "nzm_Latn") ||
-      (src === "nzm_Latn" && tgt === "eng_Latn");
+      (src === "eng_Latn" && tgt === "nzm_Latn") 
 
     // Check for English ↔ Naga Pidgin
     const isEngNagPair =
@@ -475,16 +542,28 @@ async function isIncognitoMode() {
     const isHinSjpPair =
       (src === "hin_Deva" && tgt === "sjp_Deva") ||
       (src === "sjp_Deva" && tgt === "hin_Deva");
+    const isGujKuknaPair =
+      (src === "guj_Gujr" && tgt === "kex_Gujr") ||
+      (src === "kex_Gujr" && tgt === "guj_Gujr");
+    
+    const isGujKutchiPair =
+      (src === "guj_Gujr" && tgt === "kfr_Gujr") ||
+      (src === "kfr_Gujr" && tgt === "guj_Gujr");  
 
     if (isEngNzemePair) {
-      setSelectedModel("nllb_finetuned_eng_nzm");
+      setSelectedModel("nllb-english-zeme");
     } else if (isEngNagPair) {
       setSelectedModel("nllb-english-nagamese");
     } else if (isGujGjkPair) {
       setSelectedModel("nllb-gujrathi-koli_kachchi");
     } else if (isHinSjpPair) {
-      setSelectedModel("nllb-hin-surjapuri");
-    } else {
+      setSelectedModel("nllb-hindi-surjapuri");
+    } else if (isGujKuknaPair) {
+      setSelectedModel("nllb-gujarati-kukna");
+    } else if (isGujKutchiPair) {
+      setSelectedModel("nllb-gujarati-kutchi");
+    }
+    else {
       setSelectedModel("nllb-600M");
     }
   }, [sourceLang, targetLang]);
@@ -686,8 +765,7 @@ async function isIncognitoMode() {
     let modelToUse = "nllb-600M"; // default
 
     const isEngNzemePair =
-      (src === "eng_Latn" && tgt === "nzm_Latn") ||
-      (src === "nzm_Latn" && tgt === "eng_Latn");
+      (src === "eng_Latn" && tgt === "nzm_Latn")
 
     const isEngNagPair =
       (src === "eng_Latn" && tgt === "nag_Latn") ||
@@ -700,16 +778,31 @@ async function isIncognitoMode() {
     const isHinSjpPair =
       (src === "hin_Deva" && tgt === "sjp_Deva") ||
       (src === "sjp_Deva" && tgt === "hin_Deva");
+    const isGujKuknaPair =
+      (src === "guj_Gujr" && tgt === "kex_Gujr") ||
+      (src === "kex_Gujr" && tgt === "guj_Gujr");
+    
+    const isGujKutchiPair =
+      (src === "guj_Gujr" && tgt === "kfr_Gujr") ||
+      (src === "kfr_Gujr" && tgt === "guj_Gujr");  
+
 
     if (isEngNzemePair) {
-      modelToUse = "nllb_finetuned_eng_nzm";
+      modelToUse = "nllb-english-zeme";
     } else if (isEngNagPair) {
       modelToUse = "nllb-english-nagamese";
     } else if (isGujGjkPair) {
       modelToUse = "nllb-gujrathi-koli_kachchi";
     } else if (isHinSjpPair) {
-      modelToUse = "nllb-hin-surjapuri";
-    }
+      modelToUse = "nllb-hindi-surjapuri";
+    }else if (isGujKuknaPair) {
+      modelToUse = "nllb-gujarati-kukna";
+    } else if (isGujKutchiPair) {
+      modelToUse = "nllb-gujarati-kutchi";
+      }
+      else{
+        modelToUse = "nllb-600M";
+      }
     console.log("🎯 Using model for translation:", modelToUse);
 
     if (!sourceText.trim() && !uploadedFile) {
@@ -1548,6 +1641,7 @@ async function isIncognitoMode() {
                           "Nagamese",
                           "Kachi Koli",
                           "Surjapuri",
+                          ,"Kukna","Kutchi",
                         ].includes(lang.name)
                       ) {
                         // Each special target has one specific allowed source
@@ -1556,6 +1650,8 @@ async function isIncognitoMode() {
                           Nagamese: ["English"],
                           "Kachi Koli": ["Gujarati"],
                           Surjapuri: ["Hindi"],
+                          "Kukna": ["Gujarati"],
+                          "Kutchi": ["Gujarati"]                     
                         };
                         setFilteredSourceLangs(filterMap[lang.name]);
                       } else {
@@ -1571,6 +1667,7 @@ async function isIncognitoMode() {
                           "Nagamese",
                           "Kachi Koli",
                           "Surjapuri",
+                          "Kukna","Kutchi"
                         ].includes(lang.name)
                       ) {
                         const allowedSource = {
@@ -1578,6 +1675,8 @@ async function isIncognitoMode() {
                           Nagamese: ["English"],
                           "Kachi Koli": ["Gujarati"],
                           Surjapuri: ["Hindi"],
+                          "Kukna": ["Gujarati"],
+                          "Kutchi": ["Gujarati"],
                         }[lang.name];
                         if (!allowedSource.includes(sourceLang?.name)) {
                           setSourceLang(null);
@@ -1734,13 +1833,23 @@ async function isIncognitoMode() {
                     const isHinSjpPair =
                       (src === "hin_Deva" && tgt === "sjp_Deva") ||
                       (src === "sjp_Deva" && tgt === "hin_Deva");
+                    const isGujKuknaPair =
+                      (src === "guj_Gujr" && tgt === "kex_Gujr") ||
+                      (src === "kex_Gujr" && tgt === "guj_Gujr");
+                    
+                    const isGujKutchiPair =
+                      (src === "guj_Gujr" && tgt === "kfr_Gujr") ||
+                      (src === "kfr_Gujr" && tgt === "guj_Gujr");
+                    
                     // Disable nllb-600M for specialized language pairs
                     if (
                       m.value === "nllb-600M" &&
                       (isEngNzemePair ||
                         isEngNagPair ||
                         isGujGjkPair ||
-                        isHinSjpPair)
+                        isHinSjpPair||
+                        isGujKuknaPair||
+                        isGujKutchiPair)
                     ) {
                       disabled = true;
                       tooltip =
@@ -1748,35 +1857,42 @@ async function isIncognitoMode() {
                     }
                     // Only enable fine-tuned models for their specific language pairs
                     else if (
-                      m.value === "nllb_finetuned_eng_nzm" &&
+                      m.value === "nllb-english-zeme" &&
                       !isEngNzemePair
                     ) {
                       disabled = true;
                       tooltip =
-                        "This model supports only English ↔ Zeme Naga translation.";
+                        "This model supports only English -> Zeme Naga translation.";
                     } else if (
                       m.value === "nllb-english-nagamese" &&
                       !isEngNagPair
                     ) {
                       disabled = true;
                       tooltip =
-                        "This model supports only English ↔ Naga Pidgin translation.";
+                        "This model supports only English ↔ Naga translation.";
                     } else if (
                       m.value === "nllb-gujrathi-koli_kachchi" &&
                       !isGujGjkPair
                     ) {
                       disabled = true;
                       tooltip =
-                        "This model supports only Gujarati ↔ Kachi Koli translation.";
+                        "This model supports only Gujarati -> Kachi Koli translation.";
                     } else if (
-                      m.value === "nllb-hin-surjapuri" &&
+                      m.value === "nllb-hindi-surjapuri" &&
                       !isHinSjpPair
-                    ) {
+                    )
+                     {
                       disabled = true;
                       tooltip =
                         "This model supports only Hindi ↔ Surjapuri translation.";
                     }
-
+                    else if (m.value === "nllb-gujarati-kukna" && !isGujKuknaPair) {
+                      disabled = true;
+                      tooltip = "This model supports only Gujarati ↔ Kukna translation.";
+                    } else if (m.value === "nllb-gujarati-kutchi" && !isGujKutchiPair) {
+                      disabled = true;
+                      tooltip = "This model supports only Gujarati ↔ Kutchi translation.";
+                    }                    
                     return (
                       <Select.Option
                         key={m.value}
@@ -1943,47 +2059,63 @@ async function isIncognitoMode() {
                   </Space>
                 </Col>
                 <Col>
-                  <Tooltip
-                    title={!selectedModel ? "Please select a model first" : ""}
-                    color="#fff"
-                 > </Tooltip>
-                    <Tooltip
-                      title={
-                        isIncognito
-                          ? "Translation is not available in private browsing mode.Please use normal browsers."
-                          : ""
-                      }
-                    >
-                      <Button
-                        type="primary"
-                        danger={loading}
-                        size="medium"
-                        onClick={() => {
-                          if (loading) handleCancelTranslate();
-                          else handleTranslate();
-                        }}
-                        disabled={!selectedModel || isIncognito}
-                        style={{
-                          padding: "0 32px",
-                          borderRadius: "8px",
-                          minWidth: "100px",
-                          backgroundColor: loading
-                            ? "#ff4d4f"
-                            : isIncognito
-                            ? "#d9d9d9"
-                            : "rgb(44,141,251)",
-                          borderColor: loading
-                            ? "#ff4d4f"
-                            : isIncognito
-                            ? "#d9d9d9"
-                            : "rgb(44,141,251)",
-                          color: "#fff",
-                          cursor: isIncognito ? "not-allowed" : "pointer",
-                        }}
-                      >
-                        {loading ? "Cancel Translation" : "Translate"}
-                      </Button>
-                    </Tooltip>
+                <Tooltip
+  title={
+    isInvalidPair
+      ? "This language pair is not supported by the selected model."
+      : isIncognito
+      ? "Translation is not available in private browsing mode. Please use a normal browser."
+      : !selectedModel
+      ? "Please select a model first"
+      : ""
+  }
+  color="#fff"
+>
+  <Button
+    type="primary"
+    danger={loading || isInvalidPair}
+    size="medium"
+    onClick={() => {
+      if (loading) handleCancelTranslate();
+      else handleTranslate();
+    }}
+    disabled={
+      !selectedModel ||
+      isIncognito ||
+      isInvalidPair ||
+      !sourceLang ||
+      !targetLang ||
+      (!sourceText.trim() && !uploadedFile)
+    }
+    style={{
+      padding: "0 32px",
+      borderRadius: "8px",
+      minWidth: "100px",
+      backgroundColor: isInvalidPair
+        ? "#bfbfbf"
+        : loading
+        ? "#ff4d4f"
+        : isIncognito
+        ? "#d9d9d9"
+        : "rgb(44,141,251)",
+      borderColor: isInvalidPair
+        ? "#bfbfbf"
+        : loading
+        ? "#ff4d4f"
+        : isIncognito
+        ? "#d9d9d9"
+        : "rgb(44,141,251)",
+      color: "#fff",
+      cursor: isInvalidPair ? "not-allowed" : "pointer",
+    }}
+  >
+    {isInvalidPair
+      ? "Translate"
+      : loading
+      ? "Cancel Translation"
+      : "Translate"}
+  </Button>
+</Tooltip>
                 </Col>
               </Row>
             </div>

@@ -9,11 +9,14 @@ const { Option } = Select;
 
 // 🔹 Restriction mapping for special source languages
 const FILTER_MAP = {
-  "Zeme Naga": ["English"],
-  "Nagamese": ["English"],
-  "Kachi Koli": ["Gujarati"],
-  "Surjapuri": ["Hindi"],
-};
+  Kukna: ["Gujarati"],       // Kukna source → only Gujarati target
+  Kutchi: ["Gujarati"],      // Kutchi source → only Gujarati target
+  Surjapuri: ["Hindi"],      // Surjapuri source → only Hindi target
+  // English: ["Zeme Naga", "Nagamese"],
+  Gujarati: ["Kachi Koli", "Kukna", "Kutchi"],
+  // Hindi: ["Surjapuri"],
+  Nagamese: ["English"],
+}; 
 
 const CreateProjectModal = ({
   isVisible,

@@ -48,8 +48,8 @@ const MODEL_INFO = {
     License: "CC-BY-NC 4.0",
     Languages: "200 languages",
   },
-  nllb_finetuned_eng_nzm: {
-    Model: "nllb_finetuned_eng_nzm",
+  "nllb-english-zeme": {
+    Model: "nllb-english-zeme",
     Tasks: "mt, text translation",
     "Language Code Type": "BCP-47",
     DevelopedBy: "Meta",
@@ -72,21 +72,39 @@ const MODEL_INFO = {
       License: "CC-BY-NC 4.0",
       Languages: "Gujarati, Kachi Koli",
     },
-    "nllb-hin-surjapuri": {
-      Model: "nllb-hin-surjapuri",
+    "nllb-hindi-surjapuri": {
+      Model: "nllb-hindi-surjapuri",
       Tasks: "mt, text translation",
       "Language Code Type": "BCP-47",
       DevelopedBy: "Meta",
       License: "CC-BY-NC 4.0",
       Languages: "Hindi, Surjapuri",
     },
+    "nllb-gujarati-kukna": {
+      Model: "nllb-gujarati-kukna",
+      Tasks: "mt, text translation",
+      "Language Code Type": "BCP-47",
+      DevelopedBy: "Meta",
+      License: "CC-BY-NC 4.0",
+      Languages: "Gujarati, Kukna",
+    },
+    "nllb-gujarati-kutchi": {
+      Model: "nllb-gujarati-kutchi",
+      Tasks: "mt, text translation",
+      "Language Code Type": "BCP-47",
+      DevelopedBy: "Meta",
+      License: "CC-BY-NC 4.0",
+      Languages: "Gujarati, Kutchi",
+    },
 };
 const MODEL_OPTIONS = [
   { label: "nllb-600M", value: "nllb-600M", tooltip: "General-purpose model for 200 languages." },
-  { label: "nllb_finetuned_eng_nzm", value: "nllb_finetuned_eng_nzm", tooltip: "This model ONLY supports English ↔ Zeme Naga." },
+  { label: "nllb-english-zeme", value: "nllb-english-zeme", tooltip: "This model ONLY supports English -> Zeme Naga." },
   { label: "nllb-english-nagamese", value: "nllb-english-nagamese", tooltip: "This model ONLY supports English ↔ Nagamese." },
-  { label: "nllb-gujrathi-koli_kachchi", value: "nllb-gujrathi-koli_kachchi", tooltip: "This model ONLY supports Gujarati ↔ Kachi Koli." },
-  { label: "nllb-hin-surjapuri", value: "nllb-hin-surjapuri", tooltip: "This model ONLY supports Hindi ↔ Surjapuri." },
+  { label: "nllb-gujrathi-koli_kachchi", value: "nllb-gujrathi-koli_kachchi", tooltip: "This model ONLY supports Gujarati -> Kachi Koli." },
+  { label: "nllb-hindi-surjapuri", value: "nllb-hindi-surjapuri", tooltip: "This model ONLY supports Hindi ↔ Surjapuri." },
+  {label: "nllb-gujarati-kukna", value: "nllb-gujarati-kukna", tooltip: "This model ONLY supports Gujarati ↔ Kukna." },
+  {label: "nllb-gujarati-kutchi", value: "nllb-gujarati-kutchi", tooltip: "This model ONLY supports Gujarati ↔ Kutchi." },
 ];
 
 // ------------------  Vachan Helpers ------------------
@@ -370,25 +388,33 @@ export default function TextDocumentTranslation() {
     let modelToUse = "nllb-600M";
   
     const isEngNzemePair =
-      (src === "eng_Latn" && tgt === "nzm_Latn") ||
-      (src === "nzm_Latn" && tgt === "eng_Latn");
+      (src === "eng_Latn" && tgt === "nzm_Latn")
   
     const isEngNagPair =
       (src === "eng_Latn" && tgt === "nag_Latn") ||
       (src === "nag_Latn" && tgt === "eng_Latn");
   
     const isGujGjkPair =
-      (src === "guj_Gujr" && tgt === "gjk_Gujr") ||
-      (src === "gjk_Gujr" && tgt === "guj_Gujr");
+      (src === "guj_Gujr" && tgt === "gjk_Gujr")
   
     const isHinSjpPair =
       (src === "hin_Deva" && tgt === "sjp_Deva") ||
       (src === "sjp_Deva" && tgt === "hin_Deva");
+    
+    const isGujKukPair =
+      (src === "guj_Gujr" && tgt === "kex_Gujr") ||
+      (src === "kex_Gujr" && tgt === "guj_Gujr");
   
-    if (isEngNzemePair) modelToUse = "nllb_finetuned_eng_nzm";
+    const isGujKutPair =
+      (src === "guj_Gujr" && tgt === "kfr_Gujr") ||
+      (src === "kfr_Gujr" && tgt === "guj_Gujr");
+  
+    if (isEngNzemePair) modelToUse = "nllb-english-zeme";
     else if (isEngNagPair) modelToUse = "nllb-english-nagamese";
     else if (isGujGjkPair) modelToUse = "nllb-gujrathi-koli_kachchi";
-    else if (isHinSjpPair) modelToUse = "nllb-hin-surjapuri";
+    else if (isHinSjpPair) modelToUse = "nllb-hindi-surjapuri";
+    else if (isGujKukPair) modelToUse = "nllb-gujarati-kukna";
+    else if (isGujKutPair) modelToUse = "nllb-gujarati-kutub";
   
     setSelectedModel(modelToUse);
     console.log(`🎯 Auto-selected model for ${src} ↔ ${tgt}: ${modelToUse}`);
@@ -562,6 +588,14 @@ export default function TextDocumentTranslation() {
   };
 
   // ------------------ Translate handler (Vachan workflow) ------------------
+  const HARDCODED_PAIRS = {
+    "nllb-english-zeme": { src: "eng_Latn", tgt: "nzm_Latn" },
+    "nllb-english-nagamese": { src: "eng_Latn", tgt: "nag_Latn" },
+    "nllb-gujrathi-koli_kachchi": { src: "guj_Gujr", tgt: "gjk_Gujr" },
+    "nllb-hindi-surjapuri": { src: "hin_Deva", tgt: "sjp_Deva" },
+    "nllb-gujarati-kukna": { src: "guj_Gujr", tgt: "kex_Gujr" },
+    "nllb-gujarati-kutchi": { src: "guj_Gujr", tgt: "kfr_Gujr" },
+  };
   const handleTranslate = async () => {
     if (!sourceText.trim()) {
       message.warning("Please enter or upload source text first");
@@ -601,9 +635,26 @@ console.log("📄 Length of textToTranslate:", textToTranslate.length);
         type: "text/plain",
       });
 
-      //  Use source/target language from selected file or project default
-      let srcCode = selectedFile?.source_id || project?.source_language?.code;
-      let tgtCode = selectedFile?.target_id || project?.target_language?.code;
+      // //  Use source/target language from selected file or project default
+      // let srcCode = selectedFile?.source_id || project?.source_language?.code;
+      // let tgtCode = selectedFile?.target_id || project?.target_language?.code;
+      let srcCode, tgtCode;
+
+if (selectedModel === "nllb-600M") {
+  // Use project/file default
+  srcCode = selectedFile?.source_id || project?.source_language?.code;
+  tgtCode = selectedFile?.target_id || project?.target_language?.code;
+} else {
+  // Use hardcoded pair
+  const pair = HARDCODED_PAIRS[selectedModel];
+  if (!pair) {
+    message.error(`No hardcoded language pair found for model ${selectedModel}`);
+    return;
+  }
+  srcCode = pair.src;
+  tgtCode = pair.tgt;
+}
+
 
       if (!srcCode || !tgtCode) {
         message.error(
