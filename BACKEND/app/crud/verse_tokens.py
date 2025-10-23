@@ -238,8 +238,9 @@ def translate_verse_token(db: Session, verse_token_id: UUID,model_name: str = "n
 def manual_update_translation(db: Session, verse_token_id: UUID, project_id: UUID, new_translation: str):
     token_obj = db.query(VerseTokenTranslation).filter(
         VerseTokenTranslation.verse_token_id == verse_token_id,
-        VerseTokenTranslation.project_id == project_id   # ✅ enforce project
+        VerseTokenTranslation.project_id == project_id
     ).first()
+    
     if not token_obj:
         raise HTTPException(status_code=404, detail="Verse token not found for this project")
 
@@ -248,6 +249,11 @@ def manual_update_translation(db: Session, verse_token_id: UUID, project_id: UUI
     db.add(token_obj)
     db.commit()
     db.refresh(token_obj)
+    
+    verify = db.query(VerseTokenTranslation).filter(
+        VerseTokenTranslation.verse_token_id == verse_token_id
+    ).first()
+    
     return token_obj
 
 
