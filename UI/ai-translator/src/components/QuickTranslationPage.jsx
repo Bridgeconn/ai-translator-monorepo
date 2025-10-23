@@ -404,64 +404,134 @@ async function isIncognitoMode() {
   const FILTER_MAP = {
     Nagamese: ["English"],
     Surjapuri: ["Hindi"],
-    kukna: ["Gujarati"],
+    Kukna: ["Gujarati"],
     Kutchi: ["Gujarati"],
     "Zeme Naga": ["English"],     // English only as target
   "Kachi Koli": ["Gujarati"],   // Gujarati only as target
   };  
-  useEffect(() => {
-    if (!sourceLang || !targetLang) {
-      setIsInvalidPair(false);
-      return;
-    }
   
-    const src = sourceLang.name;
-    const tgt = targetLang.name;
+  // useEffect(() => {
+  //   if (!sourceLang || !targetLang) {
+  //     setIsInvalidPair(false);
+  //     return;
+  //   }
   
-    // ❌ These specific one-way pairs are NOT allowed
-    const disallowedPairs = [
-      ["Zeme Naga", "English"], // disallow reverse
-      ["Kachi Koli", "Gujarati"], // disallow reverse
-    ];
+  //   const src = sourceLang.name;
+  //   const tgt = targetLang.name;
   
-    // ✅ Allowed special pairs (two-way unless disallowed above)
-    const specialPairs = {
-      Nagamese: "English",
-      Surjapuri: "Hindi",
-      Kukna: "Gujarati",
-      // Kutchi: "Gujarati",
-      // "Zeme Naga": "English", // forward allowed (English → Zeme)
-      // "Kachi Koli": "Gujarati", // forward allowed (Gujarati → Kachi)
+  //   // ❌ These specific one-way pairs are NOT allowed
+  //   const disallowedPairs = [
+  //     ["Zeme Naga", "English"], // disallow reverse
+  //     ["Kachi Koli", "Gujarati"], // disallow reverse
+  //   ];
+  
+  //   // ✅ Allowed special pairs (two-way unless disallowed above)
+  //   const specialPairs = {
+  //     Nagamese: "English",
+  //     Surjapuri: "Hindi",
+  //     Kukna: "Gujarati",
+  //     // Kutchi: "Gujarati",
+  //     // "Zeme Naga": "English", // forward allowed (English → Zeme)
+  //     // "Kachi Koli": "Gujarati", // forward allowed (Gujarati → Kachi)
+  //   };
+  
+  //   let invalid = false;
+  
+  //   // 🔍 1️⃣ Check disallowed pairs first
+  //   invalid = disallowedPairs.some(([s, t]) => s === src && t === tgt);
+  
+  //   // 🔍 2️⃣ Check normal special-pair rules (only if not already invalid)
+  //   if (!invalid) {
+  //     const isSourceSpecial = Object.keys(specialPairs).includes(src);
+  //     const isTargetSpecial = Object.keys(specialPairs).includes(tgt);
+  
+  //     if (isSourceSpecial) {
+  //       invalid = specialPairs[src] !== tgt;
+  //     } else if (isTargetSpecial) {
+  //       invalid = specialPairs[tgt] !== src;
+  //     }
+  //   }
+  
+  //   if (invalid) {
+  //     setIsInvalidPair(true);
+  //     notification.error({
+  //       message: "Unsupported Language Pair",
+  //       description: `${src} ↔ ${tgt} is not supported by available models.`,
+  //       duration: 3,
+  //     });
+  //   } else {
+  //     setIsInvalidPair(false);
+  //   }
+  // }, [sourceLang, targetLang]);
+  // One-way exceptions: reverse of these are NOT allowed
+const DISALLOWED_REVERSE = [
+  ["Zeme Naga", "English"],
+  ["Kachi Koli", "Gujarati"],
+];
+
+  // ✅ New Validation Effect
+useEffect(() => {
+  if (!sourceLang || !targetLang) {
+    setIsInvalidPair(false);
+    return;
+  }
+
+  const src = sourceLang.name;
+  const tgt = targetLang.name;
+
+  // Helper function to check invalid pairs
+  const isInvalidPairCheck = (srcName, tgtName) => {
+    const FILTER_MAP = {
+      Nagamese: ["English"],
+      Surjapuri: ["Hindi"],
+      Kukna: ["Gujarati"],
+      Kutchi: ["Gujarati"],
+      "Zeme Naga": ["English"],
+      "Kachi Koli": ["Gujarati"],
     };
   
-    let invalid = false;
+    // 1️⃣ Check if this pair is explicitly disallowed (one-way)
+    if (DISALLOWED_REVERSE.some(([s, t]) => s === srcName && t === tgtName)) return true;
   
-    // 🔍 1️⃣ Check disallowed pairs first
-    invalid = disallowedPairs.some(([s, t]) => s === src && t === tgt);
+    // 2️⃣ Check source → target restriction
+    if (FILTER_MAP[srcName] && !FILTER_MAP[srcName].includes(tgtName)) return true;
   
-    // 🔍 2️⃣ Check normal special-pair rules (only if not already invalid)
-    if (!invalid) {
-      const isSourceSpecial = Object.keys(specialPairs).includes(src);
-      const isTargetSpecial = Object.keys(specialPairs).includes(tgt);
+    // 3️⃣ Check target → source restriction
+    if (FILTER_MAP[tgtName] && !FILTER_MAP[tgtName].includes(srcName)) return true;
   
-      if (isSourceSpecial) {
-        invalid = specialPairs[src] !== tgt;
-      } else if (isTargetSpecial) {
-        invalid = specialPairs[tgt] !== src;
-      }
-    }
+    return false;
+  };
   
-    if (invalid) {
-      setIsInvalidPair(true);
-      notification.error({
-        message: "Unsupported Language Pair",
-        description: `${src} ↔ ${tgt} is not supported by available models.`,
-        duration: 3,
-      });
-    } else {
-      setIsInvalidPair(false);
-    }
-  }, [sourceLang, targetLang]);
+  const invalid = isInvalidPairCheck(src, tgt);
+
+  setIsInvalidPair(invalid);
+
+  if (invalid) {
+    setSelectedModel(null); // remove wrong model
+    notification.error({
+      message: "Unsupported Language Pair",
+      description: `${src} ↔ ${tgt} is not supported by available models.`,
+      duration: 2.5,
+    });
+  } else {
+    // Auto-select correct model for special languages
+    if ((src === "English" && tgt === "Zeme Naga"))
+      setSelectedModel("nllb-english-zeme");
+    else if ((src === "English" && tgt === "Nagamese") || (src === "Nagamese" && tgt === "English"))
+      setSelectedModel("nllb-english-nagamese");
+    else if ((src === "Gujarati" && tgt === "Kukna") || (src === "Kukna" && tgt === "Gujarati"))
+      setSelectedModel("nllb-gujarati-kukna");
+    else if ((src === "Gujarati" && tgt === "Kutchi") || (src === "Kutchi" && tgt === "Gujarati"))
+      setSelectedModel("nllb-gujarati-kutchi");
+    else if ((src === "Hindi" && tgt === "Surjapuri") || (src === "Surjapuri" && tgt === "Hindi"))
+      setSelectedModel("nllb-hindi-surjapuri");
+    else if ((src === "Gujarati" && tgt === "Kachi Koli"))
+      setSelectedModel("nllb-gujrathi-koli_kachchi");
+    else
+      setSelectedModel("nllb-600M"); // default
+  }
+}, [sourceLang, targetLang]);
+
   
   useEffect(() => {
     if (!saveModalVisible) return;
@@ -529,7 +599,7 @@ async function isIncognitoMode() {
     const isEngNzemePair =
       (src === "eng_Latn" && tgt === "nzm_Latn") 
 
-    // Check for English ↔ Naga Pidgin
+    // Check for English ↔ Nagamese
     const isEngNagPair =
       (src === "eng_Latn" && tgt === "nag_Latn") ||
       (src === "nag_Latn" && tgt === "eng_Latn");
@@ -1565,7 +1635,7 @@ async function isIncognitoMode() {
                     // marginRight: "100px",
                   }}
                 >
-                  <LanguageSelect
+                  {/* <LanguageSelect
                     value={sourceLang}
                     onChange={(lang) => {
                       setSourceLang(lang);
@@ -1590,7 +1660,34 @@ async function isIncognitoMode() {
                     filterList={filteredSourceLangs}
                     placeholder="Select source language"
                     style={{ width: "60%" }}
-                  />
+                  /> */}
+                  <LanguageSelect
+  value={sourceLang}
+  onChange={(lang) => {
+    setSourceLang(lang);
+
+    // ✅ Filter target languages based on source selection
+    if (lang?.name && FILTER_MAP[lang.name]) {
+      setFilteredTargetLangs(FILTER_MAP[lang.name]);
+
+      // Reset target if the current target is not allowed
+      if (!FILTER_MAP[lang.name].includes(targetLang?.name)) {
+        setTargetLang(null);
+      }
+    } else {
+      // No restriction → show all targets
+      setFilteredTargetLangs([]);
+    }
+
+    // ✅ Clear source-side filters when source changes
+    setFilteredSourceLangs([]);
+  }}
+  disabled={loading}
+  filterList={filteredSourceLangs}
+  placeholder="Select source language"
+  style={{ width: "60%" }}
+/>
+
                 </div>
               </Col>
 
@@ -1628,7 +1725,7 @@ async function isIncognitoMode() {
                     // marginLeft: "100px",
                   }}
                 >
-                  <LanguageSelect
+                  {/* <LanguageSelect
                     value={targetLang}
                     onChange={(lang) => {
                       setTargetLang(lang);
@@ -1670,17 +1767,24 @@ async function isIncognitoMode() {
                           "Kukna","Kutchi"
                         ].includes(lang.name)
                       ) {
-                        const allowedSource = {
-                          "Zeme Naga": ["English"],
-                          Nagamese: ["English"],
-                          "Kachi Koli": ["Gujarati"],
-                          Surjapuri: ["Hindi"],
-                          "Kukna": ["Gujarati"],
-                          "Kutchi": ["Gujarati"],
-                        }[lang.name];
-                        if (!allowedSource.includes(sourceLang?.name)) {
-                          setSourceLang(null);
+                        // const allowedSource = {
+                        //   "Zeme Naga": ["English"],
+                        //   Nagamese: ["English"],
+                        //   "Kachi Koli": ["Gujarati"],
+                        //   Surjapuri: ["Hindi"],
+                        //   "Kukna": ["Gujarati"],
+                        //   "Kutchi": ["Gujarati"],
+                        // }[lang.name];
+                        // if (!allowedSource.includes(sourceLang?.name)) {
+                        //   setSourceLang(null);
+                        // }
+                        if (lang?.name && FILTER_MAP[lang.name]) {
+                          setFilteredSourceLangs(FILTER_MAP[lang.name]);
+                          if (!FILTER_MAP[lang.name].includes(sourceLang?.name)) setSourceLang(null);
+                        } else {
+                          setFilteredSourceLangs([]);
                         }
+                        
                       }
                       // ✅ Clear any target-side filters (since we’re filtering source only)
                       setFilteredTargetLangs([]);
@@ -1689,7 +1793,34 @@ async function isIncognitoMode() {
                     filterList={filteredTargetLangs}
                     placeholder="Select target language"
                     style={{ width: "60%" }}
-                  />
+                  /> */}
+                  <LanguageSelect
+  value={targetLang}
+  onChange={(lang) => {
+    setTargetLang(lang);
+
+    // ✅ Filter source languages based on target selection
+    if (lang?.name && FILTER_MAP[lang.name]) {
+      setFilteredSourceLangs(FILTER_MAP[lang.name]);
+
+      // Reset source if the current source is not allowed
+      if (!FILTER_MAP[lang.name].includes(sourceLang?.name)) {
+        setSourceLang(null);
+      }
+    } else {
+      // No restriction → show all sources
+      setFilteredSourceLangs([]);
+    }
+
+    // ✅ Clear target-side filters (since we’re filtering source only)
+    setFilteredTargetLangs([]);
+  }}
+  disabled={loading}
+  filterList={filteredTargetLangs}
+  placeholder="Select target language"
+  style={{ width: "60%" }}
+/>
+
                 </div>
               </Col>
             </Row>
