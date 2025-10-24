@@ -30,7 +30,7 @@ function UploadProgressModal({ visible, uploading = [], uploaded = [], skipped =
     >
       <div style={{ marginBottom: 16 }}>
         <Text strong>
-          Uploaded: {uploaded.length + skipped.length}/{total}
+          Uploaded: {uploaded.length}/{total}
         </Text>
       </div>
 
@@ -145,8 +145,8 @@ export default function WordTranslation() {
       License: "CC-BY-NC 4.0",
       Languages: "200 languages"
     },
-    "nllb_finetuned_eng_nzm": {
-      Model: "nllb_finetuned_eng_nzm",
+    "nllb-english-zeme": {
+      Model: "nllb-english-zeme",
       Tasks: "mt, text translation",
       "Language Code Type": "BCP-47",
       DevelopedBy: "Meta",
@@ -169,13 +169,29 @@ export default function WordTranslation() {
       License: "CC-BY-NC 4.0",
       Languages: "Gujarati, Kachi Koli",
     },
-    "nllb-hin-surjapuri": {
-      Model: "nllb-hin-surjapuri",
+    "nllb-hindi-surjapuri": {
+      Model: "nllb-hindi-surjapuri",
       Tasks: "mt, text translation",
       "Language Code Type": "BCP-47",
       DevelopedBy: "Meta",
       License: "CC-BY-NC 4.0",
       Languages: "Hindi, Surjapuri",
+    },
+    "nllb-gujarati-kukna": {
+      Model: "nllb-gujarati-kukna",
+      Tasks: "mt, text translation",
+      "Language Code Type": "BCP-47",
+      DevelopedBy: "Meta",
+      License: "CC-BY-NC 4.0",
+      Languages: "Gujarati, Kukna",
+    },
+    "nllb-gujarati-kutchi": {
+      Model: "nllb-gujarati-kutchi",  
+      Tasks: "mt, text translation",  
+      "Language Code Type": "BCP-47",  
+      DevelopedBy: "Meta",  
+      License: "CC-BY-NC 4.0",  
+      Languages: "Gujarati, Kutchi",  
     },
   };
 
@@ -334,7 +350,7 @@ export default function WordTranslation() {
         notificationApi.info({
           key: "upload-book-info", // 👈 unique key prevents duplicate
           message: "Info",
-          description: "No books found. Please upload books to start translation.",
+          description: "No books Added. Please upload books to start translation.",
           placement: "top",
           duration: 3,
         });
@@ -385,29 +401,41 @@ export default function WordTranslation() {
     let modelToUse = "nllb-600M"; // default
   
     const isEngNzemePair =
-      (src === "eng_Latn" && tgt === "nzm_Latn") ||
-      (src === "nzm_Latn" && tgt === "eng_Latn");
+      (src === "eng_Latn" && tgt === "nzm_Latn")
   
     const isEngNagPair =
       (src === "eng_Latn" && tgt === "nag_Latn") ||
       (src === "nag_Latn" && tgt === "eng_Latn");
   
     const isGujGjkPair =
-      (src === "guj_Gujr" && tgt === "gjk_Gujr") ||
-      (src === "gjk_Gujr" && tgt === "guj_Gujr");
+      (src === "guj_Gujr" && tgt === "gjk_Gujr") 
   
     const isHinSjpPair =
       (src === "hin_Deva" && tgt === "sjp_Deva") ||
       (src === "sjp_Deva" && tgt === "hin_Deva");
-  
+    
+    const isGujKuknaPair =
+      (src === "guj_Gujr" && tgt === "kex_Gujr") ||
+      (src === "kex_Gujr" && tgt === "guj_Gujr");
+
+    const isGujKutchiPair = 
+      (src === "guj_Gujr" && tgt === "kfr_Gujr") ||
+      (src === "kfr_Gujr" && tgt === "guj_Gujr");
     if (isEngNzemePair) {
-      modelToUse = "nllb_finetuned_eng_nzm";
+      modelToUse = "nllb-english-zeme";
     } else if (isEngNagPair) {
       modelToUse = "nllb-english-nagamese";
     } else if (isGujGjkPair) {
       modelToUse = "nllb-gujrathi-koli_kachchi";
     } else if (isHinSjpPair) {
-      modelToUse = "nllb-hin-surjapuri";
+      modelToUse = "nllb-hindi-surjapuri";
+    } else if (isGujKuknaPair)
+    {
+      modelToUse="nllb-gujarati-kukna";
+    }
+    else if (isGujKutchiPair)
+    {
+      modelToUse="nllb-gujarati-kutchi";
     }
   
     setSelectedModel(modelToUse);
@@ -481,7 +509,7 @@ export default function WordTranslation() {
           if (refreshedBooks.length === 0) {
             notificationApi.info({
               message: "No Books Found",
-              description: "No books found. Please upload books to start translation.",
+              description: "No books Added. Please upload books to start translation.",
               placement: "top",
               duration: 4,
             });
@@ -1205,9 +1233,9 @@ export default function WordTranslation() {
      {/* Book Selector with Upload Button */}
      <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
         <div>
-          <Text strong style={{ display: 'block', marginBottom: 4, fontSize: 14 }}>
+          {/* <Text strong style={{ display: 'block', marginBottom: 4, fontSize: 14 }}>
             Select Book
-          </Text>
+          </Text> */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Select
               className="custom-book-dropdown"
@@ -1402,17 +1430,17 @@ export default function WordTranslation() {
         valid: true, // always valid fallback
       },
       {
-        label: "nllb_finetuned_eng_nzm",
-        value: "nllb_finetuned_eng_nzm",
-        tooltip: "This model ONLY supports English ↔ Zeme Naga.",
+        label: "nllb-english-zeme",
+        value: "nllb-english-zeme",
+        tooltip: "This model only supports English -> Zeme Naga.",
         valid:
-          (src === "eng_Latn" && tgt === "nzm_Latn") ||
-          (src === "nzm_Latn" && tgt === "eng_Latn"),
+          (src === "eng_Latn" && tgt === "nzm_Latn")
+          
       },
       {
         label: "nllb-english-nagamese",
         value: "nllb-english-nagamese",
-        tooltip: "This model ONLY supports English ↔ Nagamese.",
+        tooltip: "This model only supports English ↔ Nagamese.",
         valid:
           (src === "eng_Latn" && tgt === "nag_Latn") ||
           (src === "nag_Latn" && tgt === "eng_Latn"),
@@ -1420,19 +1448,34 @@ export default function WordTranslation() {
       {
         label: "nllb-gujrathi-koli_kachchi",
         value: "nllb-gujrathi-koli_kachchi",
-        tooltip: "This model ONLY supports Gujarati ↔ Kachi Koli.",
+        tooltip: "This model only supports Gujarati -> Kachi Koli.",
         valid:
-          (src === "guj_Gujr" && tgt === "gjk_Gujr") ||
-          (src === "gjk_Gujr" && tgt === "guj_Gujr"),
+          (src === "guj_Gujr" && tgt === "gjk_Gujr")
       },
       {
-        label: "nllb-hin-surjapuri",
-        value: "nllb-hin-surjapuri",
-        tooltip: "This model ONLY supports Hindi ↔ Surjapuri.",
+        label: "nllb-hindi-surjapuri",
+        value: "nllb-hindi-surjapuri",
+        tooltip: "This model only supports Hindi ↔ Surjapuri.",
         valid:
           (src === "hin_Deva" && tgt === "sjp_Deva") ||
           (src === "sjp_Deva" && tgt === "hin_Deva"),
       },
+      {
+        label:"nllb-gujarati-kukna",
+        value:"nllb-gujarati-kukna",
+        tooltip:"This model only supports Gujarati ↔ Kukna.",
+        valid:
+          (src === "guj_Gujr" && tgt === "kex_Gujr")||
+          (src === "kex_Gujr" && tgt === "guj_Gujr"),
+      },
+      {
+        label:"nllb-gujarati-kutchi",
+        value:"nllb-gujarati-kutchi",
+        tooltip:"This model only supports Gujarati ↔ Kutchi.",
+        valid:
+          (src === "guj_Gujr" && tgt === "kfr_Gujr")||
+          (src === "kfr_Gujr" && tgt === "guj_Gujr"),
+      }
     ];
 
     return (

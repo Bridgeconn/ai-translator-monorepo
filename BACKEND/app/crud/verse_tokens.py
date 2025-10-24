@@ -238,8 +238,9 @@ def translate_verse_token(db: Session, verse_token_id: UUID,model_name: str = "n
 def manual_update_translation(db: Session, verse_token_id: UUID, project_id: UUID, new_translation: str):
     token_obj = db.query(VerseTokenTranslation).filter(
         VerseTokenTranslation.verse_token_id == verse_token_id,
-        VerseTokenTranslation.project_id == project_id   # ✅ enforce project
+        VerseTokenTranslation.project_id == project_id
     ).first()
+    
     if not token_obj:
         raise HTTPException(status_code=404, detail="Verse token not found for this project")
 
@@ -248,6 +249,11 @@ def manual_update_translation(db: Session, verse_token_id: UUID, project_id: UUI
     db.add(token_obj)
     db.commit()
     db.refresh(token_obj)
+    
+    verify = db.query(VerseTokenTranslation).filter(
+        VerseTokenTranslation.verse_token_id == verse_token_id
+    ).first()
+    
     return token_obj
 
 
@@ -331,8 +337,15 @@ def translate_chunk(db: Session, project_id: UUID, book_name: str, skip: int = 0
 
     raise HTTPException(status_code=504, detail="Timeout waiting for chunk translation.")
 
-
-
+# Hardcoded pairs for fine-tuned models
+HARDCODED_PAIRS = {
+    "nllb-english-zeme": { "src": "eng_Latn", "tgt": "nzm_Latn" },
+    "nllb-english-nagamese": { "src": "eng_Latn", "tgt": "nag_Latn" },
+    "nllb-gujrathi-koli_kachchi": { "src": "guj_Gujr", "tgt": "gjk_Gujr" },
+    "nllb-hindi-surjapuri": { "src": "hin_Deva", "tgt": "sjp_Deva" },
+    "nllb-gujarati-kukna": { "src": "guj_Gujr", "tgt": "kex_Gujr" },
+    "nllb-gujarati-kutchi": { "src": "guj_Gujr", "tgt": "kfr_Gujr" },
+}
 # def translate_chapter(db: Session, project_id: UUID, book_name: str, chapter_number: int, verse_numbers: List[int],model_name: str = "nllb-600M"):
 async def translate_chapter(
     db: Session,
@@ -345,11 +358,13 @@ async def translate_chapter(
     token_ids: Optional[List[UUID]] = None,
     full_regenerate: bool = True
 ):
-    # 1. Fetch tokens for the specific chapter AND specific verses
-    ALLOWED_MODELS = ["nllb-600M", "nllb_finetuned_eng_nzm", "nllb-english-nagamese","nllb-gujrathi-koli_kachchi","nllb-hin-surjapuri"]
-    if model_name not in ALLOWED_MODELS:
-        raise HTTPException(status_code=400, detail=f"Invalid model_name: {model_name}")
-    logger.info(f"Translating chapter {chapter_number} of book '{book_name}' using model: {model_name}")
+    # # 1. Fetch tokens for the specific chapter AND specific verses
+    # ALLOWED_MODELS = ["nllb-600M", "nllb-english-zeme", "nllb-english-nagamese","nllb-gujrathi-koli_kachchi","nllb-hindi-surjapuri","nllb-gujarati-kukna","nllb-gujarati-kutchi"]
+    # if model_name not in ALLOWED_MODELS:
+    #     raise HTTPException(status_code=400, detail=f"Invalid model_name: {model_name}")
+    # logger.info(f"Translating chapter {chapter_number} of book '{book_name}' using model: {model_name}")
+    if not model_name or not isinstance(model_name, str):
+     raise HTTPException(status_code=400, detail="Invalid model_name")
 
     query = (
         db.query(VerseTokenTranslation)
@@ -374,16 +389,40 @@ async def translate_chapter(
         raise HTTPException(status_code=404, detail="No tokens found for this selection.")
 
     # 2. Project + language info
-    project = db.query(Project).filter(Project.project_id == project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found.")
+    # project = db.query(Project).filter(Project.project_id == project_id).first()
+    # if not project:
+    #     raise HTTPException(status_code=404, detail="Project not found.")
 
-    source_obj = db.query(Source).filter(Source.source_id == project.source_id).first()
-    source_lang = db.query(Language).filter(Language.language_id == source_obj.language_id).first()
-    target_lang = db.query(Language).filter(Language.language_id == project.target_language_id).first()
+    # source_obj = db.query(Source).filter(Source.source_id == project.source_id).first()
+    # source_lang = db.query(Language).filter(Language.language_id == source_obj.language_id).first()
+    # target_lang = db.query(Language).filter(Language.language_id == project.target_language_id).first()
 
-    if not source_lang or not target_lang:
-        raise HTTPException(status_code=404, detail="Languages not found.")
+    # if not source_lang or not target_lang:
+    #     raise HTTPException(status_code=404, detail="Languages not found.")
+     # Determine source and target languages
+    if model_name == "nllb-600M":
+        # Use project languages
+        project = db.query(Project).filter(Project.project_id == project_id).first()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found.")
+
+        source_obj = db.query(Source).filter(Source.source_id == project.source_id).first()
+        source_lang = db.query(Language).filter(Language.language_id == source_obj.language_id).first()
+        target_lang = db.query(Language).filter(Language.language_id == project.target_language_id).first()
+
+        if not source_lang or not target_lang:
+            raise HTTPException(status_code=404, detail="Languages not found.")
+
+        src_code = source_lang.BCP_code
+        tgt_code = target_lang.BCP_code
+    else:
+        # Use hardcoded pair
+        pair = HARDCODED_PAIRS.get(model_name)
+        if not pair:
+            raise HTTPException(status_code=400, detail=f"No hardcoded language pair for model {model_name}")
+        src_code = pair["src"]
+        tgt_code = pair["tgt"]
+
 
     # 3. Prepare request - only for the filtered tokens
     texts = [t.token_text for t in tokens]
@@ -396,12 +435,16 @@ async def translate_chapter(
 
     # url = (f"{VACHAN_TRANSLATE_URL}?device=cpu&model_name={VACHAN_MODEL_NAME}"
     #        f"&source_language={source_lang.BCP_code}&target_language={target_lang.BCP_code}")
-    url = (f"{VACHAN_TRANSLATE_URL}?device=cpu"
-       f"&model_name={model_name}"
-       f"&source_language={source_lang.BCP_code}"
-       f"&target_language={target_lang.BCP_code}")
-
-
+    # url = (f"{VACHAN_TRANSLATE_URL}?device=cpu"
+    #    f"&model_name={model_name}"
+    #    f"&source_language={source_lang.BCP_code}"
+    #    f"&target_language={target_lang.BCP_code}")
+    url = (
+        f"{VACHAN_TRANSLATE_URL}?device=cpu"
+        f"&model_name={model_name}"
+        f"&source_language={src_code}"
+        f"&target_language={tgt_code}"
+    )
     # 4. Send translation request
     resp = httpx.post(url, json=texts, headers=headers)
     resp.raise_for_status()

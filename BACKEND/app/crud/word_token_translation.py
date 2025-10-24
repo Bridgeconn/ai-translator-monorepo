@@ -95,6 +95,15 @@ def generate_tokens_batch(db: Session, project_id: UUID, book_id: UUID,model_nam
             # Raise explicit error so FastAPI route can catch it
             raise HTTPException(status_code=502, detail="Translation server failed")
     return translated_tokens
+HARDCODED_PAIRS = {
+    "nllb-english-zeme": {"src": "eng_Latn", "tgt": "nzm_Latn"},
+    "nllb-english-nagamese": {"src": "eng_Latn", "tgt": "nag_Latn"},
+    "nllb-gujrathi-koli_kachchi": {"src": "guj_Gujr", "tgt": "gjk_Gujr"},
+    "nllb-hindi-surjapuri": {"src": "hin_Deva", "tgt": "sjp_Deva"},
+    "nllb-gujarati-kukna": {"src": "guj_Gujr", "tgt": "kex_Gujr"},
+    "nllb-gujarati-kutchi": {"src": "guj_Gujr", "tgt": "kfr_Gujr"},
+}
+
 def generate_tokens_batch_stream(
     db: Session, project_id: UUID, book_id: UUID,model_name: str = "nllb-600M", token_ids: list[UUID] = None
 ) -> Generator[str, None, None]:
@@ -103,6 +112,12 @@ def generate_tokens_batch_stream(
     Yields Server-Sent Events (SSE) strings per token immediately after translation.
     Handles errors per batch and sends proper error messages to frontend.
     """
+    import logging
+    logger = logging.getLogger(__name__)
+
+    # ✅ Log project, book, and model
+    logger.info(f"Starting batch stream for project: {project_id}, book: {book_id}, model: {model_name}")
+
     # 1️⃣ Validate project
     project = db.query(Project).filter(Project.project_id == project_id).first()
     if not project:
@@ -126,9 +141,21 @@ def generate_tokens_batch_stream(
             Language.language_id == project.target_language_id
         ).first()
 
-    source_lang_code = source_lang_obj.BCP_code if source_lang_obj else None
-    target_lang_code = target_lang_obj.BCP_code if target_lang_obj else None
+    # source_lang_code = source_lang_obj.BCP_code if source_lang_obj else None
+    # target_lang_code = target_lang_obj.BCP_code if target_lang_obj else None
+    if model_name == "nllb-600M":
+     source_lang_code = source_lang_obj.BCP_code if source_lang_obj else None
+     target_lang_code = target_lang_obj.BCP_code if target_lang_obj else None
+    else:
+     pair = HARDCODED_PAIRS.get(model_name)
+     if not pair:
+        yield f"data: {json.dumps({'error': f'No hardcoded language pair for model {model_name}'})}\n\n"
+        return
+     source_lang_code = pair["src"]
+     target_lang_code = pair["tgt"]
 
+     # ✅ Log language codes
+    logger.info(f"Source lang code: {source_lang_code}, Target lang code: {target_lang_code}")
     if not source_lang_code or not target_lang_code:
         yield f"data: {json.dumps({'error': 'Source or target language not found'})}\n\n"
         return
@@ -168,6 +195,7 @@ def generate_tokens_batch_stream(
     for i in range(0, total, batch_size):
         batch = tokens[i:i+batch_size]
         texts = [t.token_text for t in batch]
+        logger.info(f"Sending batch {i//batch_size + 1} to Vachan: texts={texts}, model={model_name}")
 
         try:
             job_id = request_translation(token, texts, source_lang_code, target_lang_code,model_name=model_name)
@@ -193,14 +221,18 @@ def generate_tokens_batch_stream(
                 yield f"data: {json.dumps(payload)}\n\n"
 
         except Exception as e:
-            #  Stream error to frontend and stop
+            import traceback
+            full_error = traceback.format_exc()  # captures full stack trace
+            logger.error(f"Batch {i//batch_size + 1} failed: {full_error}")
+
             error_payload = {
-                "error": f"Batch {i//batch_size + 1} failed: {str(e)}",
-                "finished": False
-            }
+        "error": f"Batch {i//batch_size + 1} failed: {str(e)}",  # keep str(e) for frontend
+        "details": full_error,  # optional, for internal debugging
+        "finished": False
+    }
             yield f"data: {json.dumps(error_payload)}\n\n"
             success = False
-            return  # 🚨 exit immediately, don't send "finished": true
+            return
     # 7️⃣ Final "done" event
     if success :
      yield f"data: {json.dumps({'done': total, 'total': total, 'finished': True})}\n\n"
