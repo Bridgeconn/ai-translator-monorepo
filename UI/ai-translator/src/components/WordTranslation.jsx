@@ -3,7 +3,7 @@ import { Row, Col, Select, Card, Input, Typography, Button, message, Breadcrumb,
 import { CopyOutlined, DownloadOutlined, ExclamationCircleOutlined,UploadOutlined,InfoCircleOutlined,DeleteOutlined} from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { projectsAPI, wordTokenAPI, booksAPI, languagesAPI, sourcesAPI, draftAPI } from './api.js';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link , useNavigate, useLocation } from 'react-router-dom';
 import api from '../api';
 
 
@@ -84,11 +84,16 @@ function UploadProgressModal({ visible, uploading = [], uploaded = [], skipped =
   );
 }
 export default function WordTranslation() {
-  const { projectId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const searchParams = new URLSearchParams(location.search);
+  const [urlBookId , setUrlBookId] = useState(searchParams.get("book"));
   const [selectedBook, setSelectedBook] = useState(null);
+  const initialTab = searchParams.get("tab") || "editor";
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const { projectId } = useParams();
   const [tokens, setTokens] = useState([]);
   const [loadingTokens, setLoadingTokens] = useState(false);
-  const [activeTab, setActiveTab] = useState("editor");
   const [sourceText, setSourceText] = useState("");
   const [sourceLang, setSourceLang] = useState({ name: "Loading...", BCP_code: "" });
   const [targetLang, setTargetLang] = useState({ name: "Unknown", BCP_code: "" });
@@ -413,6 +418,42 @@ export default function WordTranslation() {
     setSelectedModel(modelToUse);
     console.log(`🔁 Auto-selected model for ${src} ↔ ${tgt}: ${modelToUse}`);
   }, [sourceLang, targetLang]);
+  useEffect(() => {
+    if(projectBooks.length > 0 && !selectedBook && urlBookId) {
+      const bookToSelect = projectBooks.find((b) => String(b.book_id)=== String(urlBookId));
+      if(bookToSelect) {
+        const bookId = bookToSelect.book_id;
+        const selected =bookToSelect;
+        setSelectedBook(selected);
+        setSourceText(selected?.usfm_content || "No source content available");
+        setTranslatedCount(0);
+        setHasGenerated(false); // reset for new book
+
+        setTokens([]);
+        setDraftContent("");
+        setOriginalDraft("");
+        setEditedTokens({});
+        setIsDraftEdited(false);
+        setCurrentDraft(null);
+        setLoadingTokens(false);
+        setIsGenerating(false);
+        
+        if(activeTab === "draft") {
+          fetchDraftIfExists(selected);
+        }
+        if (bookId) {
+          fetchTokens(bookId);
+        }
+      }
+      else{
+        const newSearchParams = new URLSearchParams(location.search);
+        newSearchParams.delete("bookId");
+        navigate({
+          search: newSearchParams.toString(),
+        }, { replace: true });
+      }
+    }[projectBooks,urlBookId,selectedBook,activeTab,location.search,navigate];
+  });
   //  -------- Fetch or Generate tokens ------------------
   const handleDeleteBook = () => {
     console.log("handleDeleteBook called");
@@ -559,7 +600,12 @@ export default function WordTranslation() {
         placement: "top",
       });
     }
-
+    const newSearchParams = new URLSearchParams(location.search);
+    newSearchParams.set("book", bookId);
+    navigate({
+      
+      search:newSearchParams.toString()
+    }, { replace: true });
     const selected = projectBooks.find((b) => b.book_id === bookId);
     setSelectedBook(selected);
     setSourceText(selected?.usfm_content || "No source content available");
@@ -1086,7 +1132,15 @@ export default function WordTranslation() {
       messageApi.info("Draft changes discarded.");
     }
   };
-
+  const updateUrlAndTab = (tab) => {
+    // 1. Update URL
+    const newSearchParams = new URLSearchParams(location.search);
+    newSearchParams.set('tab', tab);
+    navigate({ search: newSearchParams.toString() }, { replace: true });
+    
+    // 2. Update state
+    setActiveTab(tab);
+}
 
   const attemptSetActiveTab = (tab) => {
     if (tab === activeTab) return;
@@ -1102,8 +1156,7 @@ export default function WordTranslation() {
         onOk: async () => {
           try {
             await handleSaveAll();
-            setActiveTab(tab);
-          } catch (err) {
+            updateUrlAndTab(tab);          } catch (err) {
             // handleSaveAll already shows messages
           }
         },
@@ -1116,8 +1169,7 @@ export default function WordTranslation() {
             delete u.draft_edited;
             return u;
           });
-          setActiveTab(tab);
-        },
+          updateUrlAndTab(tab);        },
       });
       return;
     }
@@ -1133,8 +1185,7 @@ export default function WordTranslation() {
         onOk: async () => {
           try {
             await handleSaveAll();
-            setActiveTab(tab);
-          } catch (err) { }
+            updateUrlAndTab(tab);          } catch (err) { }
         },
         onCancel: () => {
           // Discard editor edits and switch
@@ -1145,14 +1196,12 @@ export default function WordTranslation() {
             }))
           );
           setEditedTokens({});
-          setActiveTab(tab);
-        },
+          updateUrlAndTab(tab);        },
       });
       return;
     }
 
-    setActiveTab(tab);
-  };
+    updateUrlAndTab(tab);  };
   // if (projectLoading) return <Spin />;
   if (projectLoading) return <div>Loading project...</div>;
   if (projectError) return <div>Error loading project</div>;

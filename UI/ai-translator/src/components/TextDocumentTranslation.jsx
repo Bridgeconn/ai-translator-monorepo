@@ -27,7 +27,7 @@ import {
   DeleteOutlined,
   ExclamationCircleOutlined,
 } from "@ant-design/icons";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link , useNavigate, useLocation} from "react-router-dom";
 import { textDocumentAPI } from "./api.js";
 import DownloadDraftButton from "./DownloadDraftButton";
 import { InfoCircleOutlined } from "@ant-design/icons";
@@ -256,6 +256,8 @@ function simpleTranslation(sourceText, csvData) {
 
 export default function TextDocumentTranslation() {
   const { projectId } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [project, setProject] = useState(null);
   const [projectFiles, setProjectFiles] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -363,6 +365,20 @@ export default function TextDocumentTranslation() {
     if (projectId) fetchData();
   }, [projectId]);
   useEffect(() => {
+    if (projectFiles.length === 0) return;
+  
+    const params = new URLSearchParams(location.search);
+    const fileId = params.get("fileId");
+  
+    if (fileId && projectFiles.some((f) => f.id === fileId)) {
+      handleFileChange(fileId);
+    } else if (!selectedFile && projectFiles.length > 0) {
+      // fallback: select the first file if none in URL
+      handleFileChange(projectFiles[0].id);
+    }
+  }, [location.search, projectFiles]);
+  
+  useEffect(() => {
     if (!project?.source_language?.code || !project?.target_language?.code) return;
   
     const src = project.source_language.code;
@@ -403,6 +419,8 @@ export default function TextDocumentTranslation() {
     setTargetText(file.target_text || "");
     setIsEdited(false);
     setIsSourceEditing(false);
+    // Update URL with selected file
+  navigate(`?fileId=${fileId}`, { replace: true });
 
     // Fetch language names for selected file
     try {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import {
   Button,
   Card,
@@ -140,6 +140,9 @@ function UploadProgressModal({
 
 const VerseTranslationPage = () => {
   const { projectId } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
   const [project, setProject] = useState(null);
   const [books, setBooks] = useState([]);
   const [selectedBook, setSelectedBook] = useState("all");
@@ -169,6 +172,7 @@ const VerseTranslationPage = () => {
   const [originalDraft, setOriginalDraft] = useState(""); // NEW
   const [selectedModel, setSelectedModel] = useState("nllb-600M");
   const abortControllerRef = useRef(null);
+  const isInitialLoad = useRef(true);
   const [cancelTranslation, setCancelTranslation] = useState(false);
   const [draftChapter, setDraftChapter] = useState(null);
 
@@ -228,6 +232,100 @@ const VerseTranslationPage = () => {
     },
     { label: "nllb-hin-surjapuri", value: "nllb-hin-surjapuri" },
   ];
+  // 🆕 Helper function to update URL and session storage
+const updateUrlAndStorage = (book, chapter, tab) => {
+  const params = new URLSearchParams();
+  
+  if (book && book !== "all") {
+    params.set("book", book);
+  }
+  
+  if (chapter) {
+    params.set("chapter", chapter);
+  }
+  
+  if (tab && tab !== "editor") {
+    params.set("tab", tab);
+  }
+
+  // Update URL without page reload
+  const newUrl = params.toString() 
+    ? `${location.pathname}?${params.toString()}`
+    : location.pathname;
+  
+  navigate(newUrl, { replace: true });
+
+  // Also save to sessionStorage as backup
+  sessionStorage.setItem(`project_${projectId}_view`, JSON.stringify({
+    book: book || "all",
+    chapter: chapter || null,
+    tab: tab || "editor"
+  }));
+};
+
+// 🆕 Helper function to restore state from URL or session storage
+const restoreViewState = () => {
+  // First try URL parameters
+  const bookParam = searchParams.get("book");
+  const chapterParam = searchParams.get("chapter");
+  const tabParam = searchParams.get("tab");
+
+  if (bookParam || chapterParam || tabParam) {
+    return {
+      book: bookParam || "all",
+      chapter: chapterParam ? parseInt(chapterParam) : null,
+      tab: tabParam || "editor"
+    };
+  }
+
+  // Fallback to session storage
+  const stored = sessionStorage.getItem(`project_${projectId}_view`);
+  if (stored) {
+    try {
+      return JSON.parse(stored);
+    } catch (e) {
+      console.error("Failed to parse stored view state:", e);
+    }
+  }
+
+  // Default state
+  return {
+    book: "all",
+    chapter: null,
+    tab: "editor"
+  };
+};
+// 🆕 Initialize state from URL/storage AFTER books are loaded
+useEffect(() => {
+  // Only restore state once books are available and on initial load
+  if (books.length > 0 && isInitialLoad.current) {
+    const viewState = restoreViewState();
+    
+    if (viewState.book !== "all") {
+      const bookExists = books.some(b => b.book_name === viewState.book);
+      if (bookExists) {
+        setSelectedBook(viewState.book);
+        // Store the chapter to restore later
+        if (viewState.chapter) {
+          sessionStorage.setItem(`project_${projectId}_restore_chapter`, viewState.chapter);
+        }
+      }
+    }
+    
+    if (viewState.tab) {
+      setActiveTab(viewState.tab);
+    }
+    
+    isInitialLoad.current = false; // Mark initial load as complete
+  }
+}, [books]);
+// 🆕 Update URL when state changes
+useEffect(() => {
+  // Only update URL after initial load is complete
+  if (project && books.length > 0 && !isInitialLoad.current) {
+    updateUrlAndStorage(selectedBook, selectedChapter, activeTab);
+  }
+}, [selectedBook, selectedChapter, activeTab]);
   useEffect(() => {
     if (!project) return;
 
@@ -1140,14 +1238,26 @@ const VerseTranslationPage = () => {
       const bookObj = books.find((b) => b.book_name === selectedBook);
       if (bookObj) {
         fetchChaptersByBook(bookObj.book_id).then(() => {
-          setSelectedChapter(null); // reset first
-          // set chapter AFTER tokens are ensured
-          ensureBookTokens(selectedBook).then(() => {
-            setSelectedChapter(1); // trigger tokens fetch in chapter effect
-          });
+          // Check if we need to restore a chapter from session storage
+          const savedChapter = sessionStorage.getItem(`project_${projectId}_restore_chapter`);
+          
+          if (savedChapter) {
+            // Restore the chapter from URL/storage
+            const chapterNum = parseInt(savedChapter);
+            ensureBookTokens(selectedBook).then(() => {
+              setSelectedChapter(chapterNum);
+              // Clear the saved chapter after restoring
+              sessionStorage.removeItem(`project_${projectId}_restore_chapter`);
+            });
+          } else {
+            // Normal behavior: set to chapter 1
+            ensureBookTokens(selectedBook).then(() => {
+              setSelectedChapter(1);
+            });
+          }
         });
       }
-
+  
       setTokens([]);
       setIsTokenized(false);
       fetchRawBook(selectedBook);
@@ -1159,7 +1269,6 @@ const VerseTranslationPage = () => {
       setRawBookContent("");
     }
   }, [selectedBook]);
-
   useEffect(() => {
     if (selectedBook !== "all" && selectedChapter) {
       fetchTokensForSelection(selectedBook, selectedChapter);
