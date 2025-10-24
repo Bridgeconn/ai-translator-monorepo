@@ -24,7 +24,9 @@ SUPPORTED_MODELS = [
     "nllb_finetuned_eng_nzm",
     "nllb-english-nagamese",
     "nllb-gujrathi-koli_kachchi",
-    "nllb-hin-surjapuri"
+    "nllb-hindi-surjapuri",
+    "nllb-gujarati-kukna",
+    "nllb-gujarati-kutchi"
 ]
 
 DEFAULT_MODEL = "nllb-600M"

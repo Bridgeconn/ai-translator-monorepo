@@ -128,11 +128,11 @@ function UploadProgressModal({
       )}
 
       {/* {isComplete && ( */}
-        <div style={{ textAlign: "right", marginTop: 16 }}>
-          <Button type="primary" onClick={onClose}>
-            Close
-          </Button>
-        </div>
+      <div style={{ textAlign: "right", marginTop: 16 }}>
+        <Button type="primary" onClick={onClose}>
+          Close
+        </Button>
+      </div>
       {/* )} */}
     </Modal>
   );
@@ -142,7 +142,7 @@ const VerseTranslationPage = () => {
   const { projectId } = useParams();
   const [project, setProject] = useState(null);
   const [books, setBooks] = useState([]);
-  const [selectedBook, setSelectedBook] = useState("all");
+  const [selectedBook, setSelectedBook] = useState(null);
   const [chapters, setChapters] = useState([]);
   const [selectedChapter, setSelectedChapter] = useState(null);
 
@@ -185,8 +185,8 @@ const VerseTranslationPage = () => {
       License: "CC-BY-NC 4.0",
       Languages: "200 languages",
     },
-    nllb_finetuned_eng_nzm: {
-      Model: "nllb_finetuned_eng_nzm",
+    "nllb-english-zeme": {
+      Model: "nllb-english-zeme",
       Tasks: "mt, text translation",
       "Language Code Type": "BCP-47",
       DevelopedBy: "Meta",
@@ -209,24 +209,40 @@ const VerseTranslationPage = () => {
       License: "CC-BY-NC 4.0",
       Languages: "Gujarati, Kachi Koli",
     },
-    "nllb-hin-surjapuri": {
-      Model: "nllb-hin-surjapuri",
+    "nllb-hindi-surjapuri": {
+      Model: "nllb-hindi-surjapuri",
       Tasks: "mt, text translation",
       "Language Code Type": "BCP-47",
       DevelopedBy: "Meta",
       License: "CC-BY-NC 4.0",
       Languages: "Hindi, Surjapuri",
     },
+    "nllb-gujarati-kukna": {
+      tasks: "mt, text translation",
+      languageCodeType: "BCP-47",
+      developedBy: "Meta",
+      license: "CC-BY-NC 4.0",
+      languages: "Gujarati, Kukna (gjk_Gujr)",
+    },
+    "nllb-gujarati-kutchi": {
+      tasks: "mt, text translation",
+      languageCodeType: "BCP-47",
+      developedBy: "Meta",
+      license: "CC-BY-NC 4.0",
+      languages: "Gujarati, Kutchi (gjk_Gujr)",
+    },
   };
   const availableModels = [
     { label: "nllb-600M", value: "nllb-600M" },
-    { label: "nllb_finetuned_eng_nzm", value: "nllb_finetuned_eng_nzm" },
+    { label: "nllb-english-zeme", value: "nllb-english-zeme" },
     { label: "nllb-english-nagamese", value: "nllb-english-nagamese" },
     {
       label: "nllb-gujrathi-koli_kachchi",
       value: "nllb-gujrathi-koli_kachchi",
     },
-    { label: "nllb-hin-surjapuri", value: "nllb-hin-surjapuri" },
+    { label: "nllb-hindi-surjapuri", value: "nllb-hindi-surjapuri" },
+    { label: "nllb-gujarati-kukna", value: "nllb-gujarati-kukna" },
+    { label: "nllb-gujarati-kutchi", value: "nllb-gujarati-kutchi" },
   ];
   useEffect(() => {
     if (!project) return;
@@ -234,28 +250,31 @@ const VerseTranslationPage = () => {
     const src = (project.source_language_name || "").toLowerCase().trim();
     const tgt = (project.target_language_name || "").toLowerCase().trim();
     let forcedModel = null;
-    if (
-      (src === "english" && tgt === "zeme naga") ||
-      (src === "zeme naga" && tgt === "english")
-    ) {
-      forcedModel = "nllb_finetuned_eng_nzm";
+    if (src === "english" && tgt === "zeme naga") {
+      forcedModel = "nllb-english-zeme";
     } else if (
       (src === "english" && tgt === "nagamese") ||
       (src === "nagamese" && tgt === "english")
     ) {
       forcedModel = "nllb-english-nagamese";
-    } else if (
-      (src === "gujarati" && tgt === "kachi koli") ||
-      (src === "kachi koli" && tgt === "gujarati")
-    ) {
+    } else if (src === "gujarati" && tgt === "kachi koli") {
       forcedModel = "nllb-gujrathi-koli_kachchi";
     } else if (
       (src === "hindi" && tgt === "surjapuri") ||
       (src === "surjapuri" && tgt === "hindi")
     ) {
-      forcedModel = "nllb-hin-surjapuri";
+      forcedModel = "nllb-hindi-surjapuri";
+    } else if (
+      (src === "gujarati" && tgt === "kukna") ||
+      (src === "kukna" && tgt === "gujarati")
+    ) {
+      forcedModel = "nllb-gujarati-kukna";
+    } else if (
+      (src === "gujarati" && tgt === "kutchi") ||
+      (src === "kutchi" && tgt === "gujarati")
+    ) {
+      forcedModel = "nllb-gujarati-kutchi";
     }
-
     if (forcedModel) {
       setSelectedModel(forcedModel);
     } else {
@@ -300,7 +319,7 @@ const VerseTranslationPage = () => {
           if (m && m[1]) {
             return resolve(m[1].replace(/[^0-9A-Za-z]/g, "").toUpperCase());
           }
-        } catch { }
+        } catch {}
         const name = file.name.split(".")[0] || file.name;
         resolve(name.replace(/[^0-9A-Za-z]/g, "").toUpperCase());
       };
@@ -416,7 +435,7 @@ const VerseTranslationPage = () => {
       // Show message only if empty
       if (bookData.length === 0) {
         message.info({
-          content: "No books found. Please upload books to start translation.",
+          content: "No books Adeed. Please upload books to start translation.",
           key: "no-books", // prevents duplicate message stacking
           duration: 3,
         });
@@ -427,7 +446,7 @@ const VerseTranslationPage = () => {
       // Handle 404 (no data found)
       if (err.response?.status === 404) {
         message.info({
-          content: "No books found. Please upload books to start translation.",
+          content: "No books Added. Please upload books to start translation.",
           key: "no-books", // same key — prevents repeat popup
           duration: 3,
         });
@@ -468,7 +487,7 @@ const VerseTranslationPage = () => {
     console.log("selectedBook:", selectedBook);
     console.log("project.source_id:", project?.source_id);
 
-    if (!selectedBook || selectedBook === "all") {
+    if (!selectedBook || selectedBook === "null") {
       message.warning("No book selected to delete");
       return;
     }
@@ -507,8 +526,8 @@ const VerseTranslationPage = () => {
           // Refresh the books list from source
           await fetchAvailableBooks(project.source_id);
 
-          // Reset selection to "all"
-          setSelectedBook("all");
+          // Reset selection to null
+          setSelectedBook(null);
           setSelectedChapter(null);
           setTokens([]);
           setChapters([]);
@@ -519,7 +538,8 @@ const VerseTranslationPage = () => {
           console.error("Failed to delete book:", err);
           console.error("Error details:", err.response);
           message.error(
-            `Failed to delete book: ${err.response?.data?.detail || err.message || "Unknown error"
+            `Failed to delete book: ${
+              err.response?.data?.detail || err.message || "Unknown error"
             }`
           );
         }
@@ -559,7 +579,7 @@ const VerseTranslationPage = () => {
 
   // ---------- Fetch tokens for current selection (book and optional chapter) ----------
   const fetchTokensForSelection = async (bookName, chapterNumber = null) => {
-    if (!bookName || bookName === "all") {
+    if (!bookName || bookName === null) {
       // Project-level view
       setLoadingSource(true);
       try {
@@ -574,7 +594,8 @@ const VerseTranslationPage = () => {
             t.verse_token_id ||
             t.id ||
             t.token_id ||
-            `${t.book_name || "book"}-${t.chapter_number || 0}-${t.verse_number || i
+            `${t.book_name || "book"}-${t.chapter_number || 0}-${
+              t.verse_number || i
             }`,
           verse_translated_text:
             t.verse_translated_text || t.translated_text || "",
@@ -677,7 +698,8 @@ const VerseTranslationPage = () => {
           t.verse_token_id ||
           t.id ||
           t.token_id ||
-          `${bookName}-${chapterNumber || t.chapter_number || 0}-${t.verse_number || i
+          `${bookName}-${chapterNumber || t.chapter_number || 0}-${
+            t.verse_number || i
           }`,
         verse_translated_text:
           t.verse_translated_text || t.translated_text || "",
@@ -717,35 +739,54 @@ const VerseTranslationPage = () => {
   // ---------- Manual Save ----------
   const handleManualUpdate = async (tokenId, newText) => {
     try {
+      console.log("🔍 Frontend: Saving manual update", {
+        tokenId,
+        newText: newText?.substring(0, 50),
+        projectId,
+      });
+
       // 1. Update verse token in DB
       const res = await api.patch(
         `/verse_tokens/manual-update/${tokenId}?project_id=${projectId}`,
         {
-          translated_text: newText, // body
+          translated_text: newText,
         }
       );
-
       // 2. Update local tokens state
       setTokens((prev) =>
         prev.map((t) =>
-          t.verse_token_id === tokenId ? { ...t, ...res.data.data } : t
+          t.verse_token_id === tokenId
+            ? {
+                ...t,
+                verse_translated_text: newText,
+                ...res.data.data,
+              }
+            : t
         )
       );
-      setServerDraft((prev) => {
-        if (!prev) return prev;
-        // Optional: update the verse in the draft content if needed
-        return prev.replace(/oldVerseText/, newText);
+
+      // 3. Also update editedTokens to mark it as saved
+      setEditedTokens((prev) => {
+        const copy = { ...prev };
+        delete copy[tokenId]; // Remove from edited state
+        return copy;
       });
 
-      message.success("Saved the verse and updated the draft!");
+      message.success("Saved the verse!");
+
+      // // 4. Optional: Force refresh the draft if on draft tab
+      // if (activeTab === 'draft') {
+      //   await updateServerDraft();
+      // }
     } catch (err) {
-      console.error("Manual update error:", err);
-      message.error("Failed to update manually");
+      message.error(
+        `Failed to update: ${err.response?.data?.detail || err.message}`
+      );
     }
   };
 
   const handleTranslateAllChunks = async () => {
-    if (selectedBook === "all") {
+    if (selectedBook === null) {
       message.info("Please select a specific book to translate.");
       return;
     }
@@ -777,7 +818,8 @@ const VerseTranslationPage = () => {
               t.verse_token_id ||
               t.id ||
               t.token_id ||
-              `${selectedBook}-${t.chapter_number || selectedChapter || "all"
+              `${selectedBook}-${
+                t.chapter_number || selectedChapter || null
               }-${t.verse_number || i}-${skip}`,
             verse_translated_text:
               t.verse_translated_text || t.translated_text || "",
@@ -822,16 +864,16 @@ const VerseTranslationPage = () => {
   };
   // chapter Translate---------------------------------
   const handleTranslateChapter = async (fullRegenerate = true) => {
-    if (selectedBook === "all" || !selectedChapter) {
+    if (selectedBook === null || !selectedChapter) {
       message.info("Please select a specific book and chapter to translate.");
       return;
     }
-  // ✅ Only reset tokens if fullRegenerate is true
-  if (fullRegenerate) {
-    setTokens((prev) =>
-      prev.map((tok) => ({ ...tok, verse_translated_text: "" }))
-    );
-  }
+    // ✅ Only reset tokens if fullRegenerate is true
+    if (fullRegenerate) {
+      setTokens((prev) =>
+        prev.map((tok) => ({ ...tok, verse_translated_text: "" }))
+      );
+    }
 
     setLoadingTranslate(true);
     setCancelTranslation(false);
@@ -878,7 +920,7 @@ const VerseTranslationPage = () => {
           batch,
           selectedModel,
           controller.signal,
-          fullRegenerate  // <-- pass it here
+          fullRegenerate // <-- pass it here
         );
 
         if (newTokens?.length > 0) {
@@ -892,13 +934,13 @@ const VerseTranslationPage = () => {
               );
               return match
                 ? {
-                  ...tok,
-                  verse_translated_text:
-                    match.verse_translated_text ||
-                    match.translated_text ||
-                    "",
-                  lastUpdated: Date.now(),
-                }
+                    ...tok,
+                    verse_translated_text:
+                      match.verse_translated_text ||
+                      match.translated_text ||
+                      "",
+                    lastUpdated: Date.now(),
+                  }
                 : tok;
             });
             return [...updated]; // <-- ensures React sees a new array
@@ -954,7 +996,8 @@ const VerseTranslationPage = () => {
   // fetch draft from server
 
   const updateServerDraft = async () => {
-    if (!projectId || selectedBook === "all") {
+    console.log("Updating server draft for:", { projectId, selectedBook });
+    if (!projectId || selectedBook === null) {
       setServerDraft("");
       setDraftId(null);
       return;
@@ -993,7 +1036,7 @@ const VerseTranslationPage = () => {
   };
   // useEffect(() => {
   //   // Only fetch draft when Draft tab is active
-  //   if (activeTab === "draft" && selectedBook !== "all") {
+  //   if (activeTab === "draft" && selectedBook !== null) {
   //     updateServerDraft();
   //   }
   // }, [activeTab, selectedBook]);
@@ -1007,18 +1050,18 @@ const VerseTranslationPage = () => {
   }, [tokens]);
   const parseUSFMContent = (content) => {
     if (!content) return {};
-    
+
     const chapters = {};
-    const lines = content.split('\n');
+    const lines = content.split("\n");
     let currentChapter = null;
     let currentContent = [];
-    
-    lines.forEach(line => {
+
+    lines.forEach((line) => {
       const chapterMatch = line.match(/\\c\s+(\d+)/);
       if (chapterMatch) {
         // Save previous chapter if exists
         if (currentChapter !== null) {
-          chapters[currentChapter] = currentContent.join('\n');
+          chapters[currentChapter] = currentContent.join("\n");
         }
         // Start new chapter
         currentChapter = parseInt(chapterMatch[1]);
@@ -1027,48 +1070,48 @@ const VerseTranslationPage = () => {
         currentContent.push(line);
       } else {
         // Header content before first chapter
-        if (!chapters['header']) chapters['header'] = [];
-        chapters['header'].push(line);
+        if (!chapters["header"]) chapters["header"] = [];
+        chapters["header"].push(line);
       }
     });
-    
+
     // Save last chapter
     if (currentChapter !== null) {
-      chapters[currentChapter] = currentContent.join('\n');
+      chapters[currentChapter] = currentContent.join("\n");
     }
-    
+
     // Convert header array to string
-    if (chapters['header']) {
-      chapters['header'] = chapters['header'].join('\n');
+    if (chapters["header"]) {
+      chapters["header"] = chapters["header"].join("\n");
     }
-    
+
     return chapters;
   };
-  
+
   const parsedDraftChapters = useMemo(() => {
     return parseUSFMContent(serverDraft);
   }, [serverDraft]);
-  
+
   const parsedSourceChapters = useMemo(() => {
     return parseUSFMContent(rawBookContent);
   }, [rawBookContent]);
   const currentDraftContent = useMemo(() => {
-    if (!serverDraft) return '';
+    if (!serverDraft) return "";
     if (!draftChapter) return serverDraft; // Show full draft if no chapter selected
-    
-    const header = parsedDraftChapters['header'] || '';
-    const chapterContent = parsedDraftChapters[draftChapter] || '';
-    
+
+    const header = parsedDraftChapters["header"] || "";
+    const chapterContent = parsedDraftChapters[draftChapter] || "";
+
     return header ? `${header}\n\n${chapterContent}` : chapterContent;
   }, [serverDraft, draftChapter, parsedDraftChapters]);
-  
+
   const currentSourceContent = useMemo(() => {
-    if (!rawBookContent) return '';
+    if (!rawBookContent) return "";
     if (!draftChapter) return rawBookContent; // Show full source if no chapter selected
-    
-    const header = parsedSourceChapters['header'] || '';
-    const chapterContent = parsedSourceChapters[draftChapter] || '';
-    
+
+    const header = parsedSourceChapters["header"] || "";
+    const chapterContent = parsedSourceChapters[draftChapter] || "";
+
     return header ? `${header}\n\n${chapterContent}` : chapterContent;
   }, [rawBookContent, draftChapter, parsedSourceChapters]);
   const filteredTokens = showOnlyTranslated
@@ -1136,7 +1179,7 @@ const VerseTranslationPage = () => {
   }, [project]);
 
   useEffect(() => {
-    if (selectedBook !== "all") {
+    if (selectedBook !== null) {
       const bookObj = books.find((b) => b.book_name === selectedBook);
       if (bookObj) {
         fetchChaptersByBook(bookObj.book_id).then(() => {
@@ -1161,7 +1204,7 @@ const VerseTranslationPage = () => {
   }, [selectedBook]);
 
   useEffect(() => {
-    if (selectedBook !== "all" && selectedChapter) {
+    if (selectedBook !== null && selectedChapter) {
       fetchTokensForSelection(selectedBook, selectedChapter);
     }
   }, [selectedBook, selectedChapter]);
@@ -1172,7 +1215,7 @@ const VerseTranslationPage = () => {
     );
   }, [tokens]);
   useEffect(() => {
-    if (activeTab === 'draft' && selectedChapter) {
+    if (activeTab === "draft" && selectedChapter) {
       setDraftChapter(selectedChapter);
     }
   }, [activeTab, selectedChapter]);
@@ -1196,47 +1239,50 @@ const VerseTranslationPage = () => {
         total={totalBooks}
         onClose={() => setUploadProgressOpen(false)}
       />
-       {/* Verse Translation Modal */}
-       <Modal
-  visible={isModalVisible}
-  title="Regenerate Translations"
-  closable={false}
-  onCancel={() => setIsModalVisible(false)}
-  footer={[
-    <Button key="cancel" onClick={() => setIsModalVisible(false)}>Cancel</Button>,
-    <Button
-      key="no"
-      onClick={() => {
-        setIsModalVisible(false);
-        handleTranslateChapter(false); // continue from existing
-      }}
-    >
-      No, Continue
-    </Button>,
-    <Button
-      key="yes"
-      type="primary"
-      danger
-      onClick={() => {
-        setIsModalVisible(false);
-        handleTranslateChapter(true); // full regenerate
-      }}
-    >
-      Yes, Regenerate
-    </Button>
-  ]}
->
-  Do you want to regenerate all translations, or continue from where you left off?
-</Modal>
-  {modalContextHolder}
-  <UploadProgressModal
-    visible={uploadProgressOpen}
-    uploading={uploadingBooks}
-    uploaded={uploadedBooks}
-    skipped={skippedBooks}
-    total={totalBooks}
-    onClose={() => setUploadProgressOpen(false)}
-  />
+      {/* Verse Translation Modal */}
+      <Modal
+        visible={isModalVisible}
+        title="Regenerate Translations"
+        closable={false}
+        onCancel={() => setIsModalVisible(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setIsModalVisible(false)}>
+            Cancel
+          </Button>,
+          <Button
+            key="no"
+            onClick={() => {
+              setIsModalVisible(false);
+              handleTranslateChapter(false); // continue from existing
+            }}
+          >
+            No, Continue
+          </Button>,
+          <Button
+            key="yes"
+            type="primary"
+            danger
+            onClick={() => {
+              setIsModalVisible(false);
+              handleTranslateChapter(true); // full regenerate
+            }}
+          >
+            Yes, Regenerate
+          </Button>,
+        ]}
+      >
+        Do you want to regenerate all translations, or continue from where you
+        left off?
+      </Modal>
+      {modalContextHolder}
+      <UploadProgressModal
+        visible={uploadProgressOpen}
+        uploading={uploadingBooks}
+        uploaded={uploadedBooks}
+        skipped={skippedBooks}
+        total={totalBooks}
+        onClose={() => setUploadProgressOpen(false)}
+      />
 
       {/* Hidden file input for book upload */}
       <input
@@ -1254,7 +1300,7 @@ const VerseTranslationPage = () => {
         </Breadcrumb.Item>
         <Breadcrumb.Item>{project?.name || "Loading..."}</Breadcrumb.Item>
         <Breadcrumb.Item>
-          {selectedBook === "all" ? "All Books" : selectedBook}
+          {selectedBook === null ? "" : selectedBook}
         </Breadcrumb.Item>
         {selectedChapter && (
           <Breadcrumb.Item>Chapter {selectedChapter}</Breadcrumb.Item>
@@ -1278,11 +1324,13 @@ const VerseTranslationPage = () => {
         <Space>
           <div style={{ display: "flex", alignItems: "center" }}>
             <Select
+              className="custom-book-dropdown"
+              placeholder="Select a book"
               value={selectedBook}
               onChange={(val) => setSelectedBook(val)}
               style={{ minWidth: 200 }}
             >
-              <Option value="all">Select a Book</Option>
+              {/* <Option value=null>Select a Book</Option> */}
               {books.map((b) => (
                 <Option key={b.book_id} value={b.book_name}>
                   {b.book_name}
@@ -1291,7 +1339,7 @@ const VerseTranslationPage = () => {
             </Select>
 
             {/* Plus icon for book upload - only show when "All Books" is selected */}
-            {/* {selectedBook === "all" && ( */}
+            {/* {selectedBook === null && ( */}
             <Button
               type="text"
               //shape="circle"
@@ -1308,7 +1356,7 @@ const VerseTranslationPage = () => {
                 //  borderColor: 'rgb(44, 141, 251)',
               }}
             />
-            {selectedBook && selectedBook !== "all" && (
+            {selectedBook && selectedBook !== "null" && (
               <Button
                 type="text"
                 icon={
@@ -1324,364 +1372,402 @@ const VerseTranslationPage = () => {
             {/* )} */}
           </div>
 
-          {selectedBook !== "all" && chapters.length > 0 && (
-  <Space>
-    {/* Prev Button */}
-    <Button
-      type="text"
-      disabled={
-        activeTab === "draft"
-          ? draftChapter === null || draftChapter === 1
-          : !selectedChapter || selectedChapter === 1
-      }
-      onClick={() => {
-        if (activeTab === "draft") {
-          setDraftChapter((prev) =>
-            prev === null ? 1 : Math.max(1, prev - 1)
-          );
-        } else {
-          setSelectedChapter((prev) => Math.max(1, prev - 1));
-        }
-      }}
-    >
-      ◀
-    </Button>
+          {selectedBook !== null && chapters.length > 0 && (
+            <Space>
+              {/* Prev Button */}
+              <Button
+                type="text"
+                disabled={
+                  activeTab === "draft"
+                    ? draftChapter === null || draftChapter === 1
+                    : !selectedChapter || selectedChapter === 1
+                }
+                onClick={() => {
+                  if (activeTab === "draft") {
+                    setDraftChapter((prev) =>
+                      prev === null ? 1 : Math.max(1, prev - 1)
+                    );
+                  } else {
+                    setSelectedChapter((prev) => Math.max(1, prev - 1));
+                  }
+                }}
+              >
+                ◀
+              </Button>
 
-    {/* Unified Chapter Dropdown */}
-    <Select
-      value={activeTab === "draft" ? draftChapter : selectedChapter}
-      style={{ minWidth: 150 }}
-      onChange={(val) => {
-        if (activeTab === "draft") {
-          setDraftChapter(val);
-        } else {
-          setSelectedChapter(val);
-        }
-      }}
-      placeholder="Select Chapter"
-      disabled={chapters.length === 0}
-    >
-      {/* Show “All Chapters” only for Draft View */}
-      {activeTab === "draft" && (
-        <Option key="all" value={null}>
-          All Chapters
-        </Option>
-      )}
-      {chapters.map((ch) => (
-        <Option key={ch.chapter_id} value={ch.chapter_number}>
-          Chapter {ch.chapter_number}
-        </Option>
-      ))}
-    </Select>
+              {/* Unified Chapter Dropdown */}
+              <Select
+                value={activeTab === "draft" ? draftChapter : selectedChapter}
+                style={{ minWidth: 150 }}
+                onChange={(val) => {
+                  if (activeTab === "draft") {
+                    setDraftChapter(val);
+                  } else {
+                    setSelectedChapter(val);
+                  }
+                }}
+                placeholder="Select Chapter"
+                disabled={chapters.length === 0}
+              >
+                {/* Show “All Chapters” only for Draft View */}
+                {activeTab === "draft" && (
+                  <Option key="all" value={null}>
+                    All Chapters
+                  </Option>
+                )}
+                {chapters.map((ch) => (
+                  <Option key={ch.chapter_id} value={ch.chapter_number}>
+                    Chapter {ch.chapter_number}
+                  </Option>
+                ))}
+              </Select>
 
-    {/* Next Button */}
-    <Button
-      type="text"
-      disabled={
-        activeTab === "draft"
-          ? draftChapter !== null && draftChapter === chapters.length
-          : !selectedChapter || selectedChapter === chapters.length
-      }
-      onClick={() => {
-        if (activeTab === "draft") {
-          setDraftChapter((prev) => {
-            if (prev === null) return 1;
-            return Math.min(chapters.length, prev + 1);
-          });
-        } else {
-          setSelectedChapter((prev) => Math.min(chapters.length, prev + 1));
-        }
-      }}
-    >
-      ▶
-    </Button>
-  </Space>
-)}
-
-
-        </Space>
-        {selectedBook !== "all" && chapters.length > 0 && (
-        <Progress
-          percent={100} // always full width
-          success={{
-            percent:
-              chapterStats.total === 0
-                ? 0
-                : Math.round(
-                  (chapterStats.translated / chapterStats.total) * 100
-                ),
-          }}
-          format={() => (
-            <span style={{ color: "#000" }}>
-              {chapterStats.translated} / {chapterStats.total} verses
-            </span>
+              {/* Next Button */}
+              <Button
+                type="text"
+                disabled={
+                  activeTab === "draft"
+                    ? draftChapter !== null && draftChapter === chapters.length
+                    : !selectedChapter || selectedChapter === chapters.length
+                }
+                onClick={() => {
+                  if (activeTab === "draft") {
+                    setDraftChapter((prev) => {
+                      if (prev === null) return 1;
+                      return Math.min(chapters.length, prev + 1);
+                    });
+                  } else {
+                    setSelectedChapter((prev) =>
+                      Math.min(chapters.length, prev + 1)
+                    );
+                  }
+                }}
+              >
+                ▶
+              </Button>
+            </Space>
           )}
-          strokeColor="#d9d9d9" // always grey
-          style={{ marginTop: 8, marginBottom: 8 }}
-        />
+        </Space>
+        {selectedBook !== null && chapters.length > 0 && (
+          <Progress
+            percent={100} // always full width
+            success={{
+              percent:
+                chapterStats.total === 0
+                  ? 0
+                  : Math.round(
+                      (chapterStats.translated / chapterStats.total) * 100
+                    ),
+            }}
+            format={() => (
+              <span style={{ color: "#000" }}>
+                {chapterStats.translated} / {chapterStats.total} verses
+              </span>
+            )}
+            strokeColor="#d9d9d9" // always grey
+            style={{ marginTop: 8, marginBottom: 8 }}
+          />
         )}
       </Space>
 
-      {selectedBook !== "all" && chapters.length > 0 && (
-      <Tabs activeKey={activeTab} onChange={(key) => setActiveTab(key)}>
-        {/* Editor */}
+      {selectedBook !== null && chapters.length > 0 && (
+        <Tabs activeKey={activeTab} onChange={(key) => setActiveTab(key)}>
+          {/* Editor */}
 
-        <TabPane tab="Translation Editor" key="editor">
-          <Row
-            justify="end"
-            align="middle"
-            gutter={12}
-            style={{ marginBottom: 12 }}
-          >
-            <Col>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Tooltip
-                  title={
-                    selectedModel ? (
-                      <div style={{ textAlign: "left", fontSize: 12 }}>
-                        {Object.entries(MODEL_INFO[selectedModel]).map(
-                          ([key, val]) => (
-                            <div key={key}>
-                              <b>{key}:</b> {val}
-                            </div>
-                          )
-                        )}
-                      </div>
-                    ) : (
-                      "Select a model to see info"
-                    )
-                  }
-                  placement="left"
-                  color="#f0f0f0"
-                >
-                  <Button
-                    type="text"
-                    icon={
-                      <InfoCircleOutlined
-                        style={{ fontSize: 18, color: "#2c8dfb" }}
-                      />
+          <TabPane tab="Translation Editor" key="editor">
+            <Row
+              justify="end"
+              align="middle"
+              gutter={12}
+              style={{ marginBottom: 12 }}
+            >
+              <Col>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Tooltip
+                    title={
+                      selectedModel ? (
+                        <div style={{ textAlign: "left", fontSize: 12 }}>
+                          {Object.entries(MODEL_INFO[selectedModel]).map(
+                            ([key, val]) => (
+                              <div key={key}>
+                                <b>{key}:</b> {val}
+                              </div>
+                            )
+                          )}
+                        </div>
+                      ) : (
+                        "Select a model to see info"
+                      )
                     }
-                    disabled={!selectedModel} // disabled until a model is selected
-                  />
-                </Tooltip>
-                <Select
-                  style={{ width: 240 }}
-                  value={selectedModel || undefined}
-                  onChange={(val) => setSelectedModel(val)}
-                  disabled={loadingTranslate}
-                >
-                  <Option
-                    value="nllb-600M"
-                    disabled={selectedModel !== "nllb-600M"}
+                    placement="left"
+                    color="#f0f0f0"
                   >
-                    <Tooltip
-                      title="General-purpose model for 200 languages."
-                      overlayInnerStyle={{
-                        backgroundColor: "#fff",
-                        color: "#000",
-                        border: "1px solid #ddd",
-                        borderRadius: "6px",
-                        padding: "6px 10px",
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                      }}
-                    >
-                      nllb-600M
-                    </Tooltip>
-                  </Option>
-
-                  <Option
-                    value="nllb_finetuned_eng_nzm"
-                    disabled={selectedModel !== "nllb_finetuned_eng_nzm"}
-                  >
-                    <Tooltip
-                      title="This model ONLY supports English ↔ Zeme Naga."
-                      overlayInnerStyle={{
-                        backgroundColor: "#fff",
-                        color: "#000",
-                        border: "1px solid #ddd",
-                        borderRadius: "6px",
-                        padding: "6px 10px",
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                      }}
-                    >
-                      nllb-finetuned-eng-nzm
-                    </Tooltip>
-                  </Option>
-
-                  <Option
-                    value="nllb-english-nagamese"
-                    disabled={selectedModel !== "nllb-english-nagamese"}
-                  >
-                    <Tooltip
-                      title="This model ONLY supports English ↔ Nagamese."
-                      overlayInnerStyle={{
-                        backgroundColor: "#fff",
-                        color: "#000",
-                        border: "1px solid #ddd",
-                        borderRadius: "6px",
-                        padding: "6px 10px",
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                      }}
-                    >
-                      nllb-english-nagamese
-                    </Tooltip>
-                  </Option>
-
-                  <Option
-                    value="nllb-gujrathi-koli_kachchi"
-                    disabled={selectedModel !== "nllb-gujrathi-koli_kachchi"}
-                  >
-                    <Tooltip
-                      title="This model ONLY supports Gujarati ↔ Kachi Koli."
-                      overlayInnerStyle={{
-                        backgroundColor: "#fff",
-                        color: "#000",
-                        border: "1px solid #ddd",
-                        borderRadius: "6px",
-                        padding: "6px 10px",
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                      }}
-                    >
-                      nllb-gujrathi-koli_kachchi
-                    </Tooltip>
-                  </Option>
-
-                  <Option
-                    value="nllb-hin-surjapuri"
-                    disabled={selectedModel !== "nllb-hin-surjapuri"}
-                  >
-                    <Tooltip
-                      title="This model ONLY supports Hindi ↔ Surjapuri."
-                      overlayInnerStyle={{
-                        backgroundColor: "#fff",
-                        color: "#000",
-                        border: "1px solid #ddd",
-                        borderRadius: "6px",
-                        padding: "6px 10px",
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                      }}
-                    >
-                      nllb-hin-surjapuri
-                    </Tooltip>
-                  </Option>
-                </Select>
-              </div>
-            </Col>
-            <Col>
-              <Tooltip
-                title={
-                  !selectedModel && selectedBook !== "all" && selectedChapter
-                    ? "Please select a model first"
-                    : ""
-                }
-                placement="top"
-              >
-                <span style={{ display: "inline-block" }}>
-                  {loadingTranslate ? (
                     <Button
-                      type="dashed"
-                      icon={<ThunderboltOutlined />}
-                      onClick={() => {
-                        setCancelTranslation(true);
-                        abortControllerRef.current?.abort();
-                      }}
-                      style={{ color: "red", borderColor: "red" }}
-                    >
-                      Cancel Translation
-                    </Button>
-                  ) 
-                  : (
-                    <Button
-                      type="dashed"
-                      icon={<ThunderboltOutlined />}
-                      onClick={() => {
-                        if (!hasExistingTranslations) {
-                          // No previous translations → start immediately
-                          handleTranslateChapter(true); // full regenerate
-                        } else {
-                          // Existing translations → show modal
-                          setIsModalVisible(true);
-                        }
-                      }}                      disabled={
-                        !selectedModel ||
-                        selectedBook === "all" ||
-                        !selectedChapter
+                      type="text"
+                      icon={
+                        <InfoCircleOutlined
+                          style={{ fontSize: 18, color: "#2c8dfb" }}
+                        />
                       }
+                      disabled={!selectedModel} // disabled until a model is selected
+                    />
+                  </Tooltip>
+                  <Select
+                    style={{ width: 240 }}
+                    value={selectedModel || undefined}
+                    onChange={(val) => setSelectedModel(val)}
+                    disabled={loadingTranslate}
+                  >
+                    <Option
+                      value="nllb-600M"
+                      disabled={selectedModel !== "nllb-600M"}
                     >
-                      Translate
-                    </Button>
-                  )}
-                </span>
-              </Tooltip>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            {/* Source */}
-            <Col span={12}>
-              <Card
-                title={
-                  <Row justify="space-between" align="middle">
-                    <span>Source</span>
-                  </Row>
-                }
-                style={{ maxHeight: "70vh", overflowY: "scroll" }}
-              >
-                {loadingSource ? (
-                  <Spin size="large" />
-                ) : isTokenized ? (
-                  <>
-                    {tokens.length > 0 && (
-                      <Text
-                        strong
-                        style={{ display: "block", marginBottom: 12 }}
-                      >
-                        {tokens[0].book_name}
-                      </Text>
-                    )}
-                    {tokens.map((t, index) => (
-                      <div
-                        key={t.verse_token_id}
-                        style={{
-                          borderBottom: "1px solid #f0f0f0",
-                          paddingTop: 8,
-                          paddingBottom: 8,
-                          display: "flex",
-                          gap: 8,
+                      <Tooltip
+                        title="General-purpose model for 200 languages."
+                        overlayInnerStyle={{
+                          backgroundColor: "#fff",
+                          color: "#000",
+                          border: "1px solid #ddd",
+                          borderRadius: "6px",
+                          padding: "6px 10px",
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
                         }}
                       >
+                        nllb-600M
+                      </Tooltip>
+                    </Option>
+
+                    <Option
+                      value="nllb-english-zeme"
+                      disabled={selectedModel !== "nllb-english-zeme"}
+                    >
+                      <Tooltip
+                        title="This model only supports English -> Zeme Naga."
+                        overlayInnerStyle={{
+                          backgroundColor: "#fff",
+                          color: "#000",
+                          border: "1px solid #ddd",
+                          borderRadius: "6px",
+                          padding: "6px 10px",
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                        }}
+                      >
+                        nllb-english-zeme
+                      </Tooltip>
+                    </Option>
+
+                    <Option
+                      value="nllb-english-nagamese"
+                      disabled={selectedModel !== "nllb-english-nagamese"}
+                    >
+                      <Tooltip
+                        title="This model only supports English ↔ Nagamese."
+                        overlayInnerStyle={{
+                          backgroundColor: "#fff",
+                          color: "#000",
+                          border: "1px solid #ddd",
+                          borderRadius: "6px",
+                          padding: "6px 10px",
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                        }}
+                      >
+                        nllb-english-nagamese
+                      </Tooltip>
+                    </Option>
+
+                    <Option
+                      value="nllb-gujrathi-koli_kachchi"
+                      disabled={selectedModel !== "nllb-gujrathi-koli_kachchi"}
+                    >
+                      <Tooltip
+                        title="This model only supports Gujarati -> Kachi Koli."
+                        overlayInnerStyle={{
+                          backgroundColor: "#fff",
+                          color: "#000",
+                          border: "1px solid #ddd",
+                          borderRadius: "6px",
+                          padding: "6px 10px",
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                        }}
+                      >
+                        nllb-gujrathi-koli_kachchi
+                      </Tooltip>
+                    </Option>
+
+                    <Option
+                      value="nllb-hindi-surjapuri"
+                      disabled={selectedModel !== "nllb-hindi-surjapuri"}
+                    >
+                      <Tooltip
+                        title="This model only supports Hindi ↔ Surjapuri."
+                        overlayInnerStyle={{
+                          backgroundColor: "#fff",
+                          color: "#000",
+                          border: "1px solid #ddd",
+                          borderRadius: "6px",
+                          padding: "6px 10px",
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                        }}
+                      >
+                        nllb-hindi-surjapuri
+                      </Tooltip>
+                    </Option>
+                    <Option
+                      value="nllb-gujarati-kukna"
+                      disabled={selectedModel !== "nllb-gujarati-kukna"}
+                    >
+                      <Tooltip
+                        title="This model only supports Gujarati ↔ Kukna."
+                        overlayInnerStyle={{
+                          backgroundColor: "#fff",
+                          color: "#000",
+                          border: "1px solid #ddd",
+                          borderRadius: "6px",
+                          padding: "6px 10px",
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                        }}
+                      >
+                        nllb-gujarati-kukna
+                      </Tooltip>
+                    </Option>
+                    <Option
+                      value="nllb-gujarati-kutchi"
+                      disabled={selectedModel !== "nllb-gujarati-kutchi"}
+                    >
+                      <Tooltip
+                        title="This model only supports Gujarati ↔ Kutchi."
+                        overlayInnerStyle={{
+                          backgroundColor: "#fff",
+                          color: "#000",
+                          border: "1px solid #ddd",
+                          borderRadius: "6px",
+                          padding: "6px 10px",
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                        }}
+                      >
+                        nllb-gujarati-kutchi
+                      </Tooltip>
+                    </Option>
+                  </Select>
+                </div>
+              </Col>
+              <Col>
+                <Tooltip
+                  title={
+                    !selectedModel && selectedBook !== null && selectedChapter
+                      ? "Please select a model first"
+                      : ""
+                  }
+                  placement="top"
+                >
+                  <span style={{ display: "inline-block" }}>
+                    {loadingTranslate ? (
+                      <Button
+                        type="dashed"
+                        icon={<ThunderboltOutlined />}
+                        onClick={() => {
+                          setCancelTranslation(true);
+                          abortControllerRef.current?.abort();
+                        }}
+                        style={{ color: "red", borderColor: "red" }}
+                      >
+                        Cancel Translation
+                      </Button>
+                    ) : (
+                      <Button
+                        type="dashed"
+                        icon={<ThunderboltOutlined />}
+                        onClick={() => {
+                          if (!hasExistingTranslations) {
+                            // No previous translations → start immediately
+                            handleTranslateChapter(true); // full regenerate
+                          } else {
+                            // Existing translations → show modal
+                            setIsModalVisible(true);
+                          }
+                        }}
+                        disabled={
+                          !selectedModel ||
+                          selectedBook === null ||
+                          !selectedChapter
+                        }
+                      >
+                        Translate
+                      </Button>
+                    )}
+                  </span>
+                </Tooltip>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              {/* Source */}
+              <Col span={12}>
+                <Card
+                  title={
+                    <Row justify="space-between" align="middle">
+                      <span>Source</span>
+                    </Row>
+                  }
+                  style={{ maxHeight: "70vh", overflowY: "scroll" }}
+                >
+                  {loadingSource ? (
+                    <Spin size="large" />
+                  ) : isTokenized ? (
+                    <>
+                      {tokens.length > 0 && (
                         <Text
                           strong
-                          style={{ minWidth: 30, textAlign: "right" }}
+                          style={{ display: "block", marginBottom: 12 }}
                         >
-                          {index + 1}.
+                          {tokens[0].book_name}
                         </Text>
-                        <p style={{ margin: 0 }}>{t.token_text}</p>
-                      </div>
-                    ))}
-                  </>
-                ) : (
-                  <div style={{
-                    fontFamily: 'Roboto, sans-serif',
-                    fontSize: 14,
-                    fontStyle: 'normal',
-                    color: '#333333',
-                    whiteSpace: 'pre-wrap',
-                    margin: 0,
-                  }}>
-                    No content available, please select a book
-                  </div>
-                )}
-              </Card>
-            </Col>
+                      )}
+                      {tokens.map((t, index) => (
+                        <div
+                          key={t.verse_token_id}
+                          style={{
+                            borderBottom: "1px solid #f0f0f0",
+                            paddingTop: 8,
+                            paddingBottom: 8,
+                            display: "flex",
+                            gap: 8,
+                          }}
+                        >
+                          <Text
+                            strong
+                            style={{ minWidth: 30, textAlign: "right" }}
+                          >
+                            {index + 1}.
+                          </Text>
+                          <p style={{ margin: 0 }}>{t.token_text}</p>
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <div
+                      style={{
+                        fontFamily: "Roboto, sans-serif",
+                        fontSize: 14,
+                        fontStyle: "normal",
+                        color: "#333333",
+                        whiteSpace: "pre-wrap",
+                        margin: 0,
+                      }}
+                    >
+                      No content available, please select a book
+                    </div>
+                  )}
+                </Card>
+              </Col>
 
-            {/* Target */}
-            <Col span={12}>
-              <Card
-                title={
-                  <Row justify="space-between" align="middle">
-                    <span>{targetLanguage}</span>
-                    {/* <Button
+              {/* Target */}
+              <Col span={12}>
+                <Card
+                  title={
+                    <Row justify="space-between" align="middle">
+                      <span>{targetLanguage}</span>
+                      {/* <Button
                       type="dashed"
                       icon={<ThunderboltOutlined />}
                       onClick={
@@ -1689,323 +1775,325 @@ const VerseTranslationPage = () => {
                           ? handleTranslateChapter
                           : handleTranslateAllChunks
                       }
-                      disabled={selectedBook === "all"}
+                      disabled={selectedBook === null}
                     >
                       Translate
                     </Button> */}
-                  </Row>
-                }
-                style={{ maxHeight: "70vh", overflowY: "scroll" }}
-              >
-                {isTokenized ? (
-                  tokens.map((t, index) => (
-                    <div
-                      key={t.verse_token_id}
-                      style={{
-                        borderBottom: "1px solid #f0f0f0",
-                        paddingTop: 8,
-                        paddingBottom: 8,
-                      }}
-                    >
-                      <Text
-                        strong
-                        style={{ display: "block", marginBottom: 4 }}
+                    </Row>
+                  }
+                  style={{ maxHeight: "70vh", overflowY: "scroll" }}
+                >
+                  {isTokenized ? (
+                    tokens.map((t, index) => (
+                      <div
+                        key={t.verse_token_id}
+                        style={{
+                          borderBottom: "1px solid #f0f0f0",
+                          paddingTop: 8,
+                          paddingBottom: 8,
+                        }}
                       >
-                        Verse {index + 1}
-                      </Text>
-                      <>
-                        <Input.TextArea
-                          value={t.verse_translated_text}
-                          autoSize={{ minRows: 3, maxRows: 6 }}
-                          onChange={(e) => {
-                            const newText = e.target.value;
+                        <Text
+                          strong
+                          style={{ display: "block", marginBottom: 4 }}
+                        >
+                          Verse {index + 1}
+                        </Text>
+                        <>
+                          <Input.TextArea
+                            value={t.verse_translated_text}
+                            autoSize={{ minRows: 3, maxRows: 6 }}
+                            onChange={(e) => {
+                              const newText = e.target.value;
 
-                            setTokens((prev) =>
-                              prev.map((tok) =>
-                                tok.verse_token_id === t.verse_token_id
-                                  ? { ...tok, verse_translated_text: newText }
-                                  : tok
-                              )
-                            );
+                              setTokens((prev) =>
+                                prev.map((tok) =>
+                                  tok.verse_token_id === t.verse_token_id
+                                    ? { ...tok, verse_translated_text: newText }
+                                    : tok
+                                )
+                              );
 
-                            setEditedTokens((prev) => {
-                              if (!prev[t.verse_token_id]) {
+                              setEditedTokens((prev) => {
+                                if (!prev[t.verse_token_id]) {
+                                  return {
+                                    ...prev,
+                                    [t.verse_token_id]: {
+                                      old: t.verse_translated_text, // saved/original
+                                      new: newText, // current edit
+                                    },
+                                  };
+                                }
                                 return {
                                   ...prev,
                                   [t.verse_token_id]: {
-                                    old: t.verse_translated_text, // saved/original
-                                    new: newText, // current edit
+                                    ...prev[t.verse_token_id],
+                                    new: newText,
                                   },
                                 };
-                              }
-                              return {
-                                ...prev,
-                                [t.verse_token_id]: {
-                                  ...prev[t.verse_token_id],
-                                  new: newText,
-                                },
-                              };
-                            });
-                          }}
-                        />
-                        <Space style={{ marginTop: 6 }}>
-                          {editedTokens[t.verse_token_id] && (
-                            <>
-                              <Button
-                                size="small"
-                                icon={<SaveOutlined />}
-                                onClick={async () => {
-                                  await handleManualUpdate(
-                                    t.verse_token_id,
-                                    editedTokens[t.verse_token_id].new
-                                  );
-                                  setEditedTokens((prev) => {
-                                    const copy = { ...prev };
-                                    delete copy[t.verse_token_id];
-                                    return copy;
-                                  });
-                                }}
-                              >
-                                Save
-                              </Button>
+                              });
+                            }}
+                          />
+                          <Space style={{ marginTop: 6 }}>
+                            {editedTokens[t.verse_token_id] && (
+                              <>
+                                <Button
+                                  size="small"
+                                  icon={<SaveOutlined />}
+                                  onClick={async () => {
+                                    await handleManualUpdate(
+                                      t.verse_token_id,
+                                      editedTokens[t.verse_token_id].new
+                                    );
+                                    setEditedTokens((prev) => {
+                                      const copy = { ...prev };
+                                      delete copy[t.verse_token_id];
+                                      return copy;
+                                    });
+                                  }}
+                                >
+                                  Save
+                                </Button>
 
-                              <Button
-                                size="small"
-                                onClick={() => {
-                                  // revert token text to the old/original one
-                                  setTokens((prev) =>
-                                    prev.map((tok) =>
-                                      tok.verse_token_id === t.verse_token_id
-                                        ? {
-                                          ...tok,
-                                          verse_translated_text:
-                                            editedTokens[t.verse_token_id]
-                                              .old,
-                                        }
-                                        : tok
-                                    )
-                                  );
-                                  setEditedTokens((prev) => {
-                                    const copy = { ...prev };
-                                    delete copy[t.verse_token_id];
-                                    return copy;
-                                  });
-                                }}
-                              >
-                                Discard
-                              </Button>
-                            </>
-                          )}
-                        </Space>
-                      </>
-                    </div>
-                  ))
-                ) : (
-                  <div style={{
-                    fontFamily: 'Roboto, sans-serif',
-                    fontSize: 14,
-                    fontStyle: 'normal',
-                    color: '#333333',
-                    whiteSpace: 'pre-wrap',
-                    margin: 0,
-                  }}>
-                    No content available, please select a book
-                  </div>)}
-              </Card>
-            </Col>
-          </Row>
-        </TabPane>
-
-        <TabPane tab="Draft View" key="draft">
-  {/* Chapter selector for draft view */}
-  <Row gutter={16}>
-   
-            {/* --- New Source Draft Card --- */}
-{selectedBook !== "all" && (
-  <Col span={12}>
-    <Card
-      title="Source Draft"
-      style={{ maxHeight: "70vh", overflowY: "scroll" }}
-    >
-      {rawBookContent ? (
-        <pre style={{ whiteSpace: "pre-wrap" }}>
-          {currentSourceContent}
-        </pre>
-      ) : (
-        <p>No USFM content available for this book.</p>
-      )}
-    </Card>
-  </Col>
-)}
-
-            {/* --- Existing Translation Draft Card --- */}
-            <Col span={12}>
-              <Card
-                title="Translation Draft"
-                extra={
-                  <Space>
-                    {/* Download → icon only */}
-                    <DownloadDraftButton content={serverDraft} />
-
-                    {/* Copy → icon only */}
-                    <CopyOutlined
-                      style={{
-                        fontSize: 20,
-                        color: "#black", // AntD primary blue, you can change
-                        cursor: !(
-                          serverDraft?.trim() ||
-                          tokens.some((t) => t.verse_translated_text?.trim())
-                        )
-                          ? "not-allowed"
-                          : "pointer",
-                      }}
-                      onClick={() => {
-                        if (
-                          serverDraft?.trim() ||
-                          tokens.some((t) => t.verse_translated_text?.trim())
-                        ) {
-                          copyDraft();
-                        }
-                      }}
-                    />
-                    {/* Generate Draft Button */}
-                    <Button
-                      type="primary"
-                      onClick={async () => {
-                        try {
-                          setLoadingDraft(true);
-
-                          // 1️⃣ If there are unsaved edits in editor, merge them into tokens
-                          const mergedTokens = tokens.map((t) => {
-                            const edited = editedTokens[t.verse_token_id];
-                            return edited
-                              ? { ...t, verse_translated_text: edited.new }
-                              : t;
-                          });
-
-                          // 2️⃣ Call API to generate draft using latest translations
-                          const draft = await generateDraftJson(
-                            projectId,
-                            selectedBook,
-                            mergedTokens
-                          );
-
-                          // 3️⃣ Update state
-                          setServerDraft(draft.content || "");
-                          setOriginalDraft(draft.content || ""); // NEW
-                          setDraftId(draft.draft_id);
-
-                          // 4️⃣ Clear temporary edited tokens
-                          setEditedTokens({});
-                          setEditedDraft(null);
-
-                          message.success("Draft generated successfully!");
-                        } catch (err) {
-                          console.error("Generate draft error:", err);
-                          message.error("Failed to generate draft");
-                        } finally {
-                          setLoadingDraft(false);
-                        }
-                      }}
-                    >
-                      Generate Draft
-                    </Button>
-                  </Space>
-                }
-                style={{ maxHeight: "70vh", overflowY: "scroll" }}
-              >
-                <Row gutter={16}>
-                  {loadingDraft ? (
-                    <Col
-                      span={24}
-                      style={{
-                        textAlign: "center",
-                        paddingTop: 20,
-                        paddingRight: 20,
-                        paddingBottom: 20,
-                        paddingLeft: 20,
-                      }}
-                    >
-                      <Spin size="large" />
-                    </Col>
-                  ) : serverDraft ? (
-                    <Col span={24}>
-                      <Space direction="vertical" style={{ width: "100%" }}>
-                        <Input.TextArea
-                         value={editedDraft || currentDraftContent}
-                          autoSize={{ minRows: 8, maxRows: 20 }}
-                          style={{
-                            whiteSpace: "pre-wrap",
-                            fontFamily: "monospace",
-                          }}
-                          onChange={(e) => setEditedDraft(e.target.value)}
-                        />
-
-                        {/* Save & Discard Buttons */}
-                        {editedDraft !== null &&
-                          editedDraft !== serverDraft && (
-                            <Space>
-                              <Button
-                                type="primary"
-                                icon={<SaveOutlined />}
-                                onClick={async () => {
-                                  try {
-                                    if (draftId) {
-                                      // Save draft to backend
-                                      const res = await saveDraft(
-                                        draftId,
-                                        editedDraft
-                                      );
-                                      setServerDraft(res.content);
-                                      setEditedDraft(null); // Reset edit mode
-
-                                      message.success(
-                                        "Draft saved successfully!"
-                                      );
-                                    } else {
-                                      message.warning(
-                                        "No draftId found to save"
-                                      );
-                                    }
-                                  } catch (err) {
-                                    console.error("Save draft error:", err);
-                                    message.error("Failed to save draft");
-                                  }
-                                }}
-                              >
-                                Save
-                              </Button>
-                             <Button
-  onClick={() => {
-    setEditedDraft(currentDraftContent); // Changed from originalDraft
-    message.info("Changes discarded");
-  }}
->
-  Discard
-</Button>
-                            </Space>
-                          )}
-                      </Space>
-                    </Col>
+                                <Button
+                                  size="small"
+                                  onClick={() => {
+                                    // revert token text to the old/original one
+                                    setTokens((prev) =>
+                                      prev.map((tok) =>
+                                        tok.verse_token_id === t.verse_token_id
+                                          ? {
+                                              ...tok,
+                                              verse_translated_text:
+                                                editedTokens[t.verse_token_id]
+                                                  .old,
+                                            }
+                                          : tok
+                                      )
+                                    );
+                                    setEditedTokens((prev) => {
+                                      const copy = { ...prev };
+                                      delete copy[t.verse_token_id];
+                                      return copy;
+                                    });
+                                  }}
+                                >
+                                  Discard
+                                </Button>
+                              </>
+                            )}
+                          </Space>
+                        </>
+                      </div>
+                    ))
                   ) : (
-                    <Col span={24}>
-                      <Card
-                        title="Translation Draft"
-                        style={{ maxHeight: "70vh", overflowY: "scroll" }}
-                      >
-                        <p style={{ fontStyle: "italic", color: "#888" }}>
-                          No translation draft available yet. Run translation to
-                          generate one.
-                        </p>
-                      </Card>
-                    </Col>
+                    <div
+                      style={{
+                        fontFamily: "Roboto, sans-serif",
+                        fontSize: 14,
+                        fontStyle: "normal",
+                        color: "#333333",
+                        whiteSpace: "pre-wrap",
+                        margin: 0,
+                      }}
+                    >
+                      No content available, please select a book
+                    </div>
                   )}
-                </Row>
-              </Card>
-            </Col>
-          </Row>
-        </TabPane>
-      </Tabs>
+                </Card>
+              </Col>
+            </Row>
+          </TabPane>
+
+          <TabPane tab="Draft View" key="draft">
+            {/* Chapter selector for draft view */}
+            <Row gutter={16}>
+              {/* --- New Source Draft Card --- */}
+              {selectedBook !== null && (
+                <Col span={12}>
+                  <Card
+                    title="Source Draft"
+                    style={{ maxHeight: "70vh", overflowY: "scroll" }}
+                  >
+                    {rawBookContent ? (
+                      <pre style={{ whiteSpace: "pre-wrap" }}>
+                        {currentSourceContent}
+                      </pre>
+                    ) : (
+                      <p>No USFM content available for this book.</p>
+                    )}
+                  </Card>
+                </Col>
+              )}
+
+              {/* --- Existing Translation Draft Card --- */}
+              <Col span={12}>
+                <Card
+                  title="Translation Draft"
+                  extra={
+                    <Space>
+                      {/* Download → icon only */}
+                      <DownloadDraftButton content={serverDraft} />
+
+                      {/* Copy → icon only */}
+                      <CopyOutlined
+                        style={{
+                          fontSize: 20,
+                          color: "#black", // AntD primary blue, you can change
+                          cursor: !(
+                            serverDraft?.trim() ||
+                            tokens.some((t) => t.verse_translated_text?.trim())
+                          )
+                            ? "not-allowed"
+                            : "pointer",
+                        }}
+                        onClick={() => {
+                          if (
+                            serverDraft?.trim() ||
+                            tokens.some((t) => t.verse_translated_text?.trim())
+                          ) {
+                            copyDraft();
+                          }
+                        }}
+                      />
+                      {/* Generate Draft Button */}
+                      <Button
+                        type="primary"
+                        onClick={async () => {
+                          try {
+                            setLoadingDraft(true);
+
+                            // 1️⃣ If there are unsaved edits in editor, merge them into tokens
+                            // const mergedTokens = tokens.map((t) => {
+                            //   const edited = editedTokens[t.verse_token_id];
+                            //   return edited
+                            //     ? { ...t, verse_translated_text: edited.new }
+                            //     : t;
+                            // });
+
+                            // 2️⃣ Call API to generate draft using latest translations
+                            const draft = await generateDraftJson(
+                              projectId,
+                              selectedBook
+                              // mergedTokens
+                            );
+
+                            // 3️⃣ Update state
+                            setServerDraft(draft.content || "");
+                            setOriginalDraft(draft.content || ""); // NEW
+                            setDraftId(draft.draft_id);
+
+                            // 4️⃣ Clear temporary edited tokens
+                            setEditedTokens({});
+                            setEditedDraft(null);
+
+                            message.success("Draft generated successfully!");
+                          } catch (err) {
+                            console.error("Generate draft error:", err);
+                            message.error("Failed to generate draft");
+                          } finally {
+                            setLoadingDraft(false);
+                          }
+                        }}
+                      >
+                        Generate Draft
+                      </Button>
+                    </Space>
+                  }
+                  style={{ maxHeight: "70vh", overflowY: "scroll" }}
+                >
+                  <Row gutter={16}>
+                    {loadingDraft ? (
+                      <Col
+                        span={24}
+                        style={{
+                          textAlign: "center",
+                          paddingTop: 20,
+                          paddingRight: 20,
+                          paddingBottom: 20,
+                          paddingLeft: 20,
+                        }}
+                      >
+                        <Spin size="large" />
+                      </Col>
+                    ) : serverDraft ? (
+                      <Col span={24}>
+                        <Space direction="vertical" style={{ width: "100%" }}>
+                          <Input.TextArea
+                            value={editedDraft || currentDraftContent}
+                            autoSize={{ minRows: 8, maxRows: 20 }}
+                            style={{
+                              whiteSpace: "pre-wrap",
+                              fontFamily: "monospace",
+                            }}
+                            onChange={(e) => setEditedDraft(e.target.value)}
+                          />
+
+                          {/* Save & Discard Buttons */}
+                          {editedDraft !== null &&
+                            editedDraft !== serverDraft && (
+                              <Space>
+                                <Button
+                                  type="primary"
+                                  icon={<SaveOutlined />}
+                                  onClick={async () => {
+                                    try {
+                                      if (draftId) {
+                                        // Save draft to backend
+                                        const res = await saveDraft(
+                                          draftId,
+                                          editedDraft
+                                        );
+                                        setServerDraft(res.content);
+                                        setEditedDraft(null); // Reset edit mode
+
+                                        message.success(
+                                          "Draft saved successfully!"
+                                        );
+                                      } else {
+                                        message.warning(
+                                          "No draftId found to save"
+                                        );
+                                      }
+                                    } catch (err) {
+                                      console.error("Save draft error:", err);
+                                      message.error("Failed to save draft");
+                                    }
+                                  }}
+                                >
+                                  Save
+                                </Button>
+                                <Button
+                                  onClick={() => {
+                                    setEditedDraft(currentDraftContent); // Changed from originalDraft
+                                    message.info("Changes discarded");
+                                  }}
+                                >
+                                  Discard
+                                </Button>
+                              </Space>
+                            )}
+                        </Space>
+                      </Col>
+                    ) : (
+                      <Col span={24}>
+                        <Card
+                          title="Translation Draft"
+                          style={{ maxHeight: "70vh", overflowY: "scroll" }}
+                        >
+                          <p style={{ fontStyle: "italic", color: "#888" }}>
+                            No translation draft available yet. Run translation
+                            to generate one.
+                          </p>
+                        </Card>
+                      </Col>
+                    )}
+                  </Row>
+                </Card>
+              </Col>
+            </Row>
+          </TabPane>
+        </Tabs>
       )}
     </div>
   );
