@@ -1909,11 +1909,10 @@ const VerseTranslationPage = () => {
             {/* Chapter selector for draft view */}
             <Row gutter={16}>
               {/* --- New Source Draft Card --- */}
-              {selectedBook !== null && (
                 <Col span={12}>
                   <Card
                     title="Source Draft"
-                    style={{ maxHeight: "70vh", overflowY: "scroll" }}
+                    style={{ height: "70vh", overflowY: "scroll" }}
                   >
                     {rawBookContent ? (
                       <pre style={{ whiteSpace: "pre-wrap" }}>
@@ -1924,7 +1923,7 @@ const VerseTranslationPage = () => {
                     )}
                   </Card>
                 </Col>
-              )}
+              
 
               {/* --- Existing Translation Draft Card --- */}
               <Col span={12}>
@@ -1933,29 +1932,50 @@ const VerseTranslationPage = () => {
                   extra={
                     <Space>
                       {/* Download → icon only */}
-                      <DownloadDraftButton content={serverDraft} />
+                      <DownloadDraftButton
+ content={currentDraftContent}
+ sourceLanguage={project?.source_language_name}
+ targetLanguage={project?.target_language_name}
+ bookName={selectedBook}
+ chapterNumber={draftChapter}      fileName={
+        project?.source_language_name && project?.target_language_name
+          ? draftChapter // if a specific chapter is selected
+            ? `${project.source_language_name.toLowerCase()}_${project.target_language_name.toLowerCase()}_${selectedBook}_${draftChapter}.usfm`
+            : `${project.source_language_name.toLowerCase()}_${project.target_language_name.toLowerCase()}_${selectedBook}.usfm`
+          : draftChapter
+          ? `${selectedBook}_${draftChapter}.usfm`
+          : `${selectedBook}.usfm`
+      }
+    />
+                     {/* Copy → icon only */}
+<CopyOutlined
+  style={{
+    fontSize: 20,
+    color: "#000",
+    cursor: currentDraftContent?.trim() ? "pointer" : "not-allowed",
+  }}
+  onClick={async () => {
+    const contentToCopy = currentDraftContent?.trim();
 
-                      {/* Copy → icon only */}
-                      <CopyOutlined
-                        style={{
-                          fontSize: 20,
-                          color: "#black", // AntD primary blue, you can change
-                          cursor: !(
-                            serverDraft?.trim() ||
-                            tokens.some((t) => t.verse_translated_text?.trim())
-                          )
-                            ? "not-allowed"
-                            : "pointer",
-                        }}
-                        onClick={() => {
-                          if (
-                            serverDraft?.trim() ||
-                            tokens.some((t) => t.verse_translated_text?.trim())
-                          ) {
-                            copyDraft();
-                          }
-                        }}
-                      />
+    if (!contentToCopy) {
+      message.warning("No draft content to copy for this chapter");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(contentToCopy);
+      message.success(
+        draftChapter
+          ? `Copied Chapter ${draftChapter} draft successfully!`
+          : "Copied full draft successfully!"
+      );
+    } catch (err) {
+      console.error("Clipboard copy failed:", err);
+      message.error("Failed to copy draft");
+    }
+  }}
+/>
+
                       {/* Generate Draft Button */}
                       <Button
                         type="primary"
@@ -2000,7 +2020,7 @@ const VerseTranslationPage = () => {
                       </Button>
                     </Space>
                   }
-                  style={{ maxHeight: "70vh", overflowY: "scroll" }}
+                  style={{ height: "70vh", overflowY: "scroll" }}
                 >
                   <Row gutter={16}>
                     {loadingDraft ? (
@@ -2021,7 +2041,7 @@ const VerseTranslationPage = () => {
                         <Space direction="vertical" style={{ width: "100%" }}>
                           <Input.TextArea
                             value={editedDraft || currentDraftContent}
-                            autoSize={{ minRows: 8, maxRows: 20 }}
+                            autoSize={{ minRows: 8, maxRows: 24 }}
                             style={{
                               whiteSpace: "pre-wrap",
                               fontFamily: "monospace",
@@ -2065,7 +2085,7 @@ const VerseTranslationPage = () => {
                                 </Button>
                                 <Button
                                   onClick={() => {
-                                    setEditedDraft(currentDraftContent); // Changed from originalDraft
+                                    setEditedDraft(serverDraft); // Changed from originalDraft
                                     message.info("Changes discarded");
                                   }}
                                 >
@@ -2079,7 +2099,7 @@ const VerseTranslationPage = () => {
                       <Col span={24}>
                         <Card
                           title="Translation Draft"
-                          style={{ maxHeight: "70vh", overflowY: "scroll" }}
+                          style={{ Height: "70vh", overflowY: "scroll" }}
                         >
                           <p style={{ fontStyle: "italic", color: "#888" }}>
                             No translation draft available yet. Run translation
