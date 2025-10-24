@@ -134,12 +134,6 @@ export const textDocumentAPI = {
     const res = await api.delete(`/api/project-text-documents/${projectId}/files/${fileId}`);
     return res.data;
   },
-
-
-  // Add this function to your textDocumentAPI object in api.js
-
-  // Add this function to your textDocumentAPI object in api.js
-
 // Add this function to your textDocumentAPI object in api.js
 
 // ---- FIXED uploadFile ----
@@ -153,7 +147,7 @@ uploadFile: async (projectId, formData) => {
     if (file.name.endsWith('.pdf')) {
       const arrayBuffer = await file.arrayBuffer();
       const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
       const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
