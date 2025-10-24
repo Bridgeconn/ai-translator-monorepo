@@ -30,7 +30,7 @@ function UploadProgressModal({ visible, uploading = [], uploaded = [], skipped =
     >
       <div style={{ marginBottom: 16 }}>
         <Text strong>
-          Uploaded: {uploaded.length + skipped.length}/{total}
+          Uploaded: {uploaded.length}/{total}
         </Text>
       </div>
 
@@ -350,7 +350,7 @@ export default function WordTranslation() {
         notificationApi.info({
           key: "upload-book-info", // 👈 unique key prevents duplicate
           message: "Info",
-          description: "No books found. Please upload books to start translation.",
+          description: "No books Added. Please upload books to start translation.",
           placement: "top",
           duration: 3,
         });
@@ -509,7 +509,7 @@ export default function WordTranslation() {
           if (refreshedBooks.length === 0) {
             notificationApi.info({
               message: "No Books Found",
-              description: "No books found. Please upload books to start translation.",
+              description: "No books Added. Please upload books to start translation.",
               placement: "top",
               duration: 4,
             });
@@ -1233,9 +1233,9 @@ export default function WordTranslation() {
      {/* Book Selector with Upload Button */}
      <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
         <div>
-          <Text strong style={{ display: 'block', marginBottom: 4, fontSize: 14 }}>
+          {/* <Text strong style={{ display: 'block', marginBottom: 4, fontSize: 14 }}>
             Select Book
-          </Text>
+          </Text> */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Select
               className="custom-book-dropdown"
@@ -1432,7 +1432,7 @@ export default function WordTranslation() {
       {
         label: "nllb-english-zeme",
         value: "nllb-english-zeme",
-        tooltip: "This model ONLY supports English -> Zeme Naga.",
+        tooltip: "This model only supports English -> Zeme Naga.",
         valid:
           (src === "eng_Latn" && tgt === "nzm_Latn")
           
@@ -1440,7 +1440,7 @@ export default function WordTranslation() {
       {
         label: "nllb-english-nagamese",
         value: "nllb-english-nagamese",
-        tooltip: "This model ONLY supports English ↔ Nagamese.",
+        tooltip: "This model only supports English ↔ Nagamese.",
         valid:
           (src === "eng_Latn" && tgt === "nag_Latn") ||
           (src === "nag_Latn" && tgt === "eng_Latn"),
@@ -1448,14 +1448,14 @@ export default function WordTranslation() {
       {
         label: "nllb-gujrathi-koli_kachchi",
         value: "nllb-gujrathi-koli_kachchi",
-        tooltip: "This model ONLY supports Gujarati -> Kachi Koli.",
+        tooltip: "This model only supports Gujarati -> Kachi Koli.",
         valid:
           (src === "guj_Gujr" && tgt === "gjk_Gujr")
       },
       {
         label: "nllb-hindi-surjapuri",
         value: "nllb-hindi-surjapuri",
-        tooltip: "This model ONLY supports Hindi ↔ Surjapuri.",
+        tooltip: "This model only supports Hindi ↔ Surjapuri.",
         valid:
           (src === "hin_Deva" && tgt === "sjp_Deva") ||
           (src === "sjp_Deva" && tgt === "hin_Deva"),
@@ -1463,7 +1463,7 @@ export default function WordTranslation() {
       {
         label:"nllb-gujarati-kukna",
         value:"nllb-gujarati-kukna",
-        tooltip:"This model ONLY supports Gujarati ↔ Kukna.",
+        tooltip:"This model only supports Gujarati ↔ Kukna.",
         valid:
           (src === "guj_Gujr" && tgt === "kex_Gujr")||
           (src === "kex_Gujr" && tgt === "guj_Gujr"),
@@ -1471,7 +1471,7 @@ export default function WordTranslation() {
       {
         label:"nllb-gujarati-kutchi",
         value:"nllb-gujarati-kutchi",
-        tooltip:"This model ONLY supports Gujarati ↔ Kutchi.",
+        tooltip:"This model only supports Gujarati ↔ Kutchi.",
         valid:
           (src === "guj_Gujr" && tgt === "kfr_Gujr")||
           (src === "kfr_Gujr" && tgt === "guj_Gujr"),

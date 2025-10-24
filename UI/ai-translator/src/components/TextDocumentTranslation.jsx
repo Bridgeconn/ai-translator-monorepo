@@ -57,54 +57,82 @@ const MODEL_INFO = {
     Languages: "Zeme Naga, English",
   },
   "nllb-english-nagamese": {
-      Model: "nllb-english-nagamese",
-      Tasks: "mt, text translation",
-      "Language Code Type": "BCP-47",
-      DevelopedBy: "Meta",
-      License: "CC-BY-NC 4.0",
-      Languages: "English, Nagamese",
-    },
-    "nllb-gujrathi-koli_kachchi": {
-      Model: "nllb-gujrathi-koli_kachchi",
-      Tasks: "mt, text translation",
-      "Language Code Type": "BCP-47",
-      DevelopedBy: "Meta",
-      License: "CC-BY-NC 4.0",
-      Languages: "Gujarati, Kachi Koli",
-    },
-    "nllb-hindi-surjapuri": {
-      Model: "nllb-hindi-surjapuri",
-      Tasks: "mt, text translation",
-      "Language Code Type": "BCP-47",
-      DevelopedBy: "Meta",
-      License: "CC-BY-NC 4.0",
-      Languages: "Hindi, Surjapuri",
-    },
-    "nllb-gujarati-kukna": {
-      Model: "nllb-gujarati-kukna",
-      Tasks: "mt, text translation",
-      "Language Code Type": "BCP-47",
-      DevelopedBy: "Meta",
-      License: "CC-BY-NC 4.0",
-      Languages: "Gujarati, Kukna",
-    },
-    "nllb-gujarati-kutchi": {
-      Model: "nllb-gujarati-kutchi",
-      Tasks: "mt, text translation",
-      "Language Code Type": "BCP-47",
-      DevelopedBy: "Meta",
-      License: "CC-BY-NC 4.0",
-      Languages: "Gujarati, Kutchi",
-    },
+    Model: "nllb-english-nagamese",
+    Tasks: "mt, text translation",
+    "Language Code Type": "BCP-47",
+    DevelopedBy: "Meta",
+    License: "CC-BY-NC 4.0",
+    Languages: "English, Nagamese",
+  },
+  "nllb-gujrathi-koli_kachchi": {
+    Model: "nllb-gujrathi-koli_kachchi",
+    Tasks: "mt, text translation",
+    "Language Code Type": "BCP-47",
+    DevelopedBy: "Meta",
+    License: "CC-BY-NC 4.0",
+    Languages: "Gujarati, Kachi Koli",
+  },
+  "nllb-hindi-surjapuri": {
+    Model: "nllb-hindi-surjapuri",
+    Tasks: "mt, text translation",
+    "Language Code Type": "BCP-47",
+    DevelopedBy: "Meta",
+    License: "CC-BY-NC 4.0",
+    Languages: "Hindi, Surjapuri",
+  },
+  "nllb-gujarati-kukna": {
+    Model: "nllb-gujarati-kukna",
+    Tasks: "mt, text translation",
+    "Language Code Type": "BCP-47",
+    DevelopedBy: "Meta",
+    License: "CC-BY-NC 4.0",
+    Languages: "Gujarati, Kukna",
+  },
+  "nllb-gujarati-kutchi": {
+    Model: "nllb-gujarati-kutchi",
+    Tasks: "mt, text translation",
+    "Language Code Type": "BCP-47",
+    DevelopedBy: "Meta",
+    License: "CC-BY-NC 4.0",
+    Languages: "Gujarati, Kutchi",
+  },
 };
 const MODEL_OPTIONS = [
-  { label: "nllb-600M", value: "nllb-600M", tooltip: "General-purpose model for 200 languages." },
-  { label: "nllb-english-zeme", value: "nllb-english-zeme", tooltip: "This model ONLY supports English -> Zeme Naga." },
-  { label: "nllb-english-nagamese", value: "nllb-english-nagamese", tooltip: "This model ONLY supports English ↔ Nagamese." },
-  { label: "nllb-gujrathi-koli_kachchi", value: "nllb-gujrathi-koli_kachchi", tooltip: "This model ONLY supports Gujarati -> Kachi Koli." },
-  { label: "nllb-hindi-surjapuri", value: "nllb-hindi-surjapuri", tooltip: "This model ONLY supports Hindi ↔ Surjapuri." },
-  {label: "nllb-gujarati-kukna", value: "nllb-gujarati-kukna", tooltip: "This model ONLY supports Gujarati ↔ Kukna." },
-  {label: "nllb-gujarati-kutchi", value: "nllb-gujarati-kutchi", tooltip: "This model ONLY supports Gujarati ↔ Kutchi." },
+  {
+    label: "nllb-600M",
+    value: "nllb-600M",
+    tooltip: "General-purpose model for 200 languages.",
+  },
+  {
+    label: "nllb-english-zeme",
+    value: "nllb-english-zeme",
+    tooltip: "This model only supports English -> Zeme Naga.",
+  },
+  {
+    label: "nllb-gujrathi-koli_kachchi",
+    value: "nllb-gujrathi-koli_kachchi",
+    tooltip: "This model only supports Gujarati -> Kachi Koli.",
+  },
+  {
+    label: "nllb-english-nagamese",
+    value: "nllb-english-nagamese",
+    tooltip: "This model only supports English ↔ Nagamese.",
+  },
+  {
+    label: "nllb-hindi-surjapuri",
+    value: "nllb-hindi-surjapuri",
+    tooltip: "This model only supports Hindi ↔ Surjapuri.",
+  },
+  {
+    label: "nllb-gujarati-kukna",
+    value: "nllb-gujarati-kukna",
+    tooltip: "This model only supports Gujarati ↔ Kukna.",
+  },
+  {
+    label: "nllb-gujarati-kutchi",
+    value: "nllb-gujarati-kutchi",
+    tooltip: "This model only supports Gujarati ↔ Kutchi.",
+  },
 ];
 
 // ------------------  Vachan Helpers ------------------
@@ -381,45 +409,44 @@ export default function TextDocumentTranslation() {
     if (projectId) fetchData();
   }, [projectId]);
   useEffect(() => {
-    if (!project?.source_language?.code || !project?.target_language?.code) return;
-  
+    if (!project?.source_language?.code || !project?.target_language?.code)
+      return;
+
     const src = project.source_language.code;
     const tgt = project.target_language.code;
     let modelToUse = "nllb-600M";
-  
-    const isEngNzemePair =
-      (src === "eng_Latn" && tgt === "nzm_Latn")
-  
+
+    const isEngNzemePair = src === "eng_Latn" && tgt === "nzm_Latn";
+
     const isEngNagPair =
       (src === "eng_Latn" && tgt === "nag_Latn") ||
       (src === "nag_Latn" && tgt === "eng_Latn");
-  
-    const isGujGjkPair =
-      (src === "guj_Gujr" && tgt === "gjk_Gujr")
-  
+
+    const isGujGjkPair = src === "guj_Gujr" && tgt === "gjk_Gujr";
+
     const isHinSjpPair =
       (src === "hin_Deva" && tgt === "sjp_Deva") ||
       (src === "sjp_Deva" && tgt === "hin_Deva");
-    
+
     const isGujKukPair =
       (src === "guj_Gujr" && tgt === "kex_Gujr") ||
       (src === "kex_Gujr" && tgt === "guj_Gujr");
-  
+
     const isGujKutPair =
       (src === "guj_Gujr" && tgt === "kfr_Gujr") ||
       (src === "kfr_Gujr" && tgt === "guj_Gujr");
-  
+
     if (isEngNzemePair) modelToUse = "nllb-english-zeme";
     else if (isEngNagPair) modelToUse = "nllb-english-nagamese";
     else if (isGujGjkPair) modelToUse = "nllb-gujrathi-koli_kachchi";
     else if (isHinSjpPair) modelToUse = "nllb-hindi-surjapuri";
     else if (isGujKukPair) modelToUse = "nllb-gujarati-kukna";
     else if (isGujKutPair) modelToUse = "nllb-gujarati-kutub";
-  
+
     setSelectedModel(modelToUse);
     console.log(`🎯 Auto-selected model for ${src} ↔ ${tgt}: ${modelToUse}`);
   }, [project]);
-  
+
   // ------------------ Handle File Selection ------------------
   const handleFileChange = async (fileId) => {
     const file = projectFiles.find((f) => f.id === fileId);
@@ -443,8 +470,6 @@ export default function TextDocumentTranslation() {
     }
   };
 
-
-  
   // ------------------ Draft Editing ------------------
   const handleDraftChange = (e) => {
     setTargetText(e.target.value);
@@ -468,7 +493,7 @@ export default function TextDocumentTranslation() {
         "success",
         "Translation Saved",
         "Translation saved successfully!"
-      );  
+      );
       setIsEdited(false);
       // setIsEditing(false);
     } catch (err) {
@@ -576,6 +601,11 @@ export default function TextDocumentTranslation() {
 
   // ------------------  Upload handler ------------------
   const handleFileUpload = (file) => {
+    const fileExt = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
+    if (fileExt === ".pdf") {
+      message.error("PDF file type is not supported for now");
+      return Upload.LIST_IGNORE; // prevents upload
+    }
     const isLt2M = file.size / 1024 / 1024 < 2;
     if (!isLt2M) {
       message.error("File must be smaller than 2MB!");
@@ -614,9 +644,8 @@ export default function TextDocumentTranslation() {
       if (containsUSFMMarkers(sourceText)) {
         message.warning(
           " This file contains USFM markers. The translation output may not be accurate.Use verse translation for better results."
-           
         );
-      
+
         const extracted = extractUSFMContent(sourceText);
         textToTranslate = extracted.plainText;
         isUSFM = true;
@@ -625,9 +654,8 @@ export default function TextDocumentTranslation() {
         textToTranslate = sourceText;
       }
       // 🧩 DEBUG: Check what text is actually being sent to the API
-console.log("📤 Sending textToTranslate:", textToTranslate);
-console.log("📄 Length of textToTranslate:", textToTranslate.length);
-
+      console.log("📤 Sending textToTranslate:", textToTranslate);
+      console.log("📄 Length of textToTranslate:", textToTranslate.length);
 
       // 3. Prepare file
       const blob = new Blob([textToTranslate], { type: "text/plain" });
@@ -640,21 +668,22 @@ console.log("📄 Length of textToTranslate:", textToTranslate.length);
       // let tgtCode = selectedFile?.target_id || project?.target_language?.code;
       let srcCode, tgtCode;
 
-if (selectedModel === "nllb-600M") {
-  // Use project/file default
-  srcCode = selectedFile?.source_id || project?.source_language?.code;
-  tgtCode = selectedFile?.target_id || project?.target_language?.code;
-} else {
-  // Use hardcoded pair
-  const pair = HARDCODED_PAIRS[selectedModel];
-  if (!pair) {
-    message.error(`No hardcoded language pair found for model ${selectedModel}`);
-    return;
-  }
-  srcCode = pair.src;
-  tgtCode = pair.tgt;
-}
-
+      if (selectedModel === "nllb-600M") {
+        // Use project/file default
+        srcCode = selectedFile?.source_id || project?.source_language?.code;
+        tgtCode = selectedFile?.target_id || project?.target_language?.code;
+      } else {
+        // Use hardcoded pair
+        const pair = HARDCODED_PAIRS[selectedModel];
+        if (!pair) {
+          message.error(
+            `No hardcoded language pair found for model ${selectedModel}`
+          );
+          return;
+        }
+        srcCode = pair.src;
+        tgtCode = pair.tgt;
+      }
 
       if (!srcCode || !tgtCode) {
         message.error(
@@ -695,24 +724,23 @@ if (selectedModel === "nllb-600M") {
       //   : simpleTranslation(textToTranslate, parsed.data);
       let translatedText;
 
-if (
-  csvText.startsWith("{") ||  // JSON or structured data
-  csvText.includes(",Translation") || // CSV header detected
-  csvText.includes("\t") // TSV-like structure
-) {
-  // Parse CSV or TSV structured response
-  const parsed = Papa.parse(csvText, {
-    header: true,
-    skipEmptyLines: true,
-  });
-  translatedText = isUSFM
-    ? reconstructUSFM(usfmStructure, parsed.data)
-    : simpleTranslation(textToTranslate, parsed.data);
-} else {
-  // Plain translated text — use directly
-  translatedText = csvText.trim();
-}
-
+      if (
+        csvText.startsWith("{") || // JSON or structured data
+        csvText.includes(",Translation") || // CSV header detected
+        csvText.includes("\t") // TSV-like structure
+      ) {
+        // Parse CSV or TSV structured response
+        const parsed = Papa.parse(csvText, {
+          header: true,
+          skipEmptyLines: true,
+        });
+        translatedText = isUSFM
+          ? reconstructUSFM(usfmStructure, parsed.data)
+          : simpleTranslation(textToTranslate, parsed.data);
+      } else {
+        // Plain translated text — use directly
+        translatedText = csvText.trim();
+      }
 
       setTargetText(translatedText);
       message.success("Translation complete!");
@@ -762,25 +790,24 @@ if (
           boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
         }}
       >
-     <Breadcrumb
-  style={{ marginBottom: 16 }}
-  items={[
-
-    {
-      title: <Link to="/projects">Projects</Link>,
-    },
-    {
-      title: project?.project_name || "Project",
-    },
-    ...(selectedFile
-      ? [
-          {
-            title: selectedFile.file_name,
-          },
-        ]
-      : []),
-  ]}
-/>
+        <Breadcrumb
+          style={{ marginBottom: 16 }}
+          items={[
+            {
+              title: <Link to="/projects">Projects</Link>,
+            },
+            {
+              title: project?.project_name || "Project",
+            },
+            ...(selectedFile
+              ? [
+                  {
+                    title: selectedFile.file_name,
+                  },
+                ]
+              : []),
+          ]}
+        />
         <h2
           style={{ margin: 0, fontSize: 24, fontWeight: 600, color: "#1f2937" }}
         >
@@ -816,18 +843,22 @@ if (
             showUploadList={false}
             accept=".docx,.pdf,.txt,.usfm"
             beforeUpload={(file) => {
-              const allowedTypes = [
-                "application/pdf",
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                "text/plain",
-                "application/usfm",
-                "text/usfm",
-              ];
+              // const allowedTypes = [
+              //   "application/pdf",
+              //   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              //   "text/plain",
+              //   "application/usfm",
+              //   "text/usfm",
+              // ];
               const allowedExtensions = [".pdf", ".docx", ".txt", ".usfm"];
 
               const fileExt = file.name
                 .slice(file.name.lastIndexOf("."))
                 .toLowerCase();
+              if (fileExt === ".pdf") {
+                message.error("PDF file type is not supported for now");
+                return Upload.LIST_IGNORE; // prevents upload
+              }
               if (!allowedExtensions.includes(fileExt)) {
                 message.error(`${file.name} is not a supported file type`);
                 return Upload.LIST_IGNORE; // prevents upload
@@ -876,10 +907,11 @@ if (
               }}
             />
           </Upload>
-            {/* Delete File Button */}
-            {selectedFile && (
+          {/* Delete File Button */}
+          {selectedFile && selectedFile.file_name !== "sample.txt" && (
             <Tooltip title="Delete file">
               <Button
+                type="text"
                 icon={
                   <DeleteOutlined
                     style={{ color: "red", cursor: "pointer", fontSize: 20 }}
@@ -911,61 +943,67 @@ if (
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 {/* Model Dropdown */}
                 <Select
-  value={selectedModel}
-  style={{ width: 250 }}
-  dropdownRender={() => {
-    const src = project?.source_language?.code || "";
-    const tgt = project?.target_language?.code || "";
+                  value={selectedModel}
+                  style={{ width: 250 }}
+                  dropdownRender={() => {
+                    const src = project?.source_language?.code || "";
+                    const tgt = project?.target_language?.code || "";
 
-    return (
-      <>
-        {MODEL_OPTIONS.map((opt) => {
-          const isSelected = opt.value === selectedModel;
-          const disabled = opt.value !== selectedModel;
+                    return (
+                      <>
+                        {MODEL_OPTIONS.map((opt) => {
+                          const isSelected = opt.value === selectedModel;
+                          const disabled = opt.value !== selectedModel;
 
-          return (
-            <Tooltip
-              key={opt.value}
-              title={opt.tooltip}
-              placement="right"
-              overlayInnerStyle={{
-                backgroundColor: "#fff",
-                color: "#000",
-                border: "1px solid #ddd",
-                borderRadius: "6px",
-                padding: "6px 10px",
-              }}
-            >
-              <div
-                style={{
-                  padding: "6px 12px",
-                  cursor: disabled ? "not-allowed" : "default",
-                  color: disabled ? "#999" : "#000",
-                  backgroundColor: isSelected ? "#e6f7ff" : "transparent",
-                  fontWeight: isSelected ? 600 : 400,
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-                onClick={(e) => {
-                  e.stopPropagation(); // prevent changing model
-                }}
-              >
-                <span>{opt.label}</span>
-              </div>
-            </Tooltip>
-          );
-        })}
-      </>
-    );
-  }}
->
-  {MODEL_OPTIONS.map((opt) => (
-    <Option key={opt.value} value={opt.value} disabled={opt.value !== selectedModel}>
-      {opt.label}
-    </Option>
-  ))}
-</Select>
+                          return (
+                            <Tooltip
+                              key={opt.value}
+                              title={opt.tooltip}
+                              placement="right"
+                              overlayInnerStyle={{
+                                backgroundColor: "#fff",
+                                color: "#000",
+                                border: "1px solid #ddd",
+                                borderRadius: "6px",
+                                padding: "6px 10px",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  padding: "6px 12px",
+                                  cursor: disabled ? "not-allowed" : "default",
+                                  color: disabled ? "#999" : "#000",
+                                  backgroundColor: isSelected
+                                    ? "#e6f7ff"
+                                    : "transparent",
+                                  fontWeight: isSelected ? 600 : 400,
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "center",
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation(); // prevent changing model
+                                }}
+                              >
+                                <span>{opt.label}</span>
+                              </div>
+                            </Tooltip>
+                          );
+                        })}
+                      </>
+                    );
+                  }}
+                >
+                  {MODEL_OPTIONS.map((opt) => (
+                    <Option
+                      key={opt.value}
+                      value={opt.value}
+                      disabled={opt.value !== selectedModel}
+                    >
+                      {opt.label}
+                    </Option>
+                  ))}
+                </Select>
                 <Tooltip
                   title={
                     selectedModel
@@ -1164,7 +1202,11 @@ if (
                         icon={<CopyOutlined />}
                         onClick={() => {
                           navigator.clipboard.writeText(targetText || "");
-                          showNotification("success", "Copied", "Text copied to clipboard!"); // 3.success("Copied to clipboard!");
+                          showNotification(
+                            "success",
+                            "Copied",
+                            "Text copied to clipboard!"
+                          ); // 3.success("Copied to clipboard!");
                         }}
                         size="middle"
                       />

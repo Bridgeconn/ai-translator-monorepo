@@ -151,8 +151,8 @@ def generate_tokens_batch_stream(
      if not pair:
         yield f"data: {json.dumps({'error': f'No hardcoded language pair for model {model_name}'})}\n\n"
         return
-    source_lang_code = pair["src"]
-    target_lang_code = pair["tgt"]
+     source_lang_code = pair["src"]
+     target_lang_code = pair["tgt"]
 
      # ✅ Log language codes
     logger.info(f"Source lang code: {source_lang_code}, Target lang code: {target_lang_code}")

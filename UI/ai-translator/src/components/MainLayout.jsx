@@ -197,7 +197,7 @@ export default function MainLayout() {
     <Layout style={{ minHeight: "100vh" }}>
       {/* Sidebar */}
       <Sider
-        width={80}
+        width={100}
         style={{
           background: "#fff",
           // borderRight: "25px solid #f0f0f0",
@@ -259,21 +259,21 @@ export default function MainLayout() {
                       flexDirection: "column",
                       alignItems: "center",
                       justifyContent: "center",
-                      color: isSelected ? "#8b5cf6" : "#8c8c8c",
+                      color: isSelected ? "#7085fa" : "#8c8c8c",
                       // height: "100%",
                     }}
                   >
                     {/* Icon */}
-                    <div style={{ fontSize: "10px", marginBottom: "4px", marginLeft:'10px' }}>
+                    <div style={{ fontSize: "14px", marginBottom: "6px", marginLeft:'10px', color: isSelected ? "#7085fa" : "black" }}>
                       {item.icon}
                     </div>
 
                     {/* Label — show neatly in 1 or 2 lines */}
                     <div
                       style={{
-                        fontSize: "12px",
+                        fontSize: "13px",
                         fontWeight: isSelected ? 600 : 500,
-                        color: isSelected ? "#8b5cf6" : "#555",
+                        color: isSelected ? "#7085fa" : "#555",
                         lineHeight: "14px",
                         textAlign: "center",
                         maxWidth: "100px",
@@ -301,7 +301,7 @@ export default function MainLayout() {
                 borderRadius: "6px",
                 margin: "4px",
                 borderLeft: isSelected
-                  ? "2px solid #8b5cf6"
+                  ? "2px solid #7085fa"
                   : "2px solid transparent",
                 backgroundColor: isSelected
                   ? "rgba(139,92,246,0.12)"
