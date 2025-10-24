@@ -136,7 +136,7 @@ const ProjectList = ({
 
                       <Text
                         type="secondary"
-                        style={{ fontSize: 12, display: "block", marginTop: 6 }}
+                        style={{ fontSize: 14, display: "block", marginTop: 4, marginLeft: 2 }}
                       >
                         {project.translation_type
                           ? `${project.translation_type} translation`

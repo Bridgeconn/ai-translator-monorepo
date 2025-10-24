@@ -649,6 +649,10 @@ const handleFileUpload = async (file) => {
     // 3. Update State
     setSourceText(textContent);
     setTargetText("");
+    // setIsTargetEdited(false);
+    // You may need to replace 'showNotification' with Ant Design's 'message' API
+    // Since your original code shows 'message' is imported but 'showNotification' is not.
+    // If you are using the 'App' component, use 'message.success'
     message.success(`File Loaded: ${file.name}`);
     
   } catch (err) {

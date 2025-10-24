@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { Input, Button, Typography, Form,App } from "antd";
-import { SearchOutlined, PlusOutlined } from "@ant-design/icons";
+import { Input, Button, Typography, Form, App } from "antd";
+import {
+  SearchOutlined,
+  PlusOutlined,
+  CloseCircleFilled,
+} from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import ProjectList from "../components/ProjectList";
 import CreateProjectModal from "../components/CreateProject";
@@ -25,12 +29,19 @@ const ZeroDraftGenerator = () => {
   // -------------------------
   // React Query: fetch sources
   // -------------------------
-  const { data: sources = [], isLoading: sourcesLoading, refetch: refetchSources } = useQuery({
+  const {
+    data: sources = [],
+    isLoading: sourcesLoading,
+    refetch: refetchSources,
+  } = useQuery({
     queryKey: ["sources"],
     queryFn: async () => {
       const token = localStorage.getItem("token");
       const res = await fetch(import.meta.env.VITE_BACKEND_URL + "/sources/", {
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
       });
       if (!res.ok) throw new Error("Failed to fetch sources");
       const data = await res.json();
@@ -42,13 +53,23 @@ const ZeroDraftGenerator = () => {
   // -------------------------
   // React Query: fetch languages
   // -------------------------
-  const { data: languages = [], isLoading: languagesLoading, refetch: refetchLanguages } = useQuery({
+  const {
+    data: languages = [],
+    isLoading: languagesLoading,
+    refetch: refetchLanguages,
+  } = useQuery({
     queryKey: ["languages"],
     queryFn: async () => {
       const token = localStorage.getItem("token");
-      const res = await fetch(import.meta.env.VITE_BACKEND_URL + "/languages/", {
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      });
+      const res = await fetch(
+        import.meta.env.VITE_BACKEND_URL + "/languages/",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
       if (!res.ok) throw new Error("Failed to fetch languages");
       return res.json();
     },
@@ -78,21 +99,21 @@ const ZeroDraftGenerator = () => {
         projectsAPI.getAllProjects(),
         textDocumentAPI.getAllProjects(true),
       ]);
-  
+
       const normalProjects =
         normalResult.status === "fulfilled" ? normalResult.value : [];
-  
+
       const textDocProjects =
         textDocResult.status === "fulfilled" ? textDocResult.value : [];
-  
+
       const formattedTextDocProjects = textDocProjects.map((p) => ({
         project_id: p.project_id,
         name: p.project_name,
         translation_type: "text_document",
       }));
-  
+
       const combinedProjects = [...normalProjects, ...formattedTextDocProjects];
-  
+
       setAllProjects(combinedProjects);
       setFilteredProjects(combinedProjects);
     } catch (err) {
@@ -101,8 +122,7 @@ const ZeroDraftGenerator = () => {
       setLoading(false);
     }
   };
-  
-  
+
   useEffect(() => {
     fetchProjects();
     refetchSources();
@@ -131,7 +151,9 @@ const ZeroDraftGenerator = () => {
     } else {
       setFilteredProjects(
         allProjects.filter((p) => {
-          const { source_language, target_language } = extractLanguagesFromName(p.name);
+          const { source_language, target_language } = extractLanguagesFromName(
+            p.name
+          );
           return (
             p.name.toLowerCase().includes(searchText.toLowerCase()) ||
             source_language.toLowerCase().includes(searchText.toLowerCase()) ||
@@ -159,7 +181,10 @@ const ZeroDraftGenerator = () => {
       const token = localStorage.getItem("token");
       const res = await fetch(import.meta.env.VITE_BACKEND_URL + "/projects/", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           name: values.project_name,
           source_id: values.source_id,
@@ -206,7 +231,9 @@ const ZeroDraftGenerator = () => {
       }
 
       setAllProjects((prev) => prev.filter((p) => p.project_id !== projectId));
-      setFilteredProjects((prev) => prev.filter((p) => p.project_id !== projectId));
+      setFilteredProjects((prev) =>
+        prev.filter((p) => p.project_id !== projectId)
+      );
       setSuccessMessage("Project deleted successfully!");
       setSuccessModalVisible(true);
     } catch (err) {
@@ -223,12 +250,24 @@ const ZeroDraftGenerator = () => {
   return (
     <div style={{ padding: 24 }}>
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 24 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: 24,
+        }}
+      >
         <div>
-          <Title level={2} style={{ margin: 0 }}>Translation Projects</Title>
+          <Title level={2} style={{ margin: 0 }}>
+            Translation Projects
+          </Title>
           <Text>Manage your translation workflows and track progress</Text>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={showCreateModal}>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={showCreateModal}
+        >
           New Project
         </Button>
       </div>
@@ -236,11 +275,20 @@ const ZeroDraftGenerator = () => {
       {/* Search */}
       <div style={{ marginBottom: 24 }}>
         <Search
+          bodyStyle={{ allowClear: { display: "none", size: "2" } }}
           placeholder="Search projects by name or languages..."
-          prefix={<SearchOutlined />}
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
-          allowClear
+          allowClear={{
+            clearIcon: (
+              <CloseCircleFilled
+                style={{
+                  color: "#1677ff", // blue (customize as needed)
+                  fontSize: 18, // make it larger
+                }}
+              />
+            ),
+          }}
         />
       </div>
 

@@ -1993,21 +1993,21 @@ useEffect(() => {
                     ) {
                       disabled = true;
                       tooltip =
-                        "This model supports only English -> Zeme Naga translation.";
+                        "This model only supports English -> Zeme Naga translation.";
                     } else if (
                       m.value === "nllb-english-nagamese" &&
                       !isEngNagPair
                     ) {
                       disabled = true;
                       tooltip =
-                        "This model supports only English ↔ Naga translation.";
+                        "This model only supports English ↔ Naga translation.";
                     } else if (
                       m.value === "nllb-gujrathi-koli_kachchi" &&
                       !isGujGjkPair
                     ) {
                       disabled = true;
                       tooltip =
-                        "This model supports only Gujarati -> Kachi Koli translation.";
+                        "This model only supports Gujarati -> Kachi Koli translation.";
                     } else if (
                       m.value === "nllb-hindi-surjapuri" &&
                       !isHinSjpPair
@@ -2015,14 +2015,14 @@ useEffect(() => {
                      {
                       disabled = true;
                       tooltip =
-                        "This model supports only Hindi ↔ Surjapuri translation.";
+                        "This model only supports Hindi ↔ Surjapuri translation.";
                     }
                     else if (m.value === "nllb-gujarati-kukna" && !isGujKuknaPair) {
                       disabled = true;
-                      tooltip = "This model supports only Gujarati ↔ Kukna translation.";
+                      tooltip = "This model only supports Gujarati ↔ Kukna translation.";
                     } else if (m.value === "nllb-gujarati-kutchi" && !isGujKutchiPair) {
                       disabled = true;
-                      tooltip = "This model supports only Gujarati ↔ Kutchi translation.";
+                      tooltip = "This model only supports Gujarati ↔ Kutchi translation.";
                     }                    
                     return (
                       <Select.Option
@@ -2038,7 +2038,8 @@ useEffect(() => {
                             color: "#000",
                             border: "1px solid #ddd",
                             borderRadius: "6px",
-                            padding: "6px 10px",
+                            // padding: "6px 10px",
+                            maxWidth: "250px",
                           }}
                         >
                           {m.label}

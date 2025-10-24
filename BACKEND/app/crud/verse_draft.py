@@ -11,10 +11,10 @@ from uuid import uuid4
 from datetime import datetime
 from typing import Dict, List, Tuple, Optional
 from fastapi import HTTPException
+from collections import defaultdict, Counter
 
 
 class TranslationService:
-       # ----------------- helper: token spans -----------------
     def _token_spans(self, text: str) -> List[Tuple[int, int]]:
         """
         Return a list of (start, end) spans for word-like tokens in text.
@@ -22,13 +22,10 @@ class TranslationService:
         """
         return [(m.start(), m.end()) for m in re.finditer(r'\w+', text, flags=re.UNICODE)]
  
-    # ----------------- robust tag extraction -----------------
     def extract_inline_tags(self, text: str) -> List[Tuple[str, str, bool, int]]:
         """
         Extract inline USFM tags like '\nd Lord\nd*' from text.
         Returns list of tuples: (tag_name, tagged_text, closing_star_bool, start_pos_in_plain_text)
-        start_pos_in_plain_text is the index where the inner text appears in the plain text
-        (i.e., after removing the tag markers).
         """
         if not text:
             return []
@@ -49,19 +46,11 @@ class TranslationService:
             last_end = end
  
         plain_parts.append(text[last_end:])
-        plain_text = ''.join(plain_parts)
         return tags
  
-    # ----------------- intelligent tag application -----------------
     def apply_tags_to_translation(self, original_text: str, translated_text: str) -> str:
         """
         Reapply inline tags from original_text into translated_text.
- 
-        Strategy:
-        - Extract tags and their start positions in a plain-original (without tag markers).
-        - Build token spans for original plain text and split translated_text into tokens.
-        - Map tag start -> token index in original -> closest token index in translated -> wrap that token.
-        - If mapping isn't possible, prepend tags to the translated_text as a fallback.
         """
         if not original_text or not translated_text:
             return translated_text or original_text
@@ -110,14 +99,10 @@ class TranslationService:
                 trans_words[idx] = token
  
         return ' '.join(trans_words)
-      # ----------------- improved text splitting -----------------
+
     def split_text_intelligently(self, text: str, num_parts: int) -> List[str]:
         """
-        Robust split that preserves all translated words:
-        - normalizes whitespace/newlines,
-        - if total words < num_parts, give one word to earliest parts,
-        - otherwise distribute proportionally (by original weights if provided elsewhere),
-        - never drop words; leftover appended to last part.
+        Robust split that preserves all translated words.
         """
         if num_parts <= 1:
             return [text]
@@ -125,23 +110,19 @@ class TranslationService:
         if not text:
             return ['' for _ in range(num_parts)]
 
-        # Normalize whitespace/newlines (preserve unicode)
         normalized = re.sub(r'\s+', ' ', text.strip(), flags=re.UNICODE)
         trans_words = re.findall(r'\S+', normalized, flags=re.UNICODE)
         total = len(trans_words)
 
-        # If there are no words
         if total == 0:
             return ['' for _ in range(num_parts)]
 
-        # If fewer words than parts: give one word to as many leading parts as possible
         if total <= num_parts:
             parts = []
             for i in range(num_parts):
                 parts.append(trans_words[i] if i < total else '')
             return parts
 
-        # Otherwise distribute words proportionally (even split baseline)
         base = total // num_parts
         remainder = total % num_parts
 
@@ -155,7 +136,7 @@ class TranslationService:
                 pos += take
             else:
                 parts.append('')
-        # Append any leftover to the last part
+        
         if pos < total:
             leftover = ' '.join(trans_words[pos:])
             parts[-1] = (parts[-1] + ' ' + leftover).strip()
@@ -199,37 +180,30 @@ class TranslationService:
         text = re.sub(r'^\\[a-z]+\d*\*?\s*', '', text)
         return text.strip()
  
-    # ----------------- improved rebuild -----------------
     def rebuild_verse_with_translation(
         self,
         verse_lines: List[str],
         text_line_indices: List[int],
         translated_text: str
     ) -> List[str]:
-
         """
         Rebuild the verse keeping all translated text.
-        Strategy:
-          - collect original segments for text_line_indices (for tag context)
-          - split translated_text robustly into parts (using split_text_intelligently)
-          - reapply tags to each part using original line's context
-          - insert parts back; if parts remain, append them to the last textual line
         """
         if not text_line_indices:
-          return verse_lines
-    # Build original segments (used only for tag context; we may extend weighting later)
+            return verse_lines
+
         original_segments = []
         for idx in text_line_indices:
             original_segments.append(self.extract_text_from_line(verse_lines[idx]) if 0 <= idx < len(verse_lines) else '')
-        # Normalize translated text and split into parts
+        
         parts = self.split_text_intelligently(translated_text or "", len(original_segments))
         result = []
         part_idx = 0
+        
         for i, line in enumerate(verse_lines):
             if i in text_line_indices and part_idx < len(parts):
                 part = parts[part_idx].strip()
                 if i == 0:
-                    # verse line normally like: \v 1 text...
                     m = re.match(r'(\\v\s+\d+)\s*(.*)', line)
                     if m:
                         marker = m.group(1)
@@ -242,7 +216,6 @@ class TranslationService:
                     else:
                         result.append(f"{line} {part}" if part else line)
                 else:
-                    # Other text-containing lines may have markers like \q, \s1, etc.
                     marker_m = re.match(r'(\\[a-z]+\d*\*?\s*)', line)
                     if marker_m:
                         marker = marker_m.group(1)
@@ -251,13 +224,11 @@ class TranslationService:
                         if translated_with_tags:
                             result.append(f"{marker}{translated_with_tags}")
                         else:
-                            # keep marker if no text
                             result.append(marker.rstrip())
                     else:
                         result.append(part if part else "")
                 part_idx += 1
             else:
-                # preserve non-text or control lines
                 if self.line_contains_text(line):
                     marker_m = re.match(r'(\\[a-z]+\d*\*?\s*)', line)
                     if marker_m:
@@ -267,11 +238,9 @@ class TranslationService:
                 else:
                     result.append(line)
  
-        # If there are leftover parts (shouldn't usually happen), append to last textual line
         if part_idx < len(parts):
             remaining = ' '.join(p for p in parts[part_idx:] if p).strip()
             if remaining:
-                # find last index in result that contains text (prefer last non-control line)
                 appended = False
                 for j in range(len(result) - 1, -1, -1):
                     if not result[j].startswith('\\'):
@@ -279,12 +248,10 @@ class TranslationService:
                         appended = True
                         break
                 if not appended:
-                    # no suitable place found — append as a new line
                     result.append(remaining)
  
         return result
  
-    # ----------------- your generate draft function (unchanged except it uses the above helpers) -----------------
     def generate_draft_from_verses(
         self,
         db: Session,
@@ -303,42 +270,56 @@ class TranslationService:
             )
             .filter(VerseTokenTranslation.project_id == project_id)
             .filter(VerseTokenTranslation.is_active == True)
+            .order_by(
+                Chapter.chapter_number,
+                Verse.verse_number,
+                VerseTokenTranslation.created_at.desc()
+            )
         )
- 
+    
         if book_name:
             translated_verses = translated_verses.filter(Chapter.book.has(Book.book_name == book_name))
- 
+    
         translated_verses = translated_verses.all()
+        
         if not translated_verses:
             return None
- 
+    
         if not book_name:
             first = translated_verses[0]
             book_name = getattr(first, "book_name", None) or getattr(first.verse.chapter.book, "book_name", None)
- 
+    
         book = db.query(Book).filter(Book.book_name == book_name).first()
         if not book or not book.usfm_content:
             return None
- 
+    
         usfm_content = book.usfm_content
- 
+    
+        # Group all tokens by verse_id
+        verse_translations = defaultdict(list)
+        
+        for v in translated_verses:
+            if v.verse is not None:
+                translation = v.verse_translated_text if v.verse_translated_text is not None else ""
+                verse_translations[str(v.verse_id)].append(translation)
+        
+        # Join all token translations for each verse
         verse_map = {
-            str(v.verse_id): v.verse_translated_text
-            for v in translated_verses
-            if v.verse_translated_text and v.verse is not None
+            verse_id: ' '.join(translations).strip()
+            for verse_id, translations in verse_translations.items()
         }
- 
-        verse_lookup = {
-            str(v.verse_id): (v.verse.chapter.chapter_number, v.verse.verse_number)
-            for v in translated_verses
-            if v.verse is not None and v.verse.chapter is not None
-        }
- 
+        
+        # Build verse lookup - keep ALL verse_ids
+        verse_lookup = {}
+        for v in translated_verses:
+            if v.verse is not None and v.verse.chapter is not None:
+                verse_lookup[str(v.verse_id)] = (v.verse.chapter.chapter_number, v.verse.verse_number)
+        
         lines = usfm_content.splitlines()
         result_lines = []
         current_chapter = 1
         i = 0
- 
+    
         while i < len(lines):
             line = lines[i].strip()
             chapter_match = re.match(r'\\c\s+(\d+)', line)
@@ -347,32 +328,51 @@ class TranslationService:
                 result_lines.append(lines[i])
                 i += 1
                 continue
- 
+    
             verse_match = re.match(r'\\v\s+(\d+)', line)
             if verse_match:
                 verse_number = int(verse_match.group(1))
                 verse_lines, text_indices, next_i = self.process_verse_block(lines, i)
- 
-                verse_id = None
+    
+                # Find ALL verse_ids for this chapter:verse
+                matching_verse_ids = []
                 for vid, (chap, vnum) in verse_lookup.items():
                     if chap == current_chapter and vnum == verse_number:
-                        verse_id = vid
-                        break
- 
-                if verse_id and verse_id in verse_map:
-                    translated_text = verse_map[verse_id]
+                        matching_verse_ids.append(vid)
+                
+                # Get the BEST translation (prefer manually edited/most recent)
+                all_translations = {}
+                for vid in matching_verse_ids:
+                    trans = verse_map.get(vid, '')
+                    if trans and trans.strip():
+                        all_translations[vid] = trans
+                
+                # Find the unique/different translation (likely the manual edit)
+                translated_text = ''
+                if all_translations:
+                    trans_values = list(all_translations.values())
+                    
+                    if len(set(trans_values)) == 1:
+                        # All translations are the same
+                        translated_text = trans_values[0]
+                    else:
+                        # Find the least common one (likely the manual edit)
+                        counts = Counter(trans_values)
+                        translated_text = min(counts.items(), key=lambda x: x[1])[0]
+    
+                if translated_text:
                     new_lines = self.rebuild_verse_with_translation(verse_lines, text_indices, translated_text)
                     result_lines.extend(new_lines)
                 else:
                     result_lines.extend(verse_lines)
- 
+    
                 i = next_i
             else:
                 result_lines.append(lines[i])
                 i += 1
- 
+    
         updated_usfm = "\n".join(result_lines)
- 
+    
         draft = TranslationDraft(
             draft_id=uuid4(),
             project_id=project_id,
@@ -383,15 +383,13 @@ class TranslationService:
             created_at=datetime.utcnow(),
             download_count=0
         )
- 
+    
         db.add(draft)
         db.commit()
         db.refresh(draft)
- 
+    
         return draft
-
-   
-
+    
     def update_draft(self, db: Session, draft_id: UUID, request: UpdateDraftRequest):
         draft = db.query(TranslationDraft).filter(TranslationDraft.draft_id == draft_id).first()
         if not draft:
@@ -410,4 +408,3 @@ class TranslationService:
         db.commit()
         db.refresh(draft)
         return draft
-
