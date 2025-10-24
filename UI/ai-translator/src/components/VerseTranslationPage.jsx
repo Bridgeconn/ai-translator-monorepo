@@ -487,7 +487,7 @@ const VerseTranslationPage = () => {
     console.log("selectedBook:", selectedBook);
     console.log("project.source_id:", project?.source_id);
 
-    if (!selectedBook || selectedBook === "null") {
+    if (!selectedBook || selectedBook === null) {
       message.warning("No book selected to delete");
       return;
     }
@@ -1356,7 +1356,7 @@ const VerseTranslationPage = () => {
                 //  borderColor: 'rgb(44, 141, 251)',
               }}
             />
-            {selectedBook && selectedBook !== "null" && (
+            {selectedBook && selectedBook !== null && (
               <Button
                 type="text"
                 icon={
