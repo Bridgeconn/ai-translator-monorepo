@@ -743,30 +743,48 @@ const VerseTranslationPage = () => {
   // ---------- Manual Save ----------
   const handleManualUpdate = async (tokenId, newText) => {
     try {
+      console.log("🔍 Frontend: Saving manual update", {
+        tokenId,
+        newText: newText?.substring(0, 50),
+        projectId
+      });
+
       // 1. Update verse token in DB
       const res = await api.patch(
         `/verse_tokens/manual-update/${tokenId}?project_id=${projectId}`,
         {
-          translated_text: newText, // body
+          translated_text: newText, 
         }
       );
-
       // 2. Update local tokens state
       setTokens((prev) =>
         prev.map((t) =>
-          t.verse_token_id === tokenId ? { ...t, ...res.data.data } : t
+          t.verse_token_id === tokenId 
+            ? { 
+                ...t, 
+                verse_translated_text: newText,
+                ...res.data.data 
+              } 
+            : t
         )
       );
-      setServerDraft((prev) => {
-        if (!prev) return prev;
-        // Optional: update the verse in the draft content if needed
-        return prev.replace(/oldVerseText/, newText);
+
+      // 3. Also update editedTokens to mark it as saved
+      setEditedTokens((prev) => {
+        const copy = { ...prev };
+        delete copy[tokenId];  // Remove from edited state
+        return copy;
       });
 
-      message.success("Saved the verse and updated the draft!");
+      message.success("Saved the verse!");
+      
+      // 4. Optional: Force refresh the draft if on draft tab
+      if (activeTab === 'draft') {
+        await updateServerDraft();
+      }
+      
     } catch (err) {
-      console.error("Manual update error:", err);
-      message.error("Failed to update manually");
+      message.error(`Failed to update: ${err.response?.data?.detail || err.message}`);
     }
   };
 
