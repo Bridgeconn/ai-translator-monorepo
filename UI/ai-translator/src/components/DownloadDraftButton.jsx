@@ -18,7 +18,8 @@ function extractLines(node) {
   return "";
 }
 
-export default function DownloadDraftButton({ style, content, disabled = false, targetLanguage,sourceLanguage }) {
+export default function DownloadDraftButton({ style, content, disabled = false, targetLanguage,sourceLanguage,bookName,
+  chapterNumber = null, }) {
   const rawText = extractLines(content);
   const hasContent = rawText && rawText.trim().length > 0; // added
 
@@ -36,8 +37,14 @@ export default function DownloadDraftButton({ style, content, disabled = false, 
       sourceLanguage?.slice(0, 3).toLowerCase() || "src";
     const tgt =
       targetLanguage?.slice(0, 3).toLowerCase() || "tgt";
-      const fileName = `${src}_${tgt}.${format}`;
+    const book = (bookName || "book").replace(/\s+/g, "_");
+    // 1. Define the Chapter Part conditionally
+const chapterPart = chapterNumber !== null
+? `_Ch${chapterNumber}` // Include '_Ch#' if a specific chapter is selected
+: ""; // Use an empty string if all chapters are being downloaded
 
+// 2. Use the Chapter Part in the File Name
+const fileName = `${src}_${tgt}_${book}${chapterPart}.${format}`;
     if (format === "txt" || format === "usfm") {
       const blob = new Blob([lines.join("\n\n")], {
         type: "text/plain;charset=utf-8",
