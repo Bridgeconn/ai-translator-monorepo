@@ -2020,7 +2020,7 @@ const VerseTranslationPage = () => {
                       </Button>
                     </Space>
                   }
-                  style={{ height: "70vh", overflowY: "scroll" }}
+                  style={{ height: "70vh" }}
                 >
                   <Row gutter={16}>
                     {loadingDraft ? (
