@@ -247,7 +247,6 @@ export const dashboardAPI = {
 
       return { projects, sources };
     } catch (error) {
-      console.error("[ERROR] fetchDashboardData failed:", error);
       throw error;
     }
   },
