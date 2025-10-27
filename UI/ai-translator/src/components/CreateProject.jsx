@@ -1,46 +1,35 @@
 import React, { useState } from "react";
-import { Modal, Form, Input, Select, Button, Space, message, Alert } from "antd";
+import { Modal, Form, Input, Select, Button, Space, message } from "antd";
 import { PlusCircleOutlined } from "@ant-design/icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import LanguageSelect from "./LanguageSelect";
 import api from "../api";
 
 const { Option } = Select;
-
-// 🔹 Restriction mapping for special source languages
 const FILTER_MAP = {
-  Kukna: ["Gujarati"],       // Kukna source → only Gujarati target
-  Kutchi: ["Gujarati"],      // Kutchi source → only Gujarati target
-  Surjapuri: ["Hindi"],      // Surjapuri source → only Hindi target
-  // English: ["Zeme Naga", "Nagamese"],
+  Kukna: ["Gujarati"],
+  Kutchi: ["Gujarati"],
+  Surjapuri: ["Hindi"],
   Gujarati: ["Kachi Koli", "Kukna", "Kutchi"],
-  // Hindi: ["Surjapuri"],
   Nagamese: ["English"],
-}; 
+};
 
 const CreateProjectModal = ({
   isVisible,
   onCancel,
-  onSubmit, // Parent handles project creation
+  onSubmit,
   form,
   loading,
-  sources,
   versions,
   languages,
-  sourcesLoading,
   backendError,
 }) => {
-  // State for nested modals
   const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
   const [versionForm] = Form.useForm();
-  
-  // 🔹 State to hold allowed target language list
   const [filteredTargetLangs, setFilteredTargetLangs] = useState([]);
-
   const queryClient = useQueryClient();
   const [msgApi, contextHolder] = message.useMessage();
 
-  /* -------- Helper: Update project name -------- */
   const updateProjectName = () => {
     const sourceLangId = form.getFieldValue("source_language_id");
     const targetLangId = form.getFieldValue("target_language_id");
@@ -59,19 +48,15 @@ const CreateProjectModal = ({
     }
   };
 
-  /* -------- Handlers -------- */
   const handleSourceLanguageChange = (langObj) => {
     form.setFieldsValue({ source_language_id: langObj.language_id });
     updateProjectName();
-    
-    // ✅ Apply filtering based on source language name
+
     if (FILTER_MAP[langObj.name]) {
       setFilteredTargetLangs(FILTER_MAP[langObj.name]);
     } else {
-      setFilteredTargetLangs([]); // show all
+      setFilteredTargetLangs([]);
     }
-  
-    // ✅ Reset target if invalid
     const currentTargetId = form.getFieldValue("target_language_id");
     const currentTarget = languages.find((l) => l.language_id === currentTargetId);
     if (
@@ -81,24 +66,22 @@ const CreateProjectModal = ({
     ) {
       form.setFieldsValue({ target_language_id: null });
     }
-  }; 
+  };
 
   const handleTargetLanguageChange = (langObj) => {
     form.setFieldsValue({ target_language_id: langObj.language_id });
     updateProjectName();
   };
 
-  /* -------- Version Creation Mutation -------- */
   const createVersionMutation = useMutation({
     mutationFn: (values) => api.post("/versions/", values),
     onSuccess: async (res) => {
       const newVersion = res.data.data || res.data;
-      
+
       msgApi.success("Version created successfully!");
-      
-      // Refetch versions list
+
       await queryClient.refetchQueries(["versions"]);
-      
+
       setIsVersionModalOpen(false);
       versionForm.resetFields();
 
@@ -113,10 +96,8 @@ const CreateProjectModal = ({
     },
   });
 
-  /* -------- Project Submission with Auto Source Creation -------- */
   const handleProjectSubmit = async (values) => {
     try {
-      // 1️⃣ Get source and target language details
       const sourceLang = languages.find(l => l.language_id === values.source_language_id);
       const targetLang = languages.find(l => l.language_id === values.target_language_id);
       const version = versions.find(v => v.version_id === values.version_id);
@@ -126,15 +107,11 @@ const CreateProjectModal = ({
         return;
       }
 
-      // 2️⃣ Create a dedicated source for this project
       const sourceName = `${sourceLang.name} - ${version.version_abbr} (${values.translation_type})`;
-      
-      // msgApi.loading({ content: "Creating dedicated source...", key: "creating", duration: 0 });
-      
       const sourceResponse = await api.post("/sources/", {
         language_id: values.source_language_id,
         version_id: values.version_id,
-        name: sourceName, // Optional: if your API accepts a custom name
+        name: sourceName,
       });
 
       const newSource = sourceResponse.data.data || sourceResponse.data;
@@ -143,15 +120,11 @@ const CreateProjectModal = ({
         throw new Error("Failed to get source_id from response");
       }
 
-      // msgApi.success({ content: "Source created successfully!", key: "creating" });
-
-      // 3️⃣ Prepare project payload
       let payload = {
         ...values,
-        source_id: newSource.source_id, // Use the newly created source
+        source_id: newSource.source_id,
       };
 
-      // Handle text_document special case
       if (values.translation_type === "text_document") {
         payload = {
           ...payload,
@@ -167,7 +140,6 @@ const CreateProjectModal = ({
         };
       }
 
-      // 4️⃣ Call parent's onSubmit with the payload
       onSubmit(payload);
 
     } catch (err) {
@@ -180,7 +152,6 @@ const CreateProjectModal = ({
     <>
       {contextHolder}
 
-      {/* CSS override to force LanguageSelect full width */}
       <style>
         {`
           .full-width-select .ant-select {
@@ -202,28 +173,16 @@ const CreateProjectModal = ({
           onFinish={handleProjectSubmit}
           style={{ marginTop: 16 }}
         >
-          {/* General backend error banner */}
           {backendError && (
             <div style={{ marginBottom: 16, color: "red", fontWeight: 500 }}>
               {backendError}
             </div>
           )}
 
-          {/* Hidden field for project_name */}
           <Form.Item name="project_name" style={{ display: "none" }}>
             <Input />
           </Form.Item>
 
-          {/* Info Alert about Dedicated Source */}
-          {/* <Alert
-            message="Dedicated Source"
-            description="A unique source will be automatically created for this project. You can upload books after creating the project."
-            type="info"
-            showIcon
-            style={{ marginBottom: 16 }}
-          /> */}
-
-          {/* Source Language Selection (NEW) */}
           <Form.Item
             label="Source Language"
             name="source_language_id"
@@ -238,7 +197,6 @@ const CreateProjectModal = ({
             </div>
           </Form.Item>
 
-          {/* Version Selection with Add button */}
           <Form.Item
             label={
               <Space>
@@ -252,8 +210,8 @@ const CreateProjectModal = ({
             name="version_id"
             rules={[{ required: true, message: "Please select a version" }]}
           >
-            <Select 
-              placeholder="Select a version" 
+            <Select
+              placeholder="Select a version"
               showSearch
               style={{ boxShadow: "0 2px 6px rgba(0,0,0,0.15)", borderRadius: "6px" }}
             >
@@ -265,7 +223,6 @@ const CreateProjectModal = ({
             </Select>
           </Form.Item>
 
-          {/* Target Language */}
           <Form.Item
             label="Target Language"
             name="target_language_id"
@@ -281,7 +238,6 @@ const CreateProjectModal = ({
             </div>
           </Form.Item>
 
-          {/* Translation Type */}
           <Form.Item
             label="Translation Type"
             name="translation_type"
@@ -308,7 +264,6 @@ const CreateProjectModal = ({
         </Form>
       </Modal>
 
-      {/* Version Creation Modal */}
       <Modal
         title="Add New Version"
         open={isVersionModalOpen}
