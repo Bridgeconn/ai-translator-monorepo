@@ -540,7 +540,7 @@ useEffect(() => {
       try {
         const token = localStorage.getItem("token");
         const resp = await fetch(
-          import.meta.env.VITE_BACKEND_URL + "/api/project-text-documents/",
+          import.meta.env.VITE_BACKEND_URL + "/project-text-documents/",
           {
             method: "GET", // explicitly tell it to use GET
             headers: {
@@ -1346,7 +1346,7 @@ useEffect(() => {
       }
 
       const response = await fetch(
-        import.meta.env.VITE_BACKEND_URL + "/api/project-text-documents/",
+        import.meta.env.VITE_BACKEND_URL + "/project-text-documents/",
         {
           method: "POST",
           headers: {
@@ -1387,7 +1387,7 @@ useEffect(() => {
       try {
         const token = localStorage.getItem("token");
         const resp = await fetch(
-          import.meta.env.VITE_BACKEND_URL + "/api/project-text-documents/",
+          import.meta.env.VITE_BACKEND_URL + "/project-text-documents/",
           {
             method: "GET",
             headers: {
@@ -1544,10 +1544,10 @@ useEffect(() => {
       // existing project → add files
       url =
         import.meta.env.VITE_BACKEND_URL +
-        `/api/project-text-documents/${selectedProject}/add-files`;
+        `/project-text-documents/${selectedProject}/add-files`;
     } else {
       // new project → create
-      url = import.meta.env.VITE_BACKEND_URL + "/api/project-text-documents/";
+      url = import.meta.env.VITE_BACKEND_URL + "/project-text-documents/";
     }
 
     const response = await fetch(url, {
