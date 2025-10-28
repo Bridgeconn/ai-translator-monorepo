@@ -126,7 +126,7 @@ async function pollJobStatus({
   onStatusUpdate,
   notification,
   maxAttempts = 1200,
-  interval = 3000,
+  interval = 2000,
   signal,
 }) {
   let attempts = 0;
