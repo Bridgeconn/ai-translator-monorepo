@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Layout, Card, Row, Col, Typography, Spin } from "antd";
 import QuickActions from "./QuickActions";
 import { FileTextOutlined, FolderOpenOutlined } from "@ant-design/icons";
+import { dashboardAPI } from "../api";
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
@@ -14,31 +15,16 @@ const Dashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-
-      const [projectsResponse, sourcesResponse] = await Promise.all([
-        fetch(import.meta.env.VITE_BACKEND_URL + '/projects/'),
-        fetch(import.meta.env.VITE_BACKEND_URL + '/sources/')
-      ]);
-
-      if (projectsResponse.ok && sourcesResponse.ok) {
-        const projectsData = await projectsResponse.json();
-        const sourcesData = await sourcesResponse.json();
-
-        setProjects(Array.isArray(projectsData) ? projectsData : projectsData.data || []);
-        setSources(Array.isArray(sourcesData) ? sourcesData : sourcesData.data || []);
-      } else {
-        setProjects([]);
-        setSources([]);
-      }
+      const { projects, sources } = await dashboardAPI.fetchDashboardData();
+      setProjects(projects);
+      setSources(sources);
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
       setProjects([]);
       setSources([]);
     } finally {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     fetchDashboardData();
   }, []);
@@ -75,7 +61,7 @@ const Dashboard = () => {
           <Card
             hoverable
             style={cardStyle}
-            bodyStyle={{ padding: 0 }}
+            styles={{ body: { padding: 0 } }}
             onMouseEnter={e => e.currentTarget.style.transform = "translateY(-8px)"}
             onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
           >
@@ -89,7 +75,7 @@ const Dashboard = () => {
           <Card
             hoverable
             style={cardStyle}
-            bodyStyle={{ padding: 0 }}
+            styles={{ body: { padding: 0 } }}
             onMouseEnter={e => e.currentTarget.style.transform = "translateY(-8px)"}
             onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
           >

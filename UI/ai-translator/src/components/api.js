@@ -136,13 +136,6 @@ export const textDocumentAPI = {
     return res.data;
   },
 
-
-  // Add this function to your textDocumentAPI object in api.js
-
-  // Add this function to your textDocumentAPI object in api.js
-
-// Add this function to your textDocumentAPI object in api.js
-
 // ---- FIXED uploadFile ----
 uploadFile: async (projectId, formData) => {
   try {
@@ -232,6 +225,31 @@ export const sourcesAPI = {
   getSourceById: async (sourceId) => {
     if (!sourceId) return null;
     return (await api.get(`/sources/${sourceId}`)).data.data;
+  },
+};
+// ------------------ Dashboard API ------------------
+export const dashboardAPI = {
+  fetchDashboardData: async () => {
+    try {
+      const [projectsRes, sourcesRes] = await Promise.all([
+        api.get("/projects/"),
+        api.get("/sources/"),
+      ]);
+
+      const projects =
+        Array.isArray(projectsRes.data)
+          ? projectsRes.data
+          : projectsRes.data.data || [];
+
+      const sources =
+        Array.isArray(sourcesRes.data)
+          ? sourcesRes.data
+          : sourcesRes.data.data || [];
+
+      return { projects, sources };
+    } catch (error) {
+      throw error;
+    }
   },
 };
 
