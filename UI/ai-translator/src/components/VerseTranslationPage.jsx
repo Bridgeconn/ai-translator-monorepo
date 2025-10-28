@@ -281,13 +281,7 @@ const VerseTranslationPage = () => {
       setSelectedModel("nllb-600M");
     }
   }, [project]);
-  // Book upload state
-  const [isBookUploadModalOpen, setIsBookUploadModalOpen] = useState(false);
-  //const [uploadProgressOpen, setUploadProgressOpen] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState({
-    uploaded: [],
-    skipped: [],
-  });
+
   const hiddenUploadInputRef = useRef(null);
   // Modal control
   const [uploadProgressOpen, setUploadProgressOpen] = useState(false);
@@ -356,9 +350,17 @@ const VerseTranslationPage = () => {
         });
         uploaded.push(code);
         existingCodes.add(code);
-      } catch {
-        message.error(`Failed to upload ${code}`);
-      }
+      } catch (err) {
+        console.warn("Upload failed:", err);
+        skipped.push(code);
+        setSkippedBooks((prev) => [...prev, code]);
+      
+        if (err?.response?.status === 400) {
+          message.warning(`${code} skipped (wrong format)`);
+        } else {
+          message.error(`Failed to upload ${code}`);
+        }
+      }      
     }
 
     return { uploaded, skipped };
@@ -391,7 +393,7 @@ const VerseTranslationPage = () => {
           setUploadedBooks((prev) => [...prev, code]); // use code instead of file.name
         }
         if (skipped.length) {
-          setSkippedBooks((prev) => [...prev, code]); // use code instead of file.name
+          setSkippedBooks((prev) => [...new Set([...prev, ...skipped])]); // avoid duplicates
         }
       } catch (err) {
         setSkippedBooks((prev) => [...prev, code]); // treat errors as skipped
@@ -405,10 +407,6 @@ const VerseTranslationPage = () => {
     await fetchAvailableBooks(project.source_id);
 
     e.target.value = ""; // reset input
-  };
-
-  const openBookUploadModal = () => {
-    setIsBookUploadModalOpen(true);
   };
 
   const openFileDialog = () => {

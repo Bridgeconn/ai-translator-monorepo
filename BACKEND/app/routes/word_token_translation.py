@@ -52,15 +52,22 @@ def generate_batch(
 @router.get("/generate_batch_stream/{project_id}")
 def generate_batch_stream(
     project_id: UUID,
-    book_id: UUID = Query(..., description="Book ID for which to translate tokens"), # ✅ Change book_name to book_id
-    model_name: str = Query("nllb-600M", description="Translation model to use"),
+    book_id: UUID = Query(...),
+    model_name: str = Query("nllb-600M"),
+    full_regenerate: bool = Query(False),
     db: Session = Depends(get_db)
 ):
     """
     Stream translations batch by batch for a project + book.
     """
     return StreamingResponse(
-        crud.generate_tokens_batch_stream(db, project_id, book_id, model_name=model_name),
+        crud.generate_tokens_batch_stream(
+            db=db,
+            project_id=project_id,
+            book_id=book_id,
+            model_name=model_name,
+            full_regenerate=full_regenerate,
+        ),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
