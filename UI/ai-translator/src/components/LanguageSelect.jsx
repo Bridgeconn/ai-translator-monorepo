@@ -31,13 +31,14 @@ const filteredLanguages =
     <div style={{ display: "flex", alignItems: "center"}}>
       <strong>{label}</strong>
       <Select
+        key={filterList.join("|")}
         showSearch
         placeholder={placeholder}
         style={{ width: 250,
           boxShadow: "0 2px 6px rgba(0,0,0,0.15)", // ✅ shadow effect
           borderRadius: "6px"   }}
         loading={isLoading}
-        value={value ? value.language_id : undefined}
+        value={value || undefined}
         notFoundContent={
           isLoading ? <Spin size="small" /> : "No language found"
         }
@@ -48,9 +49,8 @@ const filteredLanguages =
             ?.includes(input.toLowerCase())
         }
         onChange={(id) => {
-          const langObj = languages.find((lang) => lang.language_id === id);
-          onChange(langObj);
-        }}
+          onChange(id);
+        }}        
         disabled={disabled || isLoading} // ✅ disable while translating
       >
         {filteredLanguages.map((lang) => (

@@ -136,7 +136,7 @@ export default function HomePage() {
             }}
           >
             Transform your Bible text into accurate translations instantly with
-            AI-powered tools — preserve nuance, edit drafts, and generate
+            AI-powered tools to preserve nuance, edit drafts, and generate
             polished translations faster.
           </Paragraph>
 
