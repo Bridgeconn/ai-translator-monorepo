@@ -126,7 +126,7 @@ async function pollJobStatus({
   onStatusUpdate,
   notification,
   maxAttempts = 1200,
-  interval = 3000,
+  interval = 2000,
   signal,
 }) {
   let attempts = 0;
@@ -2187,6 +2187,8 @@ useEffect(() => {
                       disabled={loading || !targetText}
                       targetLanguage={targetLang?.BCP_code}
                       sourceLanguage={sourceLang?.BCP_code}
+                      translationType="quick"
+                      uploadedFileName={filename || uploadedFile?.name}
                     />
                   </Space>
                 </Col>

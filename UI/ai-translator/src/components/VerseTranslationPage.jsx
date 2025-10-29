@@ -1932,21 +1932,14 @@ const VerseTranslationPage = () => {
                   extra={
                     <Space>
                       {/* Download → icon only */}
-                      <DownloadDraftButton
- content={currentDraftContent}
- sourceLanguage={project?.source_language_name}
- targetLanguage={project?.target_language_name}
- bookName={selectedBook}
- chapterNumber={draftChapter}      fileName={
-        project?.source_language_name && project?.target_language_name
-          ? draftChapter // if a specific chapter is selected
-            ? `${project.source_language_name.toLowerCase()}_${project.target_language_name.toLowerCase()}_${selectedBook}_${draftChapter}.usfm`
-            : `${project.source_language_name.toLowerCase()}_${project.target_language_name.toLowerCase()}_${selectedBook}.usfm`
-          : draftChapter
-          ? `${selectedBook}_${draftChapter}.usfm`
-          : `${selectedBook}.usfm`
-      }
-    />
+    <DownloadDraftButton
+  content={currentDraftContent}
+  sourceLanguage={project?.source_language_name}
+  targetLanguage={project?.target_language_name}
+  bookName={selectedBook}
+  chapterNumber={draftChapter}
+  translationType="verse"
+/>
                      {/* Copy → icon only */}
 <CopyOutlined
   style={{
