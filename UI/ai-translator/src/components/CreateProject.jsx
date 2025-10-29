@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Modal, Form, Input, Select, Button, Space, message } from "antd";
+import React, { useState, useEffect } from "react";
+import { Modal, Form, Input, Select, Button, Space, message, Alert } from "antd";
 import { PlusCircleOutlined } from "@ant-design/icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import LanguageSelect from "./LanguageSelect";
@@ -29,7 +29,18 @@ const CreateProjectModal = ({
   const [filteredTargetLangs, setFilteredTargetLangs] = useState([]);
   const queryClient = useQueryClient();
   const [msgApi, contextHolder] = message.useMessage();
-
+  const [isCreateDisabled, setIsCreateDisabled] = useState(false);
+  const [filteredSourceLangs, setFilteredSourceLangs] = useState([]);
+  useEffect(() => {
+    if (isVisible) {
+      // 🧹 Reset form and dropdown filters every time modal opens
+      form.resetFields();
+      setFilteredSourceLangs([]);
+      setFilteredTargetLangs([]);
+      setIsCreateDisabled(false);
+    }
+  }, [isVisible]);
+  /* -------- Helper: Update project name -------- */
   const updateProjectName = () => {
     const sourceLangId = form.getFieldValue("source_language_id");
     const targetLangId = form.getFieldValue("target_language_id");
@@ -51,7 +62,32 @@ const CreateProjectModal = ({
   const handleSourceLanguageChange = (langObj) => {
     form.setFieldsValue({ source_language_id: langObj.language_id });
     updateProjectName();
+    setIsCreateDisabled(false); // reset
 
+    const restrictedLangs = ["Zeme Naga", "Kachi Koli"];
+    const gujaratiLang = "Gujarati";
+
+    //  Case 1: Block Zeme Naga or Kachi Koli
+    if (restrictedLangs.includes(langObj.name)) {
+      msgApi.error(`${langObj.name} to any other translation is not possible`);
+      setFilteredTargetLangs([]); // clear targets
+      form.setFieldsValue({ target_language_id: null });
+      setIsCreateDisabled(true);
+      return;
+    }
+
+    //  Case 2: Gujarati → show all target languages
+    if (langObj.name === gujaratiLang) {
+      setFilteredTargetLangs([]); // all
+      return;
+    }
+
+    //  Case 3: Kukna, Kutchi, Kachi Koli → only Gujarati target
+    if (["Kukna", "Kutchi", "Kachi Koli"].includes(langObj.name)) {
+      setFilteredTargetLangs(["Gujarati"]);
+      return;
+    }
+    //  Apply filtering based on source language name
     if (FILTER_MAP[langObj.name]) {
       setFilteredTargetLangs(FILTER_MAP[langObj.name]);
     } else {
@@ -71,8 +107,49 @@ const CreateProjectModal = ({
   const handleTargetLanguageChange = (langObj) => {
     form.setFieldsValue({ target_language_id: langObj.language_id });
     updateProjectName();
+
+    let allowedSources = [];
+    let infoMsg = "";
+    let shouldResetSource = false;
+
+    switch (langObj.name) {
+      case "Zeme Naga":
+      case "Nagamese":
+        allowedSources = ["English"];
+        infoMsg = `Only English can be used as source for ${langObj.name} translation`;
+        shouldResetSource = true;
+        break;
+
+      case "Kachi Koli":
+      case "Kutchi":
+      case "Kukna":
+        allowedSources = ["Gujarati"];
+        infoMsg = `Only Gujarati can be used as source for ${langObj.name} translation`;
+        shouldResetSource = true;
+        break;
+
+      case "Surjapuri":
+        allowedSources = ["Hindi"];
+        infoMsg = "Only Hindi can be used as source for Surjapuri translation";
+        shouldResetSource = true;
+        break;
+
+      default:
+        allowedSources = [];
+        shouldResetSource = false;
+    }
+
+    //  Only reset if restricted target was selected
+    if (shouldResetSource) {
+      form.setFieldsValue({ source_language_id: null });
+      setFilteredSourceLangs(allowedSources);
+      if (infoMsg) msgApi.info(infoMsg);
+    } else {
+      setFilteredSourceLangs([]); // restore all options
+    }
   };
 
+  /* -------- Version Creation Mutation -------- */
   const createVersionMutation = useMutation({
     mutationFn: (values) => api.post("/versions/", values),
     onSuccess: async (res) => {
@@ -163,7 +240,14 @@ const CreateProjectModal = ({
       <Modal
         title="Create New Project"
         open={isVisible}
-        onCancel={onCancel}
+        onCancel={() => {
+          //  Reset form and dropdown filters when modal closes
+          form.resetFields();
+          setFilteredSourceLangs([]);
+          setFilteredTargetLangs([]);
+          setIsCreateDisabled(false);
+          onCancel(); // keep parent cancel behavior
+        }}
         footer={null}
         width={600}
       >
@@ -183,6 +267,7 @@ const CreateProjectModal = ({
             <Input />
           </Form.Item>
 
+          {/* Source Language Selection (NEW) */}
           <Form.Item
             label="Source Language"
             name="source_language_id"
@@ -192,11 +277,26 @@ const CreateProjectModal = ({
             <div className="full-width-select">
               <LanguageSelect
                 label=""
-                onChange={handleSourceLanguageChange}
+                value={form.getFieldValue("source_language_id")}
+                onChange={(language_id) => {
+                  const langObj = languages.find(l => l.language_id === language_id);
+                  form.setFieldsValue({ source_language_id: language_id });
+                  if (langObj) handleSourceLanguageChange(langObj);
+                }}
+                filterList={filteredSourceLangs}
               />
+
             </div>
           </Form.Item>
-
+          {isCreateDisabled && (
+            <Alert
+              message="This source language cannot be used for translation."
+              type="error"
+              showIcon
+              style={{ marginBottom: 12 }}
+            />
+          )}
+          {/* Version Selection with Add button */}
           <Form.Item
             label={
               <Space>
@@ -222,7 +322,7 @@ const CreateProjectModal = ({
               ))}
             </Select>
           </Form.Item>
-
+          {/* Target Language */}
           <Form.Item
             label="Target Language"
             name="target_language_id"
@@ -232,9 +332,13 @@ const CreateProjectModal = ({
             <div className="full-width-select">
               <LanguageSelect
                 label=""
-                onChange={handleTargetLanguageChange}
+                value={form.getFieldValue("target_language_id")}   // ✅ show current selection
+                onChange={(langId) => {
+                  handleTargetLanguageChange(languages.find(l => l.language_id === langId));
+                }}
                 filterList={filteredTargetLangs}
               />
+
             </div>
           </Form.Item>
 
@@ -255,7 +359,7 @@ const CreateProjectModal = ({
 
           <Form.Item>
             <Space>
-              <Button type="primary" htmlType="submit" loading={loading}>
+              <Button type="primary" htmlType="submit" loading={loading} disabled={isCreateDisabled}>
                 Create Project
               </Button>
               <Button onClick={onCancel}>Cancel</Button>

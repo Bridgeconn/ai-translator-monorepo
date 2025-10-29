@@ -667,17 +667,21 @@ export default function WordTranslation() {
       const params = new URLSearchParams({
         book_id: selectedBook.book_id,
         model_name: selectedModel,
+        full_regenerate: fullRegenerate ? "true" : "false",  // optional flag for backend
       });
       
-      // Include token IDs only if in No Continue mode
-      if (tokenIdsToTranslate) {
-        tokenIdsToTranslate.forEach(id => params.append("token_ids", id));
-      }
       // const eventSource = new EventSource(
       //   // import.meta.env.VITE_BACKEND_URL + `/api/generate_batch_stream/${projectId}?book_id=${encodeURIComponent(selectedBook.book_id)}`
       //   `${import.meta.env.VITE_BACKEND_URL}/api/generate_batch_stream/${projectId}?book_id=${encodeURIComponent(selectedBook.book_id)}&model_name=${encodeURIComponent(selectedModel)}`
 
       // );
+      if (fullRegenerate) {
+        // 🧹 Reset UI first
+        setTranslatedCount([]);
+        setTranslatedCount(0);
+        console.log("🔁 Regenerate All: Cleared old translations");
+      }
+    
       const eventSource = new EventSource(
         `${import.meta.env.VITE_BACKEND_URL}/api/generate_batch_stream/${projectId}?${params.toString()}`
       );
