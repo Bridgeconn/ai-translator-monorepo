@@ -1,3 +1,4 @@
+import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App as AntdApp, ConfigProvider } from "antd";
@@ -25,14 +26,14 @@ const queryClient = new QueryClient({
 });
 const ProtectedOutlet = () => {
   const token = localStorage.getItem("token");
-  const { openLogin } = useAuthModal(); // use the modal context
+  const { openLogin } = useAuthModal();
 
-  if (token) return <Outlet />;
+  React.useEffect(() => {
+    if (!token) openLogin();
+  }, [token, openLogin]);
 
-  openLogin();
-  return null;
+  return token ? <Outlet /> : null;
 };
-
 // Ant Design theme
 const theme = {
   token: {
@@ -69,7 +70,6 @@ function App() {
                 <Route path="dashboard" element={<DashboardPage />} />
                 <Route path="sources" element={<SourcesListPage />} />
                 <Route path="projects" element={<ProjectsPage />} />
-                <Route path="quick-translation" element={<QuickTranslationPage />} />
                 <Route path="projects/:projectId/translate" element={<VerseTranslationPage />} />
                 <Route path="projects/:projectId/word-translation" element={<WordTranslation />} />
                 <Route path="projects/:projectId/text-translation" element={<TextDocumentTranslation />} />

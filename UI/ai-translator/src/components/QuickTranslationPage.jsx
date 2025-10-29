@@ -2187,6 +2187,8 @@ useEffect(() => {
                       disabled={loading || !targetText}
                       targetLanguage={targetLang?.BCP_code}
                       sourceLanguage={sourceLang?.BCP_code}
+                      translationType="quick"
+                      uploadedFileName={filename || uploadedFile?.name}
                     />
                   </Space>
                 </Col>

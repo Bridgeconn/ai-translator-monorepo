@@ -15,7 +15,7 @@ import {
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
-import { authAPI } from "./api";  // ⚠️ Check this path - might need ../api/api
+import { authAPI } from "./api";
 import { useAuthModal } from "./AuthModalContext";
 
 const { Text, Title } = Typography;
@@ -39,13 +39,10 @@ export default function AuthModal() {
   // Login mutation
   const loginMutation = useMutation({
     mutationFn: async (credentials) => {
-      console.log("Attempting login with:", credentials);
       const result = await authAPI.login(credentials);
-      console.log("Login result:", result);
       return result;
     },
     onSuccess: async (data) => {
-      console.log("Login success:", data);
       localStorage.setItem("token", data.access_token);
       try {
         const user = await authAPI.getCurrentUser();
@@ -57,7 +54,6 @@ export default function AuthModal() {
           navigate("/quick-translation");
         }, 500);
       } catch (error) {
-        console.error("Failed to get user details:", error);
         setTimeout(() => {
           close();
           navigate("/dashboard");
@@ -65,10 +61,6 @@ export default function AuthModal() {
       }
     },
     onError: (error) => {
-      console.error("Full login error:", error);
-      console.log("Error response:", error.response);
-      console.log("Error data:", error.response?.data);
-      
       const errorMessage = error.response?.data?.detail || 
                           error.response?.data?.message || 
                           error.message || 
@@ -86,13 +78,10 @@ export default function AuthModal() {
   // Register mutation
   const registerMutation = useMutation({
     mutationFn: async (userData) => {
-      console.log("Attempting registration with:", userData);
       const result = await authAPI.register(userData);
-      console.log("Registration result:", result);
       return result;
     },
     onSuccess: () => {
-      console.log("Registration success");
       notificationApi.success({
         message: "Registration Successful",
         description: "Please login to continue.",
@@ -102,10 +91,6 @@ export default function AuthModal() {
       setIsRegister(false);
     },
     onError: (error) => {
-      console.error("Full registration error:", error);
-      console.log("Error response:", error.response);
-      console.log("Error data:", error.response?.data);
-      
       const errorMessage = error.response?.data?.detail || 
                           error.response?.data?.message || 
                           error.message || 
@@ -129,10 +114,9 @@ export default function AuthModal() {
       });
       forgotForm.resetFields();
       setIsForgot(false);
-      setIsRegister(false); // back to login
+      setIsRegister(false); 
     },
     onError: () => {
-      // Show generic message to avoid exposing emails
       notificationApi.info({
         message: "Password Reset",
         description: "If that email exists, a reset link has been sent.",
@@ -143,16 +127,12 @@ export default function AuthModal() {
     },
   });
   
-  const handleLogin = (values) => {
-    console.log("handleLogin called with:", values);
-    loginMutation.mutate(values);
-    return false;
+  const handleLogin = async(values) => {
+    await loginMutation.mutateAsync(values);
   };
 
-  const handleRegister = (values) => {
-    console.log("handleRegister called with:", values);
-    registerMutation.mutate(values);
-    return false;
+  const handleRegister = async(values) => {
+    await registerMutation.mutateAsync(values);
   };
   const handleForgot = (values) => {
     forgotPasswordMutation.mutate(values.email);
@@ -190,10 +170,9 @@ export default function AuthModal() {
         footer={null}
         width={460}
         centered
-        destroyOnClose
-        maskStyle={{
-            backdropFilter: "blur(8px)", // <-- makes the background blurry
-            backgroundColor: "rgba(0,0,0,0.3)", // optional: darkens the background a bit
+        style={{
+            backdropFilter: "blur(8px)", 
+            backgroundColor: "rgba(0,0,0,0.3)", 
           }}
         closeIcon={
           <span style={{ fontSize: 20, color: "rgba(0,0,0,0.45)" }}>×</span>
@@ -461,4 +440,4 @@ export default function AuthModal() {
       </Modal>
     </>
   );
-};  
+}

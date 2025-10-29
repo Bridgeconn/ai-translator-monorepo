@@ -1270,7 +1270,13 @@ export default function TextDocumentTranslation() {
                       />
                     </Tooltip>
 
-                    <DownloadDraftButton content={targetText} />
+                    <DownloadDraftButton
+  content={targetText}
+  sourceLanguage={sourceLangName}
+  targetLanguage={targetLangName}
+  uploadedFileName={selectedFile?.file_name} 
+  translationType="text"                     
+/>
                   </>
                   {/* : (
                     <div>

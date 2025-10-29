@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Row, Col, Select, Card, Input, Typography, Button, message, Breadcrumb, Popconfirm, Modal,notification,App,Tag,Spin,Tooltip,Progress,} from 'antd';
-import { CopyOutlined, DownloadOutlined, ExclamationCircleOutlined,UploadOutlined,InfoCircleOutlined,DeleteOutlined} from '@ant-design/icons';
+import { CopyOutlined, ExclamationCircleOutlined,UploadOutlined,InfoCircleOutlined,DeleteOutlined} from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { projectsAPI, wordTokenAPI, booksAPI, languagesAPI, sourcesAPI, draftAPI } from './api.js';
 import { useParams, Link } from 'react-router-dom';
 import api from '../api';
+import DownloadDraftButton from "../components/DownloadDraftButton";
 
 
 const { Option } = Select;
@@ -977,19 +978,6 @@ export default function WordTranslation() {
       console.error("[ERROR] updateDraftFromEditor failed:", err);
     }
   };
-  const handleDownloadDraft = () => {
-    const blob = new Blob([draftContent], { type: "text/plain" });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${project?.name || "translation"}_draft.usfm`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-    messageApi.info("Draft downloaded!");
-  };
-
   const handleSaveAll = async () => {
     if (!selectedBook) {
       notificationApi.error({
@@ -1662,15 +1650,26 @@ export default function WordTranslation() {
                     >
                       Copy
                     </Button>
-                    <Button
-                      icon={<DownloadOutlined />}
-                      size="medium"
-                      type="primary"
-                      onClick={handleDownloadDraft}
-                      disabled={loadingTokens || loadingDraft}
-                    >
-                      Download
-                    </Button>
+                    <DownloadDraftButton
+  content={draftContent}
+  disabled={loadingTokens || loadingDraft}
+  sourceLanguage={
+    sourceLang?.BCP_code ||
+    sourceLang?.name ||
+    project?.source_language?.code ||
+    project?.source_language_name ||
+    "src"
+  }
+  targetLanguage={
+    targetLang?.BCP_code ||
+    targetLang?.name ||
+    project?.target_language?.code ||
+    project?.target_language_name ||
+    "tgt"
+  }
+  bookName={selectedBook?.book_name || selectedBook?.name || "book"}
+  translationType="book"  
+/>
                   </>
                 )}
               </div>
