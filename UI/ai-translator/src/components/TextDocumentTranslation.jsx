@@ -443,7 +443,7 @@ export default function TextDocumentTranslation() {
     else if (isGujGjkPair) modelToUse = "nllb-gujrathi-koli_kachchi";
     else if (isHinSjpPair) modelToUse = "nllb-hindi-surjapuri";
     else if (isGujKukPair) modelToUse = "nllb-gujarati-kukna";
-    else if (isGujKutPair) modelToUse = "nllb-gujarati-kutub";
+    else if (isGujKutPair) modelToUse = "nllb-gujarati-kutchi";
 
     setSelectedModel(modelToUse);
     console.log(`🎯 Auto-selected model for ${src} ↔ ${tgt}: ${modelToUse}`);
@@ -1064,15 +1064,13 @@ export default function TextDocumentTranslation() {
                 </Select>
                 <Tooltip
                   title={
-                    selectedModel
-                      ? Object.entries(MODEL_INFO[selectedModel]).map(
-                          ([key, value]) => (
-                            <div key={key}>
-                              <strong>{key}:</strong> {value}
-                            </div>
-                          )
-                        )
-                      : "Select a model to see info"
+                    selectedModel && MODEL_INFO[selectedModel]
+                      ? Object.entries(MODEL_INFO[selectedModel]).map(([key, value]) => (
+                          <div key={key}>
+                            <strong>{key}:</strong> {value}
+                          </div>
+                        ))
+                      : "Select a model to view details"
                   }
                   color="#fff"
                   overlayStyle={{ whiteSpace: "pre-line" }}

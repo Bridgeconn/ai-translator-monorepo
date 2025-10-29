@@ -25,7 +25,10 @@ export default function LanguageSelect({ label, value, onChange, disabled = fals
 // Apply dynamic filtering (for paired language logic)
 const filteredLanguages =
   filterList.length > 0
-    ? languages.filter((lang) => filterList.includes(lang.name))
+    ? languages.filter(
+        (lang) =>
+          filterList.includes(lang.name.trim()) || lang.language_id === value
+      )
     : languages;
   return (
     <div style={{ display: "flex", alignItems: "center"}}>
@@ -48,9 +51,11 @@ const filteredLanguages =
             ?.includes(input.toLowerCase())
         }
         onChange={(id) => {
-          const langObj = languages.find((lang) => lang.language_id === id);
-          onChange(langObj);
-        }}
+          const selectedLang = filteredLanguages.find(
+            (lang) => lang.language_id === id
+          );
+          onChange(selectedLang); // ✅ send full object (with BCP_code)
+        }}       
         disabled={disabled || isLoading} // ✅ disable while translating
       >
         {filteredLanguages.map((lang) => (
