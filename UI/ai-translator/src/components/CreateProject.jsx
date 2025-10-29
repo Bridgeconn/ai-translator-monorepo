@@ -59,50 +59,87 @@ const CreateProjectModal = ({
     }
   };
 
-  const handleSourceLanguageChange = (langObj) => {
-    form.setFieldsValue({ source_language_id: langObj.language_id });
-    updateProjectName();
-    setIsCreateDisabled(false); // reset
+//   const handleSourceLanguageChange = (langObj) => {
+//     console.log("langObj", langObj);
+//     form.setFieldsValue({ source_language_id: langObj.language_id });
+//     updateProjectName();
+//     setIsCreateDisabled(false); // reset
 
-    const restrictedLangs = ["Zeme Naga", "Kachi Koli"];
-    const gujaratiLang = "Gujarati";
+//     const restrictedLangs = ["Zeme Naga", "Kachi Koli"];
+//     const gujaratiLang = "Gujarati";
 
-    //  Case 1: Block Zeme Naga or Kachi Koli
-    if (restrictedLangs.includes(langObj.name)) {
-      msgApi.error(`${langObj.name} to any other translation is not possible`);
-      setFilteredTargetLangs([]); // clear targets
-      form.setFieldsValue({ target_language_id: null });
-      setIsCreateDisabled(true);
-      return;
-    }
+//     //  Case 1: Block Zeme Naga or Kachi Koli
+//     if (restrictedLangs.includes(langObj.name)) {
+//       msgApi.error(`${langObj.name} to any other translation is not possible`);
+//       setFilteredTargetLangs([]); // clear targets
+//       form.setFieldsValue({ target_language_id: null });
+//       setIsCreateDisabled(true);
+//       return;
+//     }
 
-    //  Case 2: Gujarati → show all target languages
-    if (langObj.name === gujaratiLang) {
-      setFilteredTargetLangs([]); // all
-      return;
-    }
+//     //  Case 2: Gujarati → show all target languages
+//     if (langObj.name === gujaratiLang) {
+//       setFilteredTargetLangs([]); // all
+//       return;
+//     }
 
-    //  Case 3: Kukna, Kutchi, Kachi Koli → only Gujarati target
-    if (["Kukna", "Kutchi", "Kachi Koli"].includes(langObj.name)) {
-      setFilteredTargetLangs(["Gujarati"]);
-      return;
-    }
-    //  Apply filtering based on source language name
-    if (FILTER_MAP[langObj.name]) {
-      setFilteredTargetLangs(FILTER_MAP[langObj.name]);
-    } else {
-      setFilteredTargetLangs([]);
-    }
-    const currentTargetId = form.getFieldValue("target_language_id");
-    const currentTarget = languages.find((l) => l.language_id === currentTargetId);
-    if (
-      currentTarget &&
-      FILTER_MAP[langObj.name] &&
-      !FILTER_MAP[langObj.name].includes(currentTarget.name)
-    ) {
-      form.setFieldsValue({ target_language_id: null });
-    }
-  };
+//     //  Case 3: Kukna, Kutchi, Kachi Koli → only Gujarati target
+//     if (["Kukna", "Kutchi", "Kachi Koli"].includes(langObj.name)) {
+//       setFilteredTargetLangs(["Gujarati"]);
+//       return;
+//     }
+//     //  Apply filtering based on source language name
+//     if (FILTER_MAP[langObj.name]) {
+//       setFilteredTargetLangs(FILTER_MAP[langObj.name]);
+//     } else {
+//       setFilteredTargetLangs([]);
+//     }
+//     const currentTargetId = form.getFieldValue("target_language_id");
+//     const currentTarget = languages.find((l) => l.language_id === currentTargetId);
+//     if (
+//       currentTarget &&
+//       FILTER_MAP[langObj.name] &&
+//       !FILTER_MAP[langObj.name].includes(currentTarget.name)
+//     ) {
+//       form.setFieldsValue({ target_language_id: null });
+//     }
+//     // ✅ Always reset target on source change
+// form.setFieldsValue({ target_language_id: null });
+// setFilteredTargetLangs(FILTER_MAP[langObj.name] || []);
+
+//   };
+const handleSourceLanguageChange = (langObj) => {
+  console.log("langObj", langObj);
+  form.setFieldsValue({ source_language_id: langObj.language_id });
+  updateProjectName();
+  setIsCreateDisabled(false); // reset
+
+  const restrictedLangs = ["Zeme Naga", "Kachi Koli"];
+  const gujaratiLang = "Gujarati";
+
+  // 🚫 Case 1: Restricted source
+  if (restrictedLangs.includes(langObj.name)) {
+    msgApi.error(`${langObj.name} to any other translation is not possible`);
+    setFilteredTargetLangs([]);
+    form.setFieldsValue({ target_language_id: null });
+    setIsCreateDisabled(true);
+    return;
+  }
+
+  // ✅ Always reset target
+  form.setFieldsValue({ target_language_id: null });
+
+  // 🧠 Apply filtering
+  if (langObj.name === gujaratiLang) {
+    setFilteredTargetLangs([]); // all
+  } else if (["Kukna", "Kutchi", "Kachi Koli"].includes(langObj.name)) {
+    setFilteredTargetLangs(["Gujarati"]);
+  } else if (FILTER_MAP[langObj.name]) {
+    setFilteredTargetLangs(FILTER_MAP[langObj.name]);
+  } else {
+    setFilteredTargetLangs([]);
+  }
+};
 
   const handleTargetLanguageChange = (langObj) => {
     form.setFieldsValue({ target_language_id: langObj.language_id });
@@ -275,7 +312,7 @@ const CreateProjectModal = ({
             style={{ width: "100%" }}
           >
             <div className="full-width-select">
-              <LanguageSelect
+              {/* <LanguageSelect
                 label=""
                 value={form.getFieldValue("source_language_id")}
                 onChange={(language_id) => {
@@ -284,8 +321,17 @@ const CreateProjectModal = ({
                   if (langObj) handleSourceLanguageChange(langObj);
                 }}
                 filterList={filteredSourceLangs}
+              /> */}
+              <LanguageSelect
+                label=""
+                value={form.getFieldValue("source_language_id")}
+                onChange={(langObj) => {
+                  if (!langObj) return;
+                  form.setFieldsValue({ source_language_id: langObj.language_id });
+                  handleSourceLanguageChange(langObj);
+                }}                
+                filterList={filteredSourceLangs}
               />
-
             </div>
           </Form.Item>
           {isCreateDisabled && (
@@ -331,10 +377,11 @@ const CreateProjectModal = ({
           >
             <div className="full-width-select">
               <LanguageSelect
+                key={form.getFieldValue("source_language_id")}  // 🪄 forces rerender
                 label=""
                 value={form.getFieldValue("target_language_id")}   // ✅ show current selection
-                onChange={(langId) => {
-                  handleTargetLanguageChange(languages.find(l => l.language_id === langId));
+                onChange={(langObj) => {
+                  handleTargetLanguageChange(langObj);
                 }}
                 filterList={filteredTargetLangs}
               />
