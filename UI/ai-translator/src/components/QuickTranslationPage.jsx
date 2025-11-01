@@ -1707,10 +1707,25 @@ useEffect(() => {
                         // ✅ Clear filters first to avoid blank dropdown bug
                         setFilteredTargetLangs([]);
                         setFilteredSourceLangs([]);
-                        const temp = sourceLang;
+                      
+                        // ✅ Swap languages
+                        const tempLang = sourceLang;
                         setSourceLang(targetLang);
-                        setTargetLang(temp);
+                        setTargetLang(tempLang);
+                      
+                        // ✅ Swap text content also
+                        const tempText = sourceText;
+                        setSourceText(targetText);
+                        setTargetText(tempText);
+                      
+                        // ✅ Reset manual-edit flag
+                        setIsTargetEdited(false);
+                      
+                        // ✅ Clear uploaded file (since we swapped manually)
+                        setUploadedFile(null);
+                        setFilename("swapped-content.txt");
                       }}
+                      
                       disabled={loading}
                     />
                   </Tooltip>
