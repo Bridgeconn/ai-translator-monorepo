@@ -20,6 +20,7 @@ import {
   Tag,
   Divider,
   Radio,
+  notification,
 } from "antd";
 import {
   ThunderboltOutlined,
@@ -174,7 +175,8 @@ const VerseTranslationPage = () => {
 
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [modal, modalContextHolder] = Modal.useModal();
-
+  const [notificationApi, notificationContextHolder] = notification.useNotification();
+  const translationNotificationKey = useRef(null);
   const { message } = App.useApp(); //get message instance
   const MODEL_INFO = {
     "nllb-600M": {
@@ -313,7 +315,7 @@ const VerseTranslationPage = () => {
           if (m && m[1]) {
             return resolve(m[1].replace(/[^0-9A-Za-z]/g, "").toUpperCase());
           }
-        } catch {}
+        } catch { }
         const name = file.name.split(".")[0] || file.name;
         resolve(name.replace(/[^0-9A-Za-z]/g, "").toUpperCase());
       };
@@ -354,13 +356,12 @@ const VerseTranslationPage = () => {
         console.warn("Upload failed:", err);
         skipped.push(code);
         setSkippedBooks((prev) => [...prev, code]);
-      
-        if (err?.response?.status === 400) {
-          message.warning(`${code} skipped (wrong format)`);
-        } else {
+
+        // only show error toast, don't show wrong format toast
+        if (err?.response?.status !== 400) {
           message.error(`Failed to upload ${code}`);
         }
-      }      
+      }
     }
 
     return { uploaded, skipped };
@@ -536,8 +537,7 @@ const VerseTranslationPage = () => {
           console.error("Failed to delete book:", err);
           console.error("Error details:", err.response);
           message.error(
-            `Failed to delete book: ${
-              err.response?.data?.detail || err.message || "Unknown error"
+            `Failed to delete book: ${err.response?.data?.detail || err.message || "Unknown error"
             }`
           );
         }
@@ -592,8 +592,7 @@ const VerseTranslationPage = () => {
             t.verse_token_id ||
             t.id ||
             t.token_id ||
-            `${t.book_name || "book"}-${t.chapter_number || 0}-${
-              t.verse_number || i
+            `${t.book_name || "book"}-${t.chapter_number || 0}-${t.verse_number || i
             }`,
           verse_translated_text:
             t.verse_translated_text || t.translated_text || "",
@@ -696,8 +695,7 @@ const VerseTranslationPage = () => {
           t.verse_token_id ||
           t.id ||
           t.token_id ||
-          `${bookName}-${chapterNumber || t.chapter_number || 0}-${
-            t.verse_number || i
+          `${bookName}-${chapterNumber || t.chapter_number || 0}-${t.verse_number || i
           }`,
         verse_translated_text:
           t.verse_translated_text || t.translated_text || "",
@@ -755,10 +753,10 @@ const VerseTranslationPage = () => {
         prev.map((t) =>
           t.verse_token_id === tokenId
             ? {
-                ...t,
-                verse_translated_text: newText,
-                ...res.data.data,
-              }
+              ...t,
+              verse_translated_text: newText,
+              ...res.data.data,
+            }
             : t
         )
       );
@@ -816,8 +814,7 @@ const VerseTranslationPage = () => {
               t.verse_token_id ||
               t.id ||
               t.token_id ||
-              `${selectedBook}-${
-                t.chapter_number || selectedChapter || null
+              `${selectedBook}-${t.chapter_number || selectedChapter || null
               }-${t.verse_number || i}-${skip}`,
             verse_translated_text:
               t.verse_translated_text || t.translated_text || "",
@@ -881,9 +878,16 @@ const VerseTranslationPage = () => {
     abortControllerRef.current = controller;
 
     try {
-      const key = "translating";
-      message.loading({ key, content: "Starting translation…", duration: 0 });
-
+    // 🆕 CREATE PERSISTENT NOTIFICATION
+    translationNotificationKey.current = `translation-${Date.now()}`;
+    notificationApi.info({
+      key: translationNotificationKey.current,
+      message: "Translating...",
+      description: "Translation is in progress. Please wait...",
+      placement: "top",
+      duration: 0, // Don't auto-close
+      icon: <Spin />,
+    });
       // 1. Get verse numbers
       const allVerseNumbers = await getVerseNumbers(
         projectId,
@@ -896,9 +900,20 @@ const VerseTranslationPage = () => {
 
       for (let i = 0; i < total; i += batchSize) {
         if (cancelTranslation) {
-          message.warning({ key, content: "Translation canceled!" });
-          break; // stop the loop
+          // 🆕 DESTROY THE NOTIFICATION
+        if (translationNotificationKey.current) {
+          notificationApi.destroy(translationNotificationKey.current);
+          translationNotificationKey.current = null;
         }
+         // 🆕 SHOW WARNING NOTIFICATION
+         notificationApi.warning({
+          message: "Translation Cancelled",
+          description: "Translation cancelled by the user.",
+          placement: "top",
+          duration: 3,
+        });
+        break;
+      }
         const batch = uniqueVerseNumbers.slice(i, i + batchSize);
 
         // Show placeholder while batch in progress
@@ -932,13 +947,13 @@ const VerseTranslationPage = () => {
               );
               return match
                 ? {
-                    ...tok,
-                    verse_translated_text:
-                      match.verse_translated_text ||
-                      match.translated_text ||
-                      "",
-                    lastUpdated: Date.now(),
-                  }
+                  ...tok,
+                  verse_translated_text:
+                    match.verse_translated_text ||
+                    match.translated_text ||
+                    "",
+                  lastUpdated: Date.now(),
+                }
                 : tok;
             });
             return [...updated]; // <-- ensures React sees a new array
@@ -951,39 +966,73 @@ const VerseTranslationPage = () => {
         // Update progress
         const done = Math.min(i + batchSize, total);
         const percent = Math.round((done / total) * 100);
-        message.loading({
-          key,
-          content: `Translating verses…  (${percent}%)`,
-          duration: 0,
-        });
-      }
+         // 🆕 UPDATE NOTIFICATION WITH PROGRESS
+      notificationApi.info({
+        key: translationNotificationKey.current,
+        message: "Translating...",
+        description: `Translation is in progress... (${percent}%)`,
+        placement: "top",
+        duration: 0,
+        icon: <Spin />,
+      });
+    }
 
-      if (!cancelTranslation) {
-        message.success({ key, content: "Chapter translated successfully!" });
+    if (!cancelTranslation) {
+      // 🆕 DESTROY PROGRESS NOTIFICATION
+      if (translationNotificationKey.current) {
+        notificationApi.destroy(translationNotificationKey.current);
+        translationNotificationKey.current = null;
       }
-    } catch (err) {
-      const key = "translating";
+      
+      // 🆕 SHOW SUCCESS NOTIFICATION
+      notificationApi.success({
+        message: "Success",
+        description: "Chapter translated successfully!",
+        placement: "top",
+        duration: 3,
+      });
+    }
+  } catch (err) {
+    // 🆕 DESTROY PROGRESS NOTIFICATION ON ERROR
+    if (translationNotificationKey.current) {
+      notificationApi.destroy(translationNotificationKey.current);
+      translationNotificationKey.current = null;
+    }
 
-      if (err.name === "CanceledError" || err.name === "AbortError") {
-        console.log("Translation aborted");
-        message.destroy(key); // Clear the "Starting translation..." message
-        // Reset tokens that were showing "Translating…"
-        setTokens((prev) =>
-          prev.map((tok) =>
-            tok.verse_translated_text === "Translating…"
-              ? { ...tok, verse_translated_text: "" }
-              : tok
-          )
-        );
-        setLoadingTranslate(false);
-        setCancelTranslation(false);
-        abortControllerRef.current = null;
-        message.warning("Translation canceled!");
-        return;
-      } else {
-        console.error("Translation error:", err);
-        message.error({ key, content: `Error: ${err.message || "Failed"}` });
-      }
+    if (err.name === "CanceledError" || err.name === "AbortError") {
+      console.log("Translation aborted");
+      
+      // Reset tokens that were showing "Translating…"
+      setTokens((prev) =>
+        prev.map((tok) =>
+          tok.verse_translated_text === "Translating…"
+            ? { ...tok, verse_translated_text: "" }
+            : tok
+        )
+      );
+      
+      setLoadingTranslate(false);
+      setCancelTranslation(false);
+      abortControllerRef.current = null;
+      
+      notificationApi.warning({
+        message: "Translation Cancelled",
+        description: "Translation cancelled by the user.",
+        placement: "top",
+        duration: 3,
+      });      return;
+    
+    } else {
+      console.error("Translation error:", err);
+      
+      // 🆕 SHOW ERROR NOTIFICATION
+      notificationApi.error({
+        message: "Error",
+        description: `Translation failed: ${err.message || "Unknown error"}`,
+        placement: "top",
+        duration: 4,
+      });
+    }
     } finally {
       setLoadingTranslate(false); // ✅ translation finished, dropdown enables
       setCancelTranslation(false); // Reset cancel state
@@ -1229,6 +1278,7 @@ const VerseTranslationPage = () => {
       }}
     >
       {modalContextHolder}
+      {notificationContextHolder}
       <UploadProgressModal
         visible={uploadProgressOpen}
         uploading={uploadingBooks}
@@ -1272,7 +1322,6 @@ const VerseTranslationPage = () => {
         Do you want to regenerate all translations, or continue from where you
         left off?
       </Modal>
-      {modalContextHolder}
       <UploadProgressModal
         visible={uploadProgressOpen}
         uploading={uploadingBooks}
@@ -1454,8 +1503,8 @@ const VerseTranslationPage = () => {
                 chapterStats.total === 0
                   ? 0
                   : Math.round(
-                      (chapterStats.translated / chapterStats.total) * 100
-                    ),
+                    (chapterStats.translated / chapterStats.total) * 100
+                  ),
             }}
             format={() => (
               <span style={{ color: "#000" }}>
@@ -1861,11 +1910,11 @@ const VerseTranslationPage = () => {
                                       prev.map((tok) =>
                                         tok.verse_token_id === t.verse_token_id
                                           ? {
-                                              ...tok,
-                                              verse_translated_text:
-                                                editedTokens[t.verse_token_id]
-                                                  .old,
-                                            }
+                                            ...tok,
+                                            verse_translated_text:
+                                              editedTokens[t.verse_token_id]
+                                                .old,
+                                          }
                                           : tok
                                       )
                                     );
@@ -1907,21 +1956,21 @@ const VerseTranslationPage = () => {
             {/* Chapter selector for draft view */}
             <Row gutter={16}>
               {/* --- New Source Draft Card --- */}
-                <Col span={12}>
-                  <Card
-                    title="Source Draft"
-                    style={{ height: "70vh", overflowY: "scroll" }}
-                  >
-                    {rawBookContent ? (
-                      <pre style={{ whiteSpace: "pre-wrap" }}>
-                        {currentSourceContent}
-                      </pre>
-                    ) : (
-                      <p>No USFM content available for this book.</p>
-                    )}
-                  </Card>
-                </Col>
-              
+              <Col span={12}>
+                <Card
+                  title="Source Draft"
+                  style={{ height: "70vh", overflowY: "scroll" }}
+                >
+                  {rawBookContent ? (
+                    <pre style={{ whiteSpace: "pre-wrap" }}>
+                      {currentSourceContent}
+                    </pre>
+                  ) : (
+                    <p>No USFM content available for this book.</p>
+                  )}
+                </Card>
+              </Col>
+
 
               {/* --- Existing Translation Draft Card --- */}
               <Col span={12}>
@@ -1930,42 +1979,42 @@ const VerseTranslationPage = () => {
                   extra={
                     <Space>
                       {/* Download → icon only */}
-    <DownloadDraftButton
-  content={currentDraftContent}
-  sourceLanguage={project?.source_language_name}
-  targetLanguage={project?.target_language_name}
-  bookName={selectedBook}
-  chapterNumber={draftChapter}
-  translationType="verse"
-/>
-                     {/* Copy → icon only */}
-<CopyOutlined
-  style={{
-    fontSize: 20,
-    color: "#000",
-    cursor: currentDraftContent?.trim() ? "pointer" : "not-allowed",
-  }}
-  onClick={async () => {
-    const contentToCopy = currentDraftContent?.trim();
+                      <DownloadDraftButton
+                        content={currentDraftContent}
+                        sourceLanguage={project?.source_language_name}
+                        targetLanguage={project?.target_language_name}
+                        bookName={selectedBook}
+                        chapterNumber={draftChapter}
+                        translationType="verse"
+                      />
+                      {/* Copy → icon only */}
+                      <CopyOutlined
+                        style={{
+                          fontSize: 20,
+                          color: "#000",
+                          cursor: currentDraftContent?.trim() ? "pointer" : "not-allowed",
+                        }}
+                        onClick={async () => {
+                          const contentToCopy = currentDraftContent?.trim();
 
-    if (!contentToCopy) {
-      message.warning("No draft content to copy for this chapter");
-      return;
-    }
+                          if (!contentToCopy) {
+                            message.warning("No draft content to copy for this chapter");
+                            return;
+                          }
 
-    try {
-      await navigator.clipboard.writeText(contentToCopy);
-      message.success(
-        draftChapter
-          ? `Copied Chapter ${draftChapter} draft successfully!`
-          : "Copied full draft successfully!"
-      );
-    } catch (err) {
-      console.error("Clipboard copy failed:", err);
-      message.error("Failed to copy draft");
-    }
-  }}
-/>
+                          try {
+                            await navigator.clipboard.writeText(contentToCopy);
+                            message.success(
+                              draftChapter
+                                ? `Copied Chapter ${draftChapter} draft successfully!`
+                                : "Copied full draft successfully!"
+                            );
+                          } catch (err) {
+                            console.error("Clipboard copy failed:", err);
+                            message.error("Failed to copy draft");
+                          }
+                        }}
+                      />
 
                       {/* Generate Draft Button */}
                       <Button

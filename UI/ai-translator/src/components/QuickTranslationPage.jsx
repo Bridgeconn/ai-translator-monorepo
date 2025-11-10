@@ -195,49 +195,49 @@ export default function QuickTranslationPage() {
   // ------------------ Daily Limit & Incognito Detection ------------------
   const DAILY_LIMIT = 5;
   const STORAGE_KEY = "anon_translation_usage";
-// ✅ Modern, cross-browser incognito / private detection
-async function isIncognitoMode() {
-  try {
-    const ua = navigator.userAgent.toLowerCase();
+  // ✅ Modern, cross-browser incognito / private detection
+  async function isIncognitoMode() {
+    try {
+      const ua = navigator.userAgent.toLowerCase();
 
-    // ✅ Safari / iOS
-    if (/safari/.test(ua) && !/chrome/.test(ua)) {
-      try {
-        window.openDatabase(null, null, null, null);
-        return false;
-      } catch {
-        return true;
+      // ✅ Safari / iOS
+      if (/safari/.test(ua) && !/chrome/.test(ua)) {
+        try {
+          window.openDatabase(null, null, null, null);
+          return false;
+        } catch {
+          return true;
+        }
       }
-    }
 
-    // ✅ Firefox
-    if (ua.includes("firefox")) {
-      try {
-        const persisted = await navigator.storage.persist();
-        return !persisted;
-      } catch {
-        return true;
+      // ✅ Firefox
+      if (ua.includes("firefox")) {
+        try {
+          const persisted = await navigator.storage.persist();
+          return !persisted;
+        } catch {
+          return true;
+        }
       }
-    }
 
-     // ✅ Chrome / Edge / Brave
-     if (window.showOpenFilePicker) {
-      // Use the modern OPFS API behavior
-      try {
-        const root = await navigator.storage.getDirectory();
-        await root.getFileHandle('test', { create: true });
-        return false;
-      } catch (err) {
-        return true; // fails silently in incognito
+      // ✅ Chrome / Edge / Brave
+      if (window.showOpenFilePicker) {
+        // Use the modern OPFS API behavior
+        try {
+          const root = await navigator.storage.getDirectory();
+          await root.getFileHandle('test', { create: true });
+          return false;
+        } catch (err) {
+          return true; // fails silently in incognito
+        }
       }
-    }
 
-    return false; // fallback
-  } catch (err) {
-    console.error("Incognito detection failed:", err);
-    return false;
+      return false; // fallback
+    } catch (err) {
+      console.error("Incognito detection failed:", err);
+      return false;
+    }
   }
-}
 
   // LocalStorage helpers
   const getUsage = () => {
@@ -304,7 +304,7 @@ async function isIncognitoMode() {
   useEffect(() => {
     console.log("Incognito detected?", isIncognito);
   }, [isIncognito]);
-  
+
   const modelsInfo = {
     "nllb-600M": {
       tasks: "mt, text translation",
@@ -390,7 +390,7 @@ async function isIncognitoMode() {
     { label: "nllb-gujarati-kukna", value: "nllb-gujarati-kukna" },
     { label: "nllb-gujarati-kutchi", value: "nllb-gujarati-kutchi" },
   ];
-  
+
   // const LANGUAGE_PAIRS = {
   //   "Zeme Naga": ["English"],
   //   English: ["Zeme Naga", "Nagamese"],
@@ -407,24 +407,24 @@ async function isIncognitoMode() {
     Kukna: ["Gujarati"],
     Kutchi: ["Gujarati"],
     "Zeme Naga": ["English"],     // English only as target
-  "Kachi Koli": ["Gujarati"],   // Gujarati only as target
-  };  
-  
+    "Kachi Koli": ["Gujarati"],   // Gujarati only as target
+  };
+
   // useEffect(() => {
   //   if (!sourceLang || !targetLang) {
   //     setIsInvalidPair(false);
   //     return;
   //   }
-  
+
   //   const src = sourceLang.name;
   //   const tgt = targetLang.name;
-  
+
   //   // ❌ These specific one-way pairs are NOT allowed
   //   const disallowedPairs = [
   //     ["Zeme Naga", "English"], // disallow reverse
   //     ["Kachi Koli", "Gujarati"], // disallow reverse
   //   ];
-  
+
   //   // ✅ Allowed special pairs (two-way unless disallowed above)
   //   const specialPairs = {
   //     Nagamese: "English",
@@ -434,24 +434,24 @@ async function isIncognitoMode() {
   //     // "Zeme Naga": "English", // forward allowed (English → Zeme)
   //     // "Kachi Koli": "Gujarati", // forward allowed (Gujarati → Kachi)
   //   };
-  
+
   //   let invalid = false;
-  
+
   //   // 🔍 1️⃣ Check disallowed pairs first
   //   invalid = disallowedPairs.some(([s, t]) => s === src && t === tgt);
-  
+
   //   // 🔍 2️⃣ Check normal special-pair rules (only if not already invalid)
   //   if (!invalid) {
   //     const isSourceSpecial = Object.keys(specialPairs).includes(src);
   //     const isTargetSpecial = Object.keys(specialPairs).includes(tgt);
-  
+
   //     if (isSourceSpecial) {
   //       invalid = specialPairs[src] !== tgt;
   //     } else if (isTargetSpecial) {
   //       invalid = specialPairs[tgt] !== src;
   //     }
   //   }
-  
+
   //   if (invalid) {
   //     setIsInvalidPair(true);
   //     notification.error({
@@ -464,75 +464,75 @@ async function isIncognitoMode() {
   //   }
   // }, [sourceLang, targetLang]);
   // One-way exceptions: reverse of these are NOT allowed
-const DISALLOWED_REVERSE = [
-  ["Zeme Naga", "English"],
-  ["Kachi Koli", "Gujarati"],
-];
+  const DISALLOWED_REVERSE = [
+    ["Zeme Naga", "English"],
+    ["Kachi Koli", "Gujarati"],
+  ];
 
   // ✅ New Validation Effect
-useEffect(() => {
-  if (!sourceLang || !targetLang) {
-    setIsInvalidPair(false);
-    return;
-  }
+  useEffect(() => {
+    if (!sourceLang || !targetLang) {
+      setIsInvalidPair(false);
+      return;
+    }
 
-  const src = sourceLang.name;
-  const tgt = targetLang.name;
+    const src = sourceLang.name;
+    const tgt = targetLang.name;
 
-  // Helper function to check invalid pairs
-  const isInvalidPairCheck = (srcName, tgtName) => {
-    const FILTER_MAP = {
-      Nagamese: ["English"],
-      Surjapuri: ["Hindi"],
-      Kukna: ["Gujarati"],
-      Kutchi: ["Gujarati"],
-      "Zeme Naga": ["English"],
-      "Kachi Koli": ["Gujarati"],
+    // Helper function to check invalid pairs
+    const isInvalidPairCheck = (srcName, tgtName) => {
+      const FILTER_MAP = {
+        Nagamese: ["English"],
+        Surjapuri: ["Hindi"],
+        Kukna: ["Gujarati"],
+        Kutchi: ["Gujarati"],
+        "Zeme Naga": ["English"],
+        "Kachi Koli": ["Gujarati"],
+      };
+
+      // 1️⃣ Check if this pair is explicitly disallowed (one-way)
+      if (DISALLOWED_REVERSE.some(([s, t]) => s === srcName && t === tgtName)) return true;
+
+      // 2️⃣ Check source → target restriction
+      if (FILTER_MAP[srcName] && !FILTER_MAP[srcName].includes(tgtName)) return true;
+
+      // 3️⃣ Check target → source restriction
+      if (FILTER_MAP[tgtName] && !FILTER_MAP[tgtName].includes(srcName)) return true;
+
+      return false;
     };
-  
-    // 1️⃣ Check if this pair is explicitly disallowed (one-way)
-    if (DISALLOWED_REVERSE.some(([s, t]) => s === srcName && t === tgtName)) return true;
-  
-    // 2️⃣ Check source → target restriction
-    if (FILTER_MAP[srcName] && !FILTER_MAP[srcName].includes(tgtName)) return true;
-  
-    // 3️⃣ Check target → source restriction
-    if (FILTER_MAP[tgtName] && !FILTER_MAP[tgtName].includes(srcName)) return true;
-  
-    return false;
-  };
-  
-  const invalid = isInvalidPairCheck(src, tgt);
 
-  setIsInvalidPair(invalid);
+    const invalid = isInvalidPairCheck(src, tgt);
 
-  if (invalid) {
-    setSelectedModel(null); // remove wrong model
-    notification.error({
-      message: "Unsupported Language Pair",
-      description: `${src} ↔ ${tgt} is not supported by available models.`,
-      duration: 2.5,
-    });
-  } else {
-    // Auto-select correct model for special languages
-    if ((src === "English" && tgt === "Zeme Naga"))
-      setSelectedModel("nllb-english-zeme");
-    else if ((src === "English" && tgt === "Nagamese") || (src === "Nagamese" && tgt === "English"))
-      setSelectedModel("nllb-english-nagamese");
-    else if ((src === "Gujarati" && tgt === "Kukna") || (src === "Kukna" && tgt === "Gujarati"))
-      setSelectedModel("nllb-gujarati-kukna");
-    else if ((src === "Gujarati" && tgt === "Kutchi") || (src === "Kutchi" && tgt === "Gujarati"))
-      setSelectedModel("nllb-gujarati-kutchi");
-    else if ((src === "Hindi" && tgt === "Surjapuri") || (src === "Surjapuri" && tgt === "Hindi"))
-      setSelectedModel("nllb-hindi-surjapuri");
-    else if ((src === "Gujarati" && tgt === "Kachi Koli"))
-      setSelectedModel("nllb-gujrathi-koli_kachchi");
-    else
-      setSelectedModel("nllb-600M"); // default
-  }
-}, [sourceLang, targetLang]);
+    setIsInvalidPair(invalid);
 
-  
+    if (invalid) {
+      setSelectedModel(null); // remove wrong model
+      notification.error({
+        message: "Unsupported Language Pair",
+        description: `${src} ↔ ${tgt} is not supported by available models.`,
+        duration: 2.5,
+      });
+    } else {
+      // Auto-select correct model for special languages
+      if ((src === "English" && tgt === "Zeme Naga"))
+        setSelectedModel("nllb-english-zeme");
+      else if ((src === "English" && tgt === "Nagamese") || (src === "Nagamese" && tgt === "English"))
+        setSelectedModel("nllb-english-nagamese");
+      else if ((src === "Gujarati" && tgt === "Kukna") || (src === "Kukna" && tgt === "Gujarati"))
+        setSelectedModel("nllb-gujarati-kukna");
+      else if ((src === "Gujarati" && tgt === "Kutchi") || (src === "Kutchi" && tgt === "Gujarati"))
+        setSelectedModel("nllb-gujarati-kutchi");
+      else if ((src === "Hindi" && tgt === "Surjapuri") || (src === "Surjapuri" && tgt === "Hindi"))
+        setSelectedModel("nllb-hindi-surjapuri");
+      else if ((src === "Gujarati" && tgt === "Kachi Koli"))
+        setSelectedModel("nllb-gujrathi-koli_kachchi");
+      else
+        setSelectedModel("nllb-600M"); // default
+    }
+  }, [sourceLang, targetLang]);
+
+
   useEffect(() => {
     if (!saveModalVisible) return;
 
@@ -597,7 +597,7 @@ useEffect(() => {
     const tgt = targetLang.BCP_code;
     // Check for English ↔ Zeme Naga
     const isEngNzemePair =
-      (src === "eng_Latn" && tgt === "nzm_Latn") 
+      (src === "eng_Latn" && tgt === "nzm_Latn")
 
     // Check for English ↔ Nagamese
     const isEngNagPair =
@@ -615,10 +615,10 @@ useEffect(() => {
     const isGujKuknaPair =
       (src === "guj_Gujr" && tgt === "kex_Gujr") ||
       (src === "kex_Gujr" && tgt === "guj_Gujr");
-    
+
     const isGujKutchiPair =
       (src === "guj_Gujr" && tgt === "kfr_Gujr") ||
-      (src === "kfr_Gujr" && tgt === "guj_Gujr");  
+      (src === "kfr_Gujr" && tgt === "guj_Gujr");
 
     if (isEngNzemePair) {
       setSelectedModel("nllb-english-zeme");
@@ -672,6 +672,8 @@ useEffect(() => {
     setTargetText("");
     setUploadedFile(null); // <--- clear uploaded file
     setIsTargetEdited(false);
+    setFilename(""); 
+    setNewProjectFilename("");
     setStatusMsg("");
     showNotification("info", "Cleared", "All text cleared successfully.");
   };
@@ -692,8 +694,9 @@ useEffect(() => {
     setSourceText(newText);
     if (uploadedFile) {
       setUploadedFile(null);
-      setFilename("manual-input.txt");
-      console.log("✂️ Cleared uploaded file since user edited text manually");
+      setFilename("");
+      setNewProjectFilename(""); // also clear project filename if used
+      console.log(" Cleared uploaded file since user edited text manually");
     }
 
     // Whenever source is cleared or replaced, reset target
@@ -705,6 +708,11 @@ useEffect(() => {
   const handleTargetChange = (e) => {
     setTargetText(e.target.value);
     setIsTargetEdited(true);
+    if (uploadedFile) {
+      setUploadedFile(null);
+      setFilename("");
+      setNewProjectFilename("");
+    }
   };
   const handleCancelTranslate = () => {
     controllerRef.current?.abort();
@@ -803,7 +811,7 @@ useEffect(() => {
     }
     const token = localStorage.getItem("token"); // detect logged-in user
     const usage = getUsage();
-    
+
     // Block anonymous users if they reached limit
     if (!token && usage.count >= DAILY_LIMIT) {
       showNotification(
@@ -813,12 +821,12 @@ useEffect(() => {
       );
       return;
     }
-    
+
     // ✅ Increment only if user is NOT logged in
     if (!token) {
       updateUsage(usage.count + 1);
     }
-    
+
     // Proceed with translation    
     if (!sourceLang || !targetLang) {
       showNotification(
@@ -851,10 +859,10 @@ useEffect(() => {
     const isGujKuknaPair =
       (src === "guj_Gujr" && tgt === "kex_Gujr") ||
       (src === "kex_Gujr" && tgt === "guj_Gujr");
-    
+
     const isGujKutchiPair =
       (src === "guj_Gujr" && tgt === "kfr_Gujr") ||
-      (src === "kfr_Gujr" && tgt === "guj_Gujr");  
+      (src === "kfr_Gujr" && tgt === "guj_Gujr");
 
 
     if (isEngNzemePair) {
@@ -865,14 +873,14 @@ useEffect(() => {
       modelToUse = "nllb-gujrathi-koli_kachchi";
     } else if (isHinSjpPair) {
       modelToUse = "nllb-hindi-surjapuri";
-    }else if (isGujKuknaPair) {
+    } else if (isGujKuknaPair) {
       modelToUse = "nllb-gujarati-kukna";
     } else if (isGujKutchiPair) {
       modelToUse = "nllb-gujarati-kutchi";
-      }
-      else{
-        modelToUse = "nllb-600M";
-      }
+    }
+    else {
+      modelToUse = "nllb-600M";
+    }
     console.log("🎯 Using model for translation:", modelToUse);
 
     if (!sourceText.trim() && !uploadedFile) {
@@ -1662,31 +1670,31 @@ useEffect(() => {
                     style={{ width: "60%" }}
                   /> */}
                   <LanguageSelect
-  value={sourceLang}
-  onChange={(lang) => {
-    setSourceLang(lang);
+                    value={sourceLang}
+                    onChange={(lang) => {
+                      setSourceLang(lang);
 
-    // ✅ Filter target languages based on source selection
-    if (lang?.name && FILTER_MAP[lang.name]) {
-      setFilteredTargetLangs(FILTER_MAP[lang.name]);
+                      // ✅ Filter target languages based on source selection
+                      if (lang?.name && FILTER_MAP[lang.name]) {
+                        setFilteredTargetLangs(FILTER_MAP[lang.name]);
 
-      // Reset target if the current target is not allowed
-      if (!FILTER_MAP[lang.name].includes(targetLang?.name)) {
-        setTargetLang(null);
-      }
-    } else {
-      // No restriction → show all targets
-      setFilteredTargetLangs([]);
-    }
+                        // Reset target if the current target is not allowed
+                        if (!FILTER_MAP[lang.name].includes(targetLang?.name)) {
+                          setTargetLang(null);
+                        }
+                      } else {
+                        // No restriction → show all targets
+                        setFilteredTargetLangs([]);
+                      }
 
-    // ✅ Clear source-side filters when source changes
-    setFilteredSourceLangs([]);
-  }}
-  disabled={loading}
-  filterList={filteredSourceLangs}
-  placeholder="Select source language"
-  style={{ width: "60%" }}
-/>
+                      // ✅ Clear source-side filters when source changes
+                      setFilteredSourceLangs([]);
+                    }}
+                    disabled={loading}
+                    filterList={filteredSourceLangs}
+                    placeholder="Select source language"
+                    style={{ width: "60%" }}
+                  />
 
                 </div>
               </Col>
@@ -1707,25 +1715,26 @@ useEffect(() => {
                         // ✅ Clear filters first to avoid blank dropdown bug
                         setFilteredTargetLangs([]);
                         setFilteredSourceLangs([]);
-                      
+
                         // ✅ Swap languages
                         const tempLang = sourceLang;
                         setSourceLang(targetLang);
                         setTargetLang(tempLang);
-                      
+
                         // ✅ Swap text content also
                         const tempText = sourceText;
                         setSourceText(targetText);
                         setTargetText(tempText);
-                      
+
                         // ✅ Reset manual-edit flag
                         setIsTargetEdited(false);
-                      
+
                         // ✅ Clear uploaded file (since we swapped manually)
                         setUploadedFile(null);
-                        setFilename("swapped-content.txt");
+                        setFilename("");
+                        setNewProjectFilename("");
                       }}
-                      
+
                       disabled={loading}
                     />
                   </Tooltip>
@@ -1810,31 +1819,31 @@ useEffect(() => {
                     style={{ width: "60%" }}
                   /> */}
                   <LanguageSelect
-  value={targetLang}
-  onChange={(lang) => {
-    setTargetLang(lang);
+                    value={targetLang}
+                    onChange={(lang) => {
+                      setTargetLang(lang);
 
-    // ✅ Filter source languages based on target selection
-    if (lang?.name && FILTER_MAP[lang.name]) {
-      setFilteredSourceLangs(FILTER_MAP[lang.name]);
+                      // ✅ Filter source languages based on target selection
+                      if (lang?.name && FILTER_MAP[lang.name]) {
+                        setFilteredSourceLangs(FILTER_MAP[lang.name]);
 
-      // Reset source if the current source is not allowed
-      if (!FILTER_MAP[lang.name].includes(sourceLang?.name)) {
-        setSourceLang(null);
-      }
-    } else {
-      // No restriction → show all sources
-      setFilteredSourceLangs([]);
-    }
+                        // Reset source if the current source is not allowed
+                        if (!FILTER_MAP[lang.name].includes(sourceLang?.name)) {
+                          setSourceLang(null);
+                        }
+                      } else {
+                        // No restriction → show all sources
+                        setFilteredSourceLangs([]);
+                      }
 
-    // ✅ Clear target-side filters (since we’re filtering source only)
-    setFilteredTargetLangs([]);
-  }}
-  disabled={loading}
-  filterList={filteredTargetLangs}
-  placeholder="Select target language"
-  style={{ width: "60%" }}
-/>
+                      // ✅ Clear target-side filters (since we’re filtering source only)
+                      setFilteredTargetLangs([]);
+                    }}
+                    disabled={loading}
+                    filterList={filteredTargetLangs}
+                    placeholder="Select target language"
+                    style={{ width: "60%" }}
+                  />
 
                 </div>
               </Col>
@@ -1954,115 +1963,114 @@ useEffect(() => {
             extra={
               <Space>
                 <Tooltip title="Select Model" color="#fff">
-                <Select
-                  value={selectedModel || undefined}
-                  onChange={setSelectedModel}
-                  disabled={loading}
-                  style={{ minWidth: 200 }}
-                >
-                  {availableModels.map((m) => {
-                    let disabled = false;
-                    let tooltip = "";
+                  <Select
+                    value={selectedModel || undefined}
+                    onChange={setSelectedModel}
+                    disabled={loading}
+                    style={{ minWidth: 200 }}
+                  >
+                    {availableModels.map((m) => {
+                      let disabled = false;
+                      let tooltip = "";
 
-                    const src = sourceLang?.BCP_code;
-                    const tgt = targetLang?.BCP_code;
-                    const isEngNzemePair =
-                      (src === "eng_Latn" && tgt === "nzm_Latn") ||
-                      (src === "nzm_Latn" && tgt === "eng_Latn");
+                      const src = sourceLang?.BCP_code;
+                      const tgt = targetLang?.BCP_code;
+                      const isEngNzemePair =
+                        (src === "eng_Latn" && tgt === "nzm_Latn") ||
+                        (src === "nzm_Latn" && tgt === "eng_Latn");
 
-                    const isEngNagPair =
-                      (src === "eng_Latn" && tgt === "nag_Latn") ||
-                      (src === "nag_Latn" && tgt === "eng_Latn");
-                    const isGujGjkPair =
-                      (src === "guj_Gujr" && tgt === "gjk_Gujr") ||
-                      (src === "gjk_Gujr" && tgt === "guj_Gujr");
-                    const isHinSjpPair =
-                      (src === "hin_Deva" && tgt === "sjp_Deva") ||
-                      (src === "sjp_Deva" && tgt === "hin_Deva");
-                    const isGujKuknaPair =
-                      (src === "guj_Gujr" && tgt === "kex_Gujr") ||
-                      (src === "kex_Gujr" && tgt === "guj_Gujr");
-                    
-                    const isGujKutchiPair =
-                      (src === "guj_Gujr" && tgt === "kfr_Gujr") ||
-                      (src === "kfr_Gujr" && tgt === "guj_Gujr");
-                    
-                    // Disable nllb-600M for specialized language pairs
-                    if (
-                      m.value === "nllb-600M" &&
-                      (isEngNzemePair ||
-                        isEngNagPair ||
-                        isGujGjkPair ||
-                        isHinSjpPair||
-                        isGujKuknaPair||
-                        isGujKutchiPair)
-                    ) {
-                      disabled = true;
-                      tooltip =
-                        "Use the specialized fine-tuned model for this language pair.";
-                    }
-                    // Only enable fine-tuned models for their specific language pairs
-                    else if (
-                      m.value === "nllb-english-zeme" &&
-                      !isEngNzemePair
-                    ) {
-                      disabled = true;
-                      tooltip =
-                        "This model only supports English -> Zeme Naga translation.";
-                    } else if (
-                      m.value === "nllb-english-nagamese" &&
-                      !isEngNagPair
-                    ) {
-                      disabled = true;
-                      tooltip =
-                        "This model only supports English ↔ Naga translation.";
-                    } else if (
-                      m.value === "nllb-gujrathi-koli_kachchi" &&
-                      !isGujGjkPair
-                    ) {
-                      disabled = true;
-                      tooltip =
-                        "This model only supports Gujarati -> Kachi Koli translation.";
-                    } else if (
-                      m.value === "nllb-hindi-surjapuri" &&
-                      !isHinSjpPair
-                    )
-                     {
-                      disabled = true;
-                      tooltip =
-                        "This model only supports Hindi ↔ Surjapuri translation.";
-                    }
-                    else if (m.value === "nllb-gujarati-kukna" && !isGujKuknaPair) {
-                      disabled = true;
-                      tooltip = "This model only supports Gujarati ↔ Kukna translation.";
-                    } else if (m.value === "nllb-gujarati-kutchi" && !isGujKutchiPair) {
-                      disabled = true;
-                      tooltip = "This model only supports Gujarati ↔ Kutchi translation.";
-                    }                    
-                    return (
-                      <Select.Option
-                        key={m.value}
-                        value={m.value}
-                        disabled={disabled}
-                      >
-                        <Tooltip
-                          title={tooltip}
-                          placement="right"
-                          overlayInnerStyle={{
-                            backgroundColor: "#fff",
-                            color: "#000",
-                            border: "1px solid #ddd",
-                            borderRadius: "6px",
-                            // padding: "6px 10px",
-                            maxWidth: "250px",
-                          }}
+                      const isEngNagPair =
+                        (src === "eng_Latn" && tgt === "nag_Latn") ||
+                        (src === "nag_Latn" && tgt === "eng_Latn");
+                      const isGujGjkPair =
+                        (src === "guj_Gujr" && tgt === "gjk_Gujr") ||
+                        (src === "gjk_Gujr" && tgt === "guj_Gujr");
+                      const isHinSjpPair =
+                        (src === "hin_Deva" && tgt === "sjp_Deva") ||
+                        (src === "sjp_Deva" && tgt === "hin_Deva");
+                      const isGujKuknaPair =
+                        (src === "guj_Gujr" && tgt === "kex_Gujr") ||
+                        (src === "kex_Gujr" && tgt === "guj_Gujr");
+
+                      const isGujKutchiPair =
+                        (src === "guj_Gujr" && tgt === "kfr_Gujr") ||
+                        (src === "kfr_Gujr" && tgt === "guj_Gujr");
+
+                      // Disable nllb-600M for specialized language pairs
+                      if (
+                        m.value === "nllb-600M" &&
+                        (isEngNzemePair ||
+                          isEngNagPair ||
+                          isGujGjkPair ||
+                          isHinSjpPair ||
+                          isGujKuknaPair ||
+                          isGujKutchiPair)
+                      ) {
+                        disabled = true;
+                        tooltip =
+                          "Use the specialized fine-tuned model for this language pair.";
+                      }
+                      // Only enable fine-tuned models for their specific language pairs
+                      else if (
+                        m.value === "nllb-english-zeme" &&
+                        !isEngNzemePair
+                      ) {
+                        disabled = true;
+                        tooltip =
+                          "This model only supports English -> Zeme Naga translation.";
+                      } else if (
+                        m.value === "nllb-english-nagamese" &&
+                        !isEngNagPair
+                      ) {
+                        disabled = true;
+                        tooltip =
+                          "This model only supports English ↔ Naga translation.";
+                      } else if (
+                        m.value === "nllb-gujrathi-koli_kachchi" &&
+                        !isGujGjkPair
+                      ) {
+                        disabled = true;
+                        tooltip =
+                          "This model only supports Gujarati -> Kachi Koli translation.";
+                      } else if (
+                        m.value === "nllb-hindi-surjapuri" &&
+                        !isHinSjpPair
+                      ) {
+                        disabled = true;
+                        tooltip =
+                          "This model only supports Hindi ↔ Surjapuri translation.";
+                      }
+                      else if (m.value === "nllb-gujarati-kukna" && !isGujKuknaPair) {
+                        disabled = true;
+                        tooltip = "This model only supports Gujarati ↔ Kukna translation.";
+                      } else if (m.value === "nllb-gujarati-kutchi" && !isGujKutchiPair) {
+                        disabled = true;
+                        tooltip = "This model only supports Gujarati ↔ Kutchi translation.";
+                      }
+                      return (
+                        <Select.Option
+                          key={m.value}
+                          value={m.value}
+                          disabled={disabled}
                         >
-                          {m.label}
-                        </Tooltip>
-                      </Select.Option>
-                    );
-                  })}
-                </Select>
+                          <Tooltip
+                            title={tooltip}
+                            placement="right"
+                            overlayInnerStyle={{
+                              backgroundColor: "#fff",
+                              color: "#000",
+                              border: "1px solid #ddd",
+                              borderRadius: "6px",
+                              // padding: "6px 10px",
+                              maxWidth: "250px",
+                            }}
+                          >
+                            {m.label}
+                          </Tooltip>
+                        </Select.Option>
+                      );
+                    })}
+                  </Select>
                 </Tooltip>
                 <Tooltip
                   color="#ffffff"
@@ -2208,63 +2216,63 @@ useEffect(() => {
                   </Space>
                 </Col>
                 <Col>
-                <Tooltip
-  title={
-    isInvalidPair
-      ? "This language pair is not supported by the selected model."
-      : isIncognito
-      ? "Translation is not available in private browsing mode. Please use a normal browser."
-      : !selectedModel
-      ? "Please select a model first"
-      : ""
-  }
-  color="#fff"
->
-  <Button
-    type="primary"
-    danger={loading || isInvalidPair}
-    size="medium"
-    onClick={() => {
-      if (loading) handleCancelTranslate();
-      else handleTranslate();
-    }}
-    disabled={
-      !selectedModel ||
-      isIncognito ||
-      isInvalidPair ||
-      !sourceLang ||
-      !targetLang ||
-      (!sourceText.trim() && !uploadedFile)
-    }
-    style={{
-      padding: "0 32px",
-      borderRadius: "8px",
-      minWidth: "100px",
-      backgroundColor: isInvalidPair
-        ? "#bfbfbf"
-        : loading
-        ? "#ff4d4f"
-        : isIncognito
-        ? "#d9d9d9"
-        : "rgb(44,141,251)",
-      borderColor: isInvalidPair
-        ? "#bfbfbf"
-        : loading
-        ? "#ff4d4f"
-        : isIncognito
-        ? "#d9d9d9"
-        : "rgb(44,141,251)",
-      color: "#fff",
-      cursor: isInvalidPair ? "not-allowed" : "pointer",
-    }}
-  >
-    {isInvalidPair
-      ? "Translate"
-      : loading
-      ? "Cancel Translation"
-      : "Translate"}
-  </Button>
-</Tooltip>
+                  <Tooltip
+                    title={
+                      isInvalidPair
+                        ? "This language pair is not supported by the selected model."
+                        : isIncognito
+                          ? "Translation is not available in private browsing mode. Please use a normal browser."
+                          : !selectedModel
+                            ? "Please select a model first"
+                            : ""
+                    }
+                    color="#fff"
+                  >
+                    <Button
+                      type="primary"
+                      danger={loading || isInvalidPair}
+                      size="medium"
+                      onClick={() => {
+                        if (loading) handleCancelTranslate();
+                        else handleTranslate();
+                      }}
+                      disabled={
+                        !selectedModel ||
+                        isIncognito ||
+                        isInvalidPair ||
+                        !sourceLang ||
+                        !targetLang ||
+                        (!sourceText.trim() && !uploadedFile)
+                      }
+                      style={{
+                        padding: "0 32px",
+                        borderRadius: "8px",
+                        minWidth: "100px",
+                        backgroundColor: isInvalidPair
+                          ? "#bfbfbf"
+                          : loading
+                            ? "#ff4d4f"
+                            : isIncognito
+                              ? "#d9d9d9"
+                              : "rgb(44,141,251)",
+                        borderColor: isInvalidPair
+                          ? "#bfbfbf"
+                          : loading
+                            ? "#ff4d4f"
+                            : isIncognito
+                              ? "#d9d9d9"
+                              : "rgb(44,141,251)",
+                        color: "#fff",
+                        cursor: isInvalidPair ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {isInvalidPair
+                        ? "Translate"
+                        : loading
+                          ? "Cancel Translation"
+                          : "Translate"}
+                    </Button>
+                  </Tooltip>
                 </Col>
               </Row>
             </div>
@@ -2364,8 +2372,8 @@ useEffect(() => {
           placeholder="Filename"
           value={filename}
           onChange={(e) => setFilename(e.target.value)}
-          disabled={!!uploadedFile || saving}
-        />
+          disabled={saving}
+          />
       </Modal>
 
       {/* Create Project Modal */}
