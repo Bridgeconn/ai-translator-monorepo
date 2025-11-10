@@ -64,7 +64,8 @@ export default function AuthModal() {
       const errorMessage = error.response?.data?.detail || 
                           error.response?.data?.message || 
                           error.message || 
-                          "Invalid username or password";
+                          "Invalid username/email or password";  // ← Updated
+
       
       notificationApi.error({
         message: "Login Failed",
@@ -262,19 +263,19 @@ export default function AuthModal() {
               preserve={false}
             >
               <Form.Item
-                label="Username"
-                name="username"
-                rules={[
-                  { required: true, message: "Please enter your username!" },
-                ]}
-              >
-                <Input
-                  prefix={<UserOutlined style={{ color: "rgba(0,0,0,0.25)" }} />}
-                  placeholder="Username"
-                  style={styles.input}
-                  autoComplete="username"
-                />
-              </Form.Item>
+  label="Username or Email"
+  name="username"
+  rules={[
+    { required: true, message: "Please enter your username or email!" },
+  ]}
+>
+  <Input
+    prefix={<UserOutlined style={{ color: "rgba(0,0,0,0.25)" }} />}
+    placeholder="Enter username or email"
+    style={styles.input}
+    autoComplete="username"
+  />
+</Form.Item>
   
               <Form.Item
                 label="Password"

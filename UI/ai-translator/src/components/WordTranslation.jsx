@@ -667,17 +667,21 @@ export default function WordTranslation() {
       const params = new URLSearchParams({
         book_id: selectedBook.book_id,
         model_name: selectedModel,
+        full_regenerate: fullRegenerate ? "true" : "false",  // optional flag for backend
       });
       
-      // Include token IDs only if in No Continue mode
-      if (tokenIdsToTranslate) {
-        tokenIdsToTranslate.forEach(id => params.append("token_ids", id));
-      }
       // const eventSource = new EventSource(
       //   // import.meta.env.VITE_BACKEND_URL + `/api/generate_batch_stream/${projectId}?book_id=${encodeURIComponent(selectedBook.book_id)}`
       //   `${import.meta.env.VITE_BACKEND_URL}/api/generate_batch_stream/${projectId}?book_id=${encodeURIComponent(selectedBook.book_id)}&model_name=${encodeURIComponent(selectedModel)}`
 
       // );
+      if (fullRegenerate) {
+        // 🧹 Reset UI first
+        setTranslatedCount([]);
+        setTranslatedCount(0);
+        console.log("🔁 Regenerate All: Cleared old translations");
+      }
+    
       const eventSource = new EventSource(
         `${import.meta.env.VITE_BACKEND_URL}/api/generate_batch_stream/${projectId}?${params.toString()}`
       );
@@ -702,9 +706,9 @@ export default function WordTranslation() {
             translationNotificationKey.current = null;
           }
           
-          notificationApi.error({
-            message: "Error",
-            description: "Translation failed. The server might be down or the network is slow. Please try again.",
+          notificationApi.info({
+            message: "Message",
+            description: data.error,
             placement: "top",
             duration: 4,
           });
@@ -1259,6 +1263,7 @@ export default function WordTranslation() {
                 onClick={handleDeleteBook}
                 title="Delete Selected Book"
                 danger
+                disabled={isGenerating} // Add this line
               />
             )}
 
@@ -1615,28 +1620,16 @@ export default function WordTranslation() {
                 ) : (
                   <>
                     {/* Draft-specific buttons */}
-                    <Popconfirm
-                      title={
-                        // 1️⃣ Editor has unsaved edits (unsaved in editor tab)
-                        showEditorUnsaved
-                          ? "Generating a new draft will overwrite present draft changes. Are you sure?"
-                          // 2️⃣ Draft free-form edited & saved
-                          : editedTokens['draft_edited'] && !isDraftEdited
-                            ? "You have manually edited the draft. Generating a new draft will overwrite these changes. Are you sure?"
-                            // 3️⃣ Draft unsaved changes (from free-form edit not saved yet)
-                            : isDraftEdited
-                              ? "Generating a new draft will discard any unsaved draft edits. Are you sure?"
-                              // 4️⃣ Default fallback
-                              : "Generating a new draft will overwrite present draft changes. Are you sure?"
-                      }
-                      onConfirm={handleGenerateDraft}
-                      okText="Yes, Generate"
-                      cancelText="Cancel"
-                    >
-                      <Button type="primary" size="medium" loading={loadingDraft}>
-                        {loadingDraft ? 'Generating...' : 'Generate Draft'}
-                      </Button>
-                    </Popconfirm>
+{/* Draft-specific buttons */}
+<Button
+  type="primary"
+  size="medium"
+  loading={loadingDraft}
+  onClick={handleGenerateDraft}
+>
+  {loadingDraft ? 'Generating...' : 'Generate Draft'}
+</Button>
+
 
                     <Button
                       icon={<CopyOutlined />}
@@ -1696,8 +1689,24 @@ export default function WordTranslation() {
                   borderRadius: 4,
                   padding: '10px',
                   backgroundColor: '#FFFFFF',
+                  position: 'relative'
                 }}>
-                  {tokens.length === 0 ? (
+                  {loadingTokens && (
+  <div
+    style={{
+      position: "absolute",
+      inset: 0,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      background: "rgba(255,255,255,0.6)",
+      zIndex: 10
+    }}
+  >
+    <Spin size="large" tip="Generating tokens..." />
+  </div>
+)}
+{loadingTokens ? null : tokens.length === 0 ? (
                     <Text type="secondary">
                       {activeTab === "editor" ? "No word tokens found for this book." : "No draft available."}
                     </Text>

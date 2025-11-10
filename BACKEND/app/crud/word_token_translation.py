@@ -105,7 +105,7 @@ HARDCODED_PAIRS = {
 }
 
 def generate_tokens_batch_stream(
-    db: Session, project_id: UUID, book_id: UUID,model_name: str = "nllb-600M", token_ids: list[UUID] = None
+    db: Session, project_id: UUID, book_id: UUID,model_name: str = "nllb-600M", token_ids: list[UUID] = None,full_regenerate: bool = False,
 ) -> Generator[str, None, None]:
     """
     Stream translation of tokens batch by batch.
@@ -128,6 +128,13 @@ def generate_tokens_batch_stream(
     if not book:
         yield f"data: {json.dumps({'error': 'Book not found'})}\n\n"
         return
+    if full_regenerate:
+        db.query(WordTokenTranslation).filter_by(
+            project_id=project_id, book_id=book_id
+        ).update({WordTokenTranslation.translated_text: None})
+        db.commit()
+        logger.info(f"Cleared previous translations for project={project_id}, book={book_id}")
+
     # 2️⃣ Fetch source and target languages
     source_lang_obj = None
     if project.source and project.source.language_id:
@@ -159,16 +166,16 @@ def generate_tokens_batch_stream(
     if not source_lang_code or not target_lang_code:
         yield f"data: {json.dumps({'error': 'Source or target language not found'})}\n\n"
         return
-
-    # 3️⃣ Fetch tokens for this book
     query = db.query(WordTokenTranslation).filter_by(project_id=project_id, book_id=book_id)
-    if token_ids:
-      query = query.filter(WordTokenTranslation.word_token_id.in_(token_ids))
+    if not full_regenerate:
+        query = query.filter(
+            (WordTokenTranslation.translated_text == None) |
+            (WordTokenTranslation.translated_text == "")
+        )
     tokens = query.all()
-
     total = len(tokens)
     if not tokens:
-        yield f"data: {json.dumps({'error': 'No tokens found for this project/book'})}\n\n"
+        yield f"data: {json.dumps({'error': 'No tokens to translate'})}\n\n"
         return
 
     # 4️⃣ Choose batch size
