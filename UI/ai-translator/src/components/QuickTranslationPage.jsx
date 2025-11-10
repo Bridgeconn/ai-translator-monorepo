@@ -44,7 +44,7 @@ const LINE_SENTINEL = " ⟦LB⟧ ";
 async function getAccessToken() {
   // console.log(
   //   "🔑 Requesting token:",
-  //   "https://stagingapi.vachanengine.org/v2/ai/token"
+  //   "https://api.vachanengine.org/v2/ai/token"
   // );
   const params = new URLSearchParams();
   params.append("username", import.meta.env.VITE_VACHAN_USERNAME);
