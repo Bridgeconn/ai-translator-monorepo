@@ -6,12 +6,12 @@ import {
   EditOutlined,
   ThunderboltOutlined,
 } from "@ant-design/icons";
-import { useAuthModal } from "./AuthModalContext";  // ✅ Add this
+import { useAuthModal } from "./AuthModalContext"; // ✅ Add this
 const { Title, Paragraph, Text } = Typography;
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const { openLogin } = useAuthModal();  // ✅ Add this
+  const { openLogin } = useAuthModal(); // ✅ Add this
   const features = [
     {
       icon: <TranslationOutlined style={{ fontSize: 28, color: "white" }} />,
@@ -71,7 +71,7 @@ export default function HomePage() {
       margin: 0,
     },
     primaryBtn: {
-      background: 'linear-gradient(135deg,#2C8DFB,#6C63FF)',
+      background: "linear-gradient(135deg,#2C8DFB,#6C63FF)",
       color: "#fff",
       fontWeight: 600,
       padding: "12px 24px",
@@ -114,16 +114,28 @@ export default function HomePage() {
             <Text style={styles.logoText}>文A</Text>
           </div>
 
-          <Title
-            level={1}
-            style={{
-              margin: 0,
-              fontSize: 46,
-              fontWeight: 800,
-            }}
-          >
-            AI MT
-          </Title>
+          {/* ✅ Updated Title with version number */}
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+            <Title
+              level={1}
+              style={{
+                margin: 0,
+                fontSize: 46,
+                fontWeight: 800,
+              }}
+            >
+              AI MT
+            </Title>
+            <Text
+              style={{
+                fontSize: 14,
+                color: "rgba(6,18,40,0.45)",
+                fontWeight: 500,
+              }}
+            >
+              v1.0.0
+            </Text>
+          </div>
 
           <Paragraph
             style={{
@@ -143,7 +155,7 @@ export default function HomePage() {
           <Space size="middle">
             <Button
               size="large"
-              onClick={openLogin}  // ✅ New way              
+              onClick={openLogin}
               style={styles.primaryBtn}
             >
               Get Started
