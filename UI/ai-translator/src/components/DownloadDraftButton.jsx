@@ -58,11 +58,12 @@ export default function DownloadDraftButton({ content, disabled = false, targetL
           : bookName?.name?.replace(/\s+/g, "_") || "book";
       baseName = `${src}_${tgt}_${book}`;
     } else if (translationType === "text" || translationType === "quick") {
-      const cleanFile = (uploadedFileName
-        ? uploadedFileName.replace(/\.[^/.]+$/, "")
-        : "document"
-      ).replace(/\s+/g, "_");
-      baseName = `${src}_${tgt}_${cleanFile}`;
+      const cleanFile = uploadedFileName
+  ? uploadedFileName.replace(/\.[^/.]+$/, "").replace(/\s+/g, "_")
+  : "";
+
+baseName = `${src}_${tgt}${cleanFile ? `_${cleanFile}` : ""}`;
+;
     } else {
       baseName = `${src}_${tgt}`;
     }
