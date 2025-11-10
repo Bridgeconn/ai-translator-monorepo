@@ -706,9 +706,9 @@ export default function WordTranslation() {
             translationNotificationKey.current = null;
           }
           
-          notificationApi.error({
-            message: "Error",
-            description: "Translation failed. The server might be down or the network is slow. Please try again.",
+          notificationApi.info({
+            message: "Message",
+            description: data.error,
             placement: "top",
             duration: 4,
           });
