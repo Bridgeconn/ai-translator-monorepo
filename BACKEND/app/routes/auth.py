@@ -19,28 +19,61 @@ router = APIRouter()
 
 
 # ---------------- LOGIN ----------------
+# @router.post("/login", response_model=TokenResponse)
+# def login(
+#     form_data: OAuth2PasswordRequestForm = Depends(),
+#     db: Session = Depends(get_db)
+# ):
+#     user = db.query(User).filter(User.username == form_data.username).first()
+
+#     if not user:
+#         raise HTTPException(status_code=401, detail="Username entered is wrong")
+
+#     if not verify_password(form_data.password, user.password_hash):
+#         raise HTTPException(status_code=401, detail="Password is wrong for this username")
+
+#     # Both username and password are correct
+#     access_token, jti = create_access_token(data={"sub": str(user.user_id)})
+#     user.token = access_token
+#     user.jti = jti
+#     db.commit()
+    
+#     return {"access_token": access_token, "token_type": "bearer"}
+
+# ---------------- LOGIN ----------------
 @router.post("/login", response_model=TokenResponse)
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
+    # Try to find user by username first
     user = db.query(User).filter(User.username == form_data.username).first()
-
+    
+    # If not found by username, try by email (case-insensitive)
     if not user:
-        raise HTTPException(status_code=401, detail="Username entered is wrong")
+        user = db.query(User).filter(User.email == form_data.username.lower()).first()
+    
+    # If still not found, raise error
+    if not user:
+        raise HTTPException(
+            status_code=401, 
+            detail="Invalid username/email or password"
+        )
 
+    # Verify password
     if not verify_password(form_data.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Password is wrong for this username")
+        raise HTTPException(
+            status_code=401, 
+            detail="Invalid username/email or password"
+        )
 
-    # Both username and password are correct
+    # Both username/email and password are correct
     access_token, jti = create_access_token(data={"sub": str(user.user_id)})
     user.token = access_token
     user.jti = jti
     db.commit()
     
     return {"access_token": access_token, "token_type": "bearer"}
-
-
 # ---------------- LOGOUT ----------------
 @router.post("/logout")
 def logout(
