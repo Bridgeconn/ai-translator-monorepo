@@ -1263,6 +1263,7 @@ export default function WordTranslation() {
                 onClick={handleDeleteBook}
                 title="Delete Selected Book"
                 danger
+                disabled={isGenerating} // Add this line
               />
             )}
 

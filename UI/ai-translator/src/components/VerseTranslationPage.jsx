@@ -1414,6 +1414,7 @@ const VerseTranslationPage = () => {
                 onClick={handleDeleteBook}
                 title="Delete Selected Book"
                 danger
+                disabled={loadingTranslate} // Add this line
               />
             )}
             {/* )} */}
