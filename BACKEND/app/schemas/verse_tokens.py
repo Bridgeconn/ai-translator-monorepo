@@ -41,3 +41,6 @@ class ManualTranslationUpdate(BaseModel):
 class TranslateChapterRequest(BaseModel):
     verse_numbers: List[int]           # Required list of verses to translate
     model_name: Optional[str] = "nllb-600M"  # Optional, defaults to nllb-600M    
+    full_regenerate: bool = False  #  Set default to False, NOT Optional[bool] = True
+    # If the user selects "Yes, Regenerate", the frontend must explicitly send true.
+    # If the user selects "No, Continue", the frontend can send false or omit it (and it will default to False).
