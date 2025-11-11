@@ -356,7 +356,7 @@ async def translate_chapter(
     model_name: str = "nllb-600M",
     request: Optional[Request] = None,
     token_ids: Optional[List[UUID]] = None,
-    full_regenerate: bool = True
+    full_regenerate: bool = False
 ):
     # # 1. Fetch tokens for the specific chapter AND specific verses
     # ALLOWED_MODELS = ["nllb-600M", "nllb-english-zeme", "nllb-english-nagamese","nllb-gujrathi-koli_kachchi","nllb-hindi-surjapuri","nllb-gujarati-kukna","nllb-gujarati-kutchi"]
@@ -384,7 +384,15 @@ async def translate_chapter(
 
     tokens = query.all()
     if not full_regenerate:
-       tokens = [t for t in tokens if not t.verse_translated_text]
+        # Only translate verses that DON'T have translations yet
+        tokens = [
+            t for t in tokens 
+            if not t.verse_translated_text or t.verse_translated_text.strip() == ""
+        ]
+        #  If all verses are already translated, return early
+        if not tokens:
+            logger.info(f"All verses in chapter {chapter_number} in this batch are already translated. Skipping translation.")
+            return []  # Return empty list, no translation needed
     if not tokens:
         raise HTTPException(status_code=404, detail="No tokens found for this selection.")
 

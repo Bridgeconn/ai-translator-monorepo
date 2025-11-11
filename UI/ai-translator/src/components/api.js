@@ -462,10 +462,10 @@ export const verseTokensAPI = {
   },
 };
 
-export const translateChapter = async (projectId, bookName, chapterNumber, verseNumbers, model_name = "nllb-600M",signal) => {
+export const translateChapter = async (projectId, bookName, chapterNumber, verseNumbers, model_name = "nllb-600M",signal,fullRegenerate = false) => {
   const res = await api.post(
     `/verse_tokens/translate-chapter/${projectId}/${bookName}/${chapterNumber}`,
-    { verse_numbers: verseNumbers,model_name: model_name },   // 👈 send body only if verses passed
+    { verse_numbers: verseNumbers,model_name: model_name,full_regenerate: fullRegenerate },   //  send body only if verses passed
     { signal }
   );
   return res.data;

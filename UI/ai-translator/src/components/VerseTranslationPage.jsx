@@ -876,8 +876,28 @@ const VerseTranslationPage = () => {
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
-
+    let totalNewTranslations = 0;
     try {
+      if (fullRegenerate) {
+        try {
+          await api.delete(
+            `/verse_tokens/clear-chapter-translations/${projectId}/${selectedBook}/${selectedChapter}`
+          );
+          
+          setTokens((prev) =>
+            prev.map((tok) => ({ ...tok, verse_translated_text: "" }))
+          );
+        } catch (clearError) {
+          notificationApi.error({
+            message: "Error",
+            description: "Failed to clear existing translations",
+            placement: "top",
+            duration: 3,
+          });
+          setLoadingTranslate(false);
+          return; // Stop if clearing fails
+        }
+      }
     // 🆕 CREATE PERSISTENT NOTIFICATION
     translationNotificationKey.current = `translation-${Date.now()}`;
     notificationApi.info({
@@ -918,10 +938,17 @@ const VerseTranslationPage = () => {
 
         // Show placeholder while batch in progress
         setTokens((prev) =>
-          prev.map((tok) =>
-            batch.includes(tok.verse_number)
-              ? { ...tok, verse_translated_text: "Translating…" }
-              : tok
+          prev.map((tok) =>{
+            const isTargetVerse = batch.includes(tok.verse_number);
+            
+            // Only set placeholder if:
+            // 1. fullRegenerate is true (overwriting everything)
+            // 2. OR fullRegenerate is false AND the verse is currently untranslated
+            if (isTargetVerse && (fullRegenerate || !tok.verse_translated_text || tok.verse_translated_text === "Translating…")) {
+                return { ...tok, verse_translated_text: "Translating…" };
+            }
+            return tok;
+          }
           )
         );
 
@@ -937,6 +964,8 @@ const VerseTranslationPage = () => {
         );
 
         if (newTokens?.length > 0) {
+          // 💡 2. TRACKING: Increment the counter if new translations are received
+          totalNewTranslations += newTokens.length;
           setTokens((prev) => {
             // build updated array (always new reference)
             const updated = prev.map((tok) => {
@@ -984,15 +1013,26 @@ const VerseTranslationPage = () => {
         translationNotificationKey.current = null;
       }
       
-      // 🆕 SHOW SUCCESS NOTIFICATION
+     // 💡 3. FINAL CHECK: Conditional Notification Logic
+     if (!fullRegenerate && totalNewTranslations === 0) {
+      // Condition: "No, Continue" was clicked AND the tracker is zero
+      notificationApi.info({
+        message: "Message",
+        description: "No verse to translate.",
+        placement: "top",
+        duration: 1,
+      });
+    } else {
+      // Condition: Full regeneration or some successful translation occurred
       notificationApi.success({
         message: "Success",
         description: "Chapter translated successfully!",
         placement: "top",
-        duration: 3,
+        duration: 1,
       });
     }
-  } catch (err) {
+  }
+}catch (err) {
     // 🆕 DESTROY PROGRESS NOTIFICATION ON ERROR
     if (translationNotificationKey.current) {
       notificationApi.destroy(translationNotificationKey.current);
