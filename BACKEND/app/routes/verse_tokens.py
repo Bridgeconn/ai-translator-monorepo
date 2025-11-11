@@ -148,6 +148,7 @@ async def translate_chapter_route(
     db: Session = Depends(get_db),                   # your DB session
 ): 
     print("Received verse_numbers:", request_body.verse_numbers)
+    print("Received full_regenerate:", request_body.full_regenerate)  # Add logging
     return await verse_token_crud.translate_chapter(
         db,
         project_id,
@@ -155,7 +156,8 @@ async def translate_chapter_route(
         chapter_number,
         request_body.verse_numbers,
         model_name=request_body.model_name,
-        request=request  # ✅ pass it down to the CRUD function
+        request=request,  #  pass it down to the CRUD function
+        full_regenerate=request_body.full_regenerate  #  Pass this parameter
     )
 
 @router.get("/verse_tokens/verse-numbers/{project_id}/{book_name}/{chapter_number}")
@@ -176,3 +178,53 @@ def get_verse_numbers(project_id: UUID, book_name: str, chapter_number: int, db:
     if not verses:
         raise HTTPException(status_code=404, detail="No verses found for this chapter.")
     return [v[0] for v in verses]  # return list of integers
+@router.delete("/clear-chapter-translations/{project_id}/{book_name}/{chapter_number}")
+def clear_chapter_translations(
+    project_id: UUID,
+    book_name: str,
+    chapter_number: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Clear all translations for a specific chapter.
+    Sets all verse_translated_text to empty string.
+    """
+    try:
+        from datetime import datetime
+        
+        # Get all tokens for this chapter
+        tokens = (
+            db.query(VerseTokenTranslation)
+            .join(Verse, VerseTokenTranslation.verse_id == Verse.verse_id)
+            .join(Chapter, Verse.chapter_id == Chapter.chapter_id)
+            .join(Book, Chapter.book_id == Book.book_id)
+            .filter(
+                VerseTokenTranslation.project_id == project_id,
+                Book.book_name == book_name,
+                Chapter.chapter_number == chapter_number
+            )
+            .all()
+        )
+        
+        if not tokens:
+            raise HTTPException(status_code=404, detail="No tokens found for this chapter")
+        
+        # Clear all translations
+        cleared_count = 0
+        for token in tokens:
+            token.verse_translated_text = ""
+            token.updated_at = datetime.utcnow()
+            cleared_count += 1
+        
+        db.commit()
+        
+        return {
+            "message": f"Cleared {cleared_count} translations successfully",
+            "cleared_count": cleared_count
+        }
+    
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))

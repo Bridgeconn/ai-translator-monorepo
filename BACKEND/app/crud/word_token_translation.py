@@ -175,7 +175,7 @@ def generate_tokens_batch_stream(
     tokens = query.all()
     total = len(tokens)
     if not tokens:
-        yield f"data: {json.dumps({'error': 'No tokens to translate'})}\n\n"
+        yield f"data: {json.dumps({'error': 'No word to translate'})}\n\n"
         return
 
     # 4️⃣ Choose batch size
