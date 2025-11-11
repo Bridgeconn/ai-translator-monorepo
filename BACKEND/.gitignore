@@ -1,0 +1,65 @@
+# ================
+# ENVIRONMENTS
+# ================
+
+# Miniconda installation (installed locally)
+miniconda3/
+BACKEND/Miniconda3-latest-Linux-x86_64.sh/
+
+# Virtual environments (if created inside backend)
+venv/
+.venv/
+
+# Environment variable files
+# .env
+# *.env
+# .env.*
+
+# ================
+# PYTHON
+# ================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.pyd
+*.pyo
+*.so
+
+# Unit test / coverage
+.pytest_cache/
+.tox/
+.coverage
+htmlcov/
+coverage.xml
+
+# Type checker caches
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+
+# ================
+# DATABASE & FILES
+# ================
+
+# SQLite DBs
+*.db
+*.sqlite3
+
+# Logs
+*.log
+
+# ================
+# DOCS & MISC
+# ================
+
+# Sphinx documentation
+docs/_build/
+
+# Editors
+.vscode/
+.idea/
+
+# OS junk
+.DS_Store
+Thumbs.db

@@ -1,0 +1,131 @@
+
+body {
+  font-family:'-apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif',
+  ;
+  background: #f3f4f6; /* fallback flat gray */
+  margin: 0;
+  padding: 0;
+  position: relative; /* needed for pseudo-elements */
+  overflow: auto;
+  scrollbar-width: none;  /* prevents shapes from overflowing */
+}
+
+
+body::before {
+  content: "";
+  position: absolute;
+  top: -150px;
+  left: -150px;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, #722ed1 0%, transparent 70%);
+  opacity: 0.1;
+  z-index: -1;
+}
+
+body::after {
+  content: "";
+  position: absolute;
+  bottom: -150px;
+  inset: 0;
+  background: radial-gradient(circle, #4f46e5 0%, transparent 70%);
+  opacity: 0.1;
+  z-index: -1;
+}
+  /* Card panels */
+  .panel {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .panel:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+  }
+  
+  /* Textareas */
+  .panel textarea {
+    flex: 1;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px;
+    margin: 0 8px 8px;
+    font-size: 0.9rem;
+    background: #fafafa;
+    resize: none;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  
+  .panel textarea:focus {
+    border-color: #ec4899; /* pink */
+    box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.2);
+  }
+  
+  /* Buttons */
+  .btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid #e5e7eb;
+    background: #f9fafb;
+  }
+  
+  .btn:hover {
+    background: #f3f4f6;
+  }
+  
+  .btn-primary {
+    background: #6366f1; /* indigo */
+    color: white;
+    border: none;
+  }
+  
+  .btn-primary:hover {
+    background: #4f46e5;
+  }
+  
+  .btn-pink {
+    background: #ec4899;
+    color: white;
+    border: none;
+  }
+  
+  .btn-pink:hover {
+    background: #db2777;
+  }
+  
+  /* Selects */
+  select {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    font-size: 0.9rem;
+  }
+  /* Regular Input placeholders */
+/* Regular inputs (username, email, etc.) */
+.ant-input::placeholder {
+  color: #5e5a5a !important;
+  opacity: 1 !important;
+  font-weight: 500;
+}
+
+/* Password inputs (AntD Password component) */
+.ant-input-password .ant-input::placeholder,
+.ant-input-affix-wrapper input::placeholder {
+  color: #5e5a5a !important;
+  opacity: 1 !important;
+  font-weight: 500;
+}
+.ant-select-selection-placeholder {
+  color: #555 !important;
+  opacity: 1 !important;
+  font-weight: 500;
+}
