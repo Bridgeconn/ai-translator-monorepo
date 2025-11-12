@@ -125,34 +125,56 @@ const Dashboard = () => {
   };
 
   const aboutContent = (
+  <div
+    style={{
+      overflowY: "auto",
+      scrollbarWidth: "none",
+      maxHeight: "70vh",
+      paddingRight: 8,
+    }}
+    className="hide-scroll"
+  >
+    <style>
+      {`
+        .hide-scroll::-webkit-scrollbar {
+          display: none;
+        }
+      `}
+    </style>
+
+    <p style={{ marginBottom: 12 }}>
+      <strong>AI MT</strong> empowers you to create precise, meaningful
+      translations using advanced AI tools. It helps teams streamline their
+      translation workflow while ensuring linguistic accuracy and consistency.
+      It provides real-time translation assistance, smart text comparison,
+      and efficient project tracking.
+    </p>
+
+    {/* <p style={{ marginBottom: 12 }}>
+      Designed for translators, linguists, and editors who rely on AI MT.
+      It provides real-time translation assistance, smart text comparison,
+      and efficient project tracking.
+    </p> */}
+
     <div
       style={{
-        overflowY: "auto",
-        scrollbarWidth: "none",
-        maxHeight: "70vh",
-        paddingRight: 8,
+        borderTop: "1px solid #f0f0f0",
+        margin: "16px 0",
       }}
-      className="hide-scroll"
-    >
-      <style>
-        {`
-          .hide-scroll::-webkit-scrollbar {
-            display: none;
-          }
-        `}
-      </style>
+    ></div>
 
-      <p style={{ marginBottom: 12 }}>
-        <strong>AI MT</strong> empowers you to create precise, meaningful
-        translations using advanced AI tools. It helps teams streamline their
-        translation workflow while ensuring linguistic accuracy and consistency.
+    <div style={{ fontSize: 14, color: "rgba(0,0,0,0.65)" }}>
+      <p style={{ marginBottom: 4 }}>
+        <b>Current Version:</b> v1.0.0
       </p>
+      <p style={{ marginBottom: 4 }}>
+        <b>Release Date:</b> 12 Nov 2025
+      </p>
+      {/* <p>
+        <b>Status:</b> Stable Release 🚀
+      </p> */}
 
-      <p style={{ marginBottom: 12 }}>
-        Designed for translators, linguists, and editors who rely on AI MT.
-        It provides real-time translation assistance, smart text comparison,
-        and efficient project tracking.
-      </p>
+      {/* --- New Additions Below --- */}
 
       <div
         style={{
@@ -161,19 +183,67 @@ const Dashboard = () => {
         }}
       ></div>
 
-      <div style={{ fontSize: 14, color: "rgba(0,0,0,0.65)" }}>
-        <p style={{ marginBottom: 4 }}>
-          <b>Current Version:</b> v1.0.0
-        </p>
-        <p style={{ marginBottom: 4 }}>
-          <b>Release Date:</b> 24 Oct 2025
-        </p>
-        <p>
-          <b>Status:</b> Stable Release 🚀
-        </p>
+      <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+        <p style={{ fontWeight: 600, marginBottom: 8 }}>✨ New Updates</p>
+        <ul style={{ paddingLeft: 18, marginBottom: 16 }}>
+          <li>Limit translation (5/day) for unauthorized users</li>
+          <li>Added 5 new models for minority languages with info</li>
+          <li>Language filtering in dropdowns</li>
+          <li>Restrict translation for invalid language pairs</li>
+          <li>Upload only allowed formats</li>
+          <li>Retranslate & Cancel translation</li>
+          <li>Manage books on translation page (add/delete)</li>
+          <li>Standalone sources for every project (project-scoped)</li>
+          <li>Improved downloaded file name format</li>
+          <li>Restrict deleting <code>sample.txt</code> in Text Document Translation</li>
+          <li>Chapter-wise download and copy options</li>
+          <li>Hardcoded language for reverse translation (bidirectional models)</li>
+          <li>Chapter-wise draft view</li>
+          <li>Improved “Create Project” page layout</li>
+          <li>Show supported languages across 5 models</li>
+          <li>Response time extended for large files</li>
+          <li>Login using username or email</li>
+          <li>Dashboard UI enhancements and About section added</li>
+          <li>Swapping both content & language in Quick Translation</li>
+          <li>Clear selection option in language dropdown</li>
+          <li>Source & version creation on project page</li>
+        </ul>
+
+        <p style={{ fontWeight: 600, marginBottom: 8 }}>🎨 UI Fixes</p>
+        <ul style={{ paddingLeft: 18, marginBottom: 16 }}>
+          <li>Aligned placeholders on Verse page</li>
+          <li>Improved project search clear button</li>
+          <li>Pagination fixes on Project page</li>
+          <li>Added labels in layout</li>
+          <li>Breadcrumb updates on Word & Text Document pages</li>
+          <li>Delete button hidden if no book selected</li>
+          <li>Prevented multiple error popups</li>
+          <li>Removed ISO codes from language dropdown</li>
+          <li>Added favicon for the app</li>
+          <li>Fixed dropdown spacing & icon size in Quick Translation</li>
+        </ul>
+
+        <p style={{ fontWeight: 600, marginBottom: 8 }}>🐞 Bug Fixes</p>
+        <ul style={{ paddingLeft: 18 }}>
+          <li>Fixed PDF upload in Quick & Text Translation</li>
+          <li>Auto-select model for Surjapuri–Hindi languages</li>
+          <li>Updated reset password sender email</li>
+          <li>Fixed timeout issues in Quick Translation</li>
+          <li>Restricted project creation for invalid language pairs</li>
+          <li>Fixed language dropdown on Project & Quick Translation pages</li>
+          <li>Verse translation book upload modal fixed</li>
+          <li>Continue translation for large tokens in Word Translation</li>
+          <li>Continue translation on Project page (Verse Translation)</li>
+          <li>Refined notifications</li>
+          <li>Unified download file name format</li>
+          <li>Disabled translate button for invalid language pairs</li>
+          <li>Disabled delete button during ongoing translation</li>
+          <li>Fixed blank page issue for Gujarati–Kukna language</li>
+        </ul>
       </div>
     </div>
-  );
+  </div>
+);
 
   return (
     <Content
@@ -216,7 +286,7 @@ const Dashboard = () => {
 
         <Col xs={24} sm={12}>
           <Card
-            title={<span style={{ fontWeight: 600, fontSize: 16 }}>About Us</span>}
+            title={<span style={{ fontWeight: 600, fontSize: 16 }}>What’s New — Version 1.0.0 🚀</span>}
             onClick={openModal}
             hoverable
             styles={{
@@ -355,7 +425,7 @@ const Dashboard = () => {
         footer={null}
         centered
         width={600}
-        title={<strong>About Us</strong>}
+        title={<strong>What’s New — Version 2.0.0 🚀</strong>}
         bodyStyle={{
           maxHeight: "70vh",
           overflowY: "auto",
