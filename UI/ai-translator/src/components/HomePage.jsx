@@ -126,15 +126,26 @@ export default function HomePage() {
             >
               AI MT
             </Title>
-            {/* <Text
+            <Text
               style={{
                 fontSize: 14,
                 color: "rgba(6,18,40,0.45)",
                 fontWeight: 500,
               }}
             >
-              v1.0.0
-            </Text> */}
+              <a
+                href="https://github.com/Bridgeconn/ai-translator-monorepo/releases/tag/v1.0.0"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  textDecoration: "none", // removes underline
+                  color: "inherit", // keeps same text color
+                  cursor: "pointer",
+                }}
+              >
+                v1.0.0
+              </a>
+            </Text>
           </div>
 
           <Paragraph
@@ -153,11 +164,7 @@ export default function HomePage() {
           </Paragraph>
 
           <Space size="middle">
-            <Button
-              size="large"
-              onClick={openLogin}
-              style={styles.primaryBtn}
-            >
+            <Button size="large" onClick={openLogin} style={styles.primaryBtn}>
               Get Started
             </Button>
             <Button
