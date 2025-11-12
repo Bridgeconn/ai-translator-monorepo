@@ -63,12 +63,13 @@ export default function DownloadDraftButton({
           ? bookName.replace(/\s+/g, "_")
           : bookName?.name?.replace(/\s+/g, "_") || "book";
       baseName = `${src}_${tgt}_${book}`;
-    } else if (translationType === "text" || translationType === "quick") {
-      // const cleanFile = uploadedFileName
-      //   ? uploadedFileName.replace(/\.[^/.]+$/, "").replace(/\s+/g, "_")
-      //   : "";
+    }else if (translationType === "text") {
+      const cleanFile = uploadedFileName
+        ? uploadedFileName.replace(/\.[^/.]+$/, "").replace(/\s+/g, "_")
+        : "";
 
-      // baseName = `${src}_${tgt}${cleanFile ? `_${cleanFile}` : ""}`; Removed for testing no need to have file name
+      baseName = cleanFile;
+    }else if (translationType === "quick") {
       baseName = `${src}_${tgt}`;
     } else {
       baseName = `${src}_${tgt}`;

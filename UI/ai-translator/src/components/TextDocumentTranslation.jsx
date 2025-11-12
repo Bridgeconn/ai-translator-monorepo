@@ -603,77 +603,76 @@ export default function TextDocumentTranslation() {
 
   // ------------------  Upload handler ------------------
   const handleFileUpload = async (file) => {
-  // 1. Validation Checks
-  const allowedExtensions = [".txt", ".usfm", ".docx", ".pdf"];
-  const fileExtension = file.name
-    .slice(file.name.lastIndexOf("."))
-    .toLowerCase();
+    // 1. Validation Checks
+    const allowedExtensions = [".txt", ".usfm", ".docx", ".pdf"];
+    const fileExtension = file.name
+      .slice(file.name.lastIndexOf("."))
+      .toLowerCase();
 
-  if (!allowedExtensions.includes(fileExtension)) {
-    message.error(
-      `Unsupported Format: Only .txt, .usfm, .docx, and .pdf files are supported.`
-    );
-    return Upload.LIST_IGNORE; // stop upload right away
-  }
-  const isLt2M = file.size / 1024 / 1024 < 2;
-  if (!isLt2M) {
-    message.error(`File is too large: File must be smaller than 2MB!`);
-    return Upload.LIST_IGNORE; // block upload
-  }
-
-  if (file.name.endsWith(".doc")) {
-    message.error(
-      `Unsupported File: Old Word (.doc) files are not supported. Use .docx, .txt, or .pdf.`
-    );
-    return false;
-  }
-
-  let textContent = "";
-
-  try {
-    // 2. File Reading Logic
-    if (file.name.endsWith(".pdf")) {
-      // Extract text from PDF using the worker
-      const arrayBuffer = await file.arrayBuffer();
-      // NOTE: The pdfjsLib must be imported correctly at the top of the file
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        const strings = content.items.map((item) => item.str);
-        // Join strings with a space to keep them readable, then add newline per page
-        textContent += strings.join(" ") + "\n"; 
-      }
-    } else if (file.name.endsWith(".docx")) {
-      // Extract text from DOCX using Mammoth
-      const arrayBuffer = await file.arrayBuffer();
-      const mammoth = await import("mammoth");
-      const { value: text } = await mammoth.extractRawText({ arrayBuffer });
-      textContent = text;
-    } else {
-      // Simple text file reading (TXT, USFM)
-      const reader = new FileReader();
-      textContent = await new Promise((resolve, reject) => {
-        reader.onload = (e) => resolve(e.target.result);
-        reader.onerror = reject;
-        reader.readAsText(file);
-      });
+    if (!allowedExtensions.includes(fileExtension)) {
+      message.error(
+        `Unsupported Format: Only .txt, .usfm, .docx, and .pdf files are supported.`
+      );
+      return Upload.LIST_IGNORE; // stop upload right away
+    }
+    const isLt2M = file.size / 1024 / 1024 < 2;
+    if (!isLt2M) {
+      message.error(`File is too large: File must be smaller than 2MB!`);
+      return Upload.LIST_IGNORE; // block upload
     }
 
-    // 3. Update State
-    setSourceText(textContent);
-    setTargetText("");
-    message.success(`File Loaded: ${file.name}`);
-    
-  } catch (err) {
-    console.error("Failed to read file:", err);
-    message.error("File Load Failed: Failed to load file.");
-    return false;
-  }
+    if (file.name.endsWith(".doc")) {
+      message.error(
+        `Unsupported File: Old Word (.doc) files are not supported. Use .docx, .txt, or .pdf.`
+      );
+      return false;
+    }
 
-  return false; // prevent Ant Design from auto-uploading
-};
+    let textContent = "";
+
+    try {
+      // 2. File Reading Logic
+      if (file.name.endsWith(".pdf")) {
+        // Extract text from PDF using the worker
+        const arrayBuffer = await file.arrayBuffer();
+        // NOTE: The pdfjsLib must be imported correctly at the top of the file
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          const strings = content.items.map((item) => item.str);
+          // Join strings with a space to keep them readable, then add newline per page
+          textContent += strings.join(" ") + "\n";
+        }
+      } else if (file.name.endsWith(".docx")) {
+        // Extract text from DOCX using Mammoth
+        const arrayBuffer = await file.arrayBuffer();
+        const mammoth = await import("mammoth");
+        const { value: text } = await mammoth.extractRawText({ arrayBuffer });
+        textContent = text;
+      } else {
+        // Simple text file reading (TXT, USFM)
+        const reader = new FileReader();
+        textContent = await new Promise((resolve, reject) => {
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = reject;
+          reader.readAsText(file);
+        });
+      }
+
+      // 3. Update State
+      setSourceText(textContent);
+      setTargetText("");
+      message.success(`File Loaded: ${file.name}`);
+    } catch (err) {
+      console.error("Failed to read file:", err);
+      message.error("File Load Failed: Failed to load file.");
+      return false;
+    }
+
+    return false; // prevent Ant Design from auto-uploading
+  };
 
   // ------------------ Translate handler (Vachan workflow) ------------------
   const HARDCODED_PAIRS = {
@@ -1065,11 +1064,13 @@ export default function TextDocumentTranslation() {
                 <Tooltip
                   title={
                     selectedModel && MODEL_INFO[selectedModel]
-                      ? Object.entries(MODEL_INFO[selectedModel]).map(([key, value]) => (
-                          <div key={key}>
-                            <strong>{key}:</strong> {value}
-                          </div>
-                        ))
+                      ? Object.entries(MODEL_INFO[selectedModel]).map(
+                          ([key, value]) => (
+                            <div key={key}>
+                              <strong>{key}:</strong> {value}
+                            </div>
+                          )
+                        )
                       : "Select a model to view details"
                   }
                   color="#fff"
@@ -1269,12 +1270,12 @@ export default function TextDocumentTranslation() {
                     </Tooltip>
 
                     <DownloadDraftButton
-  content={targetText}
-  sourceLanguage={sourceLangName}
-  targetLanguage={targetLangName}
-  uploadedFileName={selectedFile?.file_name} 
-  translationType="text"                     
-/>
+                      content={targetText}
+                      sourceLanguage={sourceLangName}
+                      targetLanguage={targetLangName}
+                      uploadedFileName={selectedFile?.file_name}
+                      translationType="text"
+                    />
                   </>
                   {/* : (
                     <div>
