@@ -115,7 +115,7 @@ export default function HomePage() {
           </div>
 
           {/* ✅ Updated Title with version number */}
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap:12, marginLeft: 38 }}>
             <Title
               level={1}
               style={{
