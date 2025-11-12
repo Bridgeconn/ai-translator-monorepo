@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 
 const { Option } = Select;
 
-export default function LanguageSelect({ label, value, onChange, disabled = false,placeholder = "Select language",filterList = []}) {
+export default function LanguageSelect({ label, value, onChange, disabled = false,placeholder = "Select language",filterList = [],allowClear = false,}) {
   // React Query for fetching languages
   const {
     data: languages = [],
@@ -32,6 +32,7 @@ const filteredLanguages =
       <strong>{label}</strong>
       <Select
         showSearch
+        allowClear={allowClear}
         placeholder={placeholder}
         style={{ width: 250,
           boxShadow: "0 2px 6px rgba(0,0,0,0.15)", // ✅ shadow effect
@@ -48,6 +49,12 @@ const filteredLanguages =
             ?.includes(input.toLowerCase())
         }
         onChange={(id) => {
+          //  When cleared, AntD sends `undefined`
+          if (!id) {
+            onChange(null); // ✅ normalize to null
+            return;
+          }
+        
           const langObj = languages.find((lang) => lang.language_id === id);
           onChange(langObj);
         }}

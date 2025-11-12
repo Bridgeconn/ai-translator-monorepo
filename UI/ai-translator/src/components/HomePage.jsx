@@ -126,7 +126,7 @@ export default function HomePage() {
             >
               AI MT
             </Title>
-            <Text
+            {/* <Text
               style={{
                 fontSize: 14,
                 color: "rgba(6,18,40,0.45)",
@@ -134,7 +134,7 @@ export default function HomePage() {
               }}
             >
               v1.0.0
-            </Text>
+            </Text> */}
           </div>
 
           <Paragraph

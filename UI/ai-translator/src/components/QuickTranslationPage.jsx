@@ -271,7 +271,7 @@ export default function QuickTranslationPage() {
   const { openLogin } = useAuthModal();
   const controllerRef = useRef(null);
   const [isIncognito, setIsIncognito] = useState(false);
-  // Restore draft if available
+  // // Restore draft if available
   useEffect(() => {
     const draft = localStorage.getItem("quickTranslationDraft");
     if (draft) {
@@ -409,60 +409,6 @@ export default function QuickTranslationPage() {
     "Zeme Naga": ["English"],     // English only as target
     "Kachi Koli": ["Gujarati"],   // Gujarati only as target
   };
-
-  // useEffect(() => {
-  //   if (!sourceLang || !targetLang) {
-  //     setIsInvalidPair(false);
-  //     return;
-  //   }
-
-  //   const src = sourceLang.name;
-  //   const tgt = targetLang.name;
-
-  //   // ❌ These specific one-way pairs are NOT allowed
-  //   const disallowedPairs = [
-  //     ["Zeme Naga", "English"], // disallow reverse
-  //     ["Kachi Koli", "Gujarati"], // disallow reverse
-  //   ];
-
-  //   // ✅ Allowed special pairs (two-way unless disallowed above)
-  //   const specialPairs = {
-  //     Nagamese: "English",
-  //     Surjapuri: "Hindi",
-  //     Kukna: "Gujarati",
-  //     // Kutchi: "Gujarati",
-  //     // "Zeme Naga": "English", // forward allowed (English → Zeme)
-  //     // "Kachi Koli": "Gujarati", // forward allowed (Gujarati → Kachi)
-  //   };
-
-  //   let invalid = false;
-
-  //   // 🔍 1️⃣ Check disallowed pairs first
-  //   invalid = disallowedPairs.some(([s, t]) => s === src && t === tgt);
-
-  //   // 🔍 2️⃣ Check normal special-pair rules (only if not already invalid)
-  //   if (!invalid) {
-  //     const isSourceSpecial = Object.keys(specialPairs).includes(src);
-  //     const isTargetSpecial = Object.keys(specialPairs).includes(tgt);
-
-  //     if (isSourceSpecial) {
-  //       invalid = specialPairs[src] !== tgt;
-  //     } else if (isTargetSpecial) {
-  //       invalid = specialPairs[tgt] !== src;
-  //     }
-  //   }
-
-  //   if (invalid) {
-  //     setIsInvalidPair(true);
-  //     notification.error({
-  //       message: "Unsupported Language Pair",
-  //       description: `${src} ↔ ${tgt} is not supported by available models.`,
-  //       duration: 3,
-  //     });
-  //   } else {
-  //     setIsInvalidPair(false);
-  //   }
-  // }, [sourceLang, targetLang]);
   // One-way exceptions: reverse of these are NOT allowed
   const DISALLOWED_REVERSE = [
     ["Zeme Naga", "English"],
@@ -471,8 +417,9 @@ export default function QuickTranslationPage() {
 
   // ✅ New Validation Effect
   useEffect(() => {
+    console.log("source text", sourceText);
     if (!sourceLang || !targetLang) {
-      setIsInvalidPair(false);
+      setIsInvalidPair(true);
       return;
     }
 
@@ -1671,6 +1618,7 @@ export default function QuickTranslationPage() {
                   /> */}
                   <LanguageSelect
                     value={sourceLang}
+                    allowClear
                     onChange={(lang) => {
                       setSourceLang(lang);
 
@@ -1820,6 +1768,7 @@ export default function QuickTranslationPage() {
                   /> */}
                   <LanguageSelect
                     value={targetLang}
+                    allowClear
                     onChange={(lang) => {
                       setTargetLang(lang);
 
