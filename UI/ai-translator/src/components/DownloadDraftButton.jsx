@@ -57,13 +57,8 @@ export default function DownloadDraftButton({ content, disabled = false, targetL
           ? bookName.replace(/\s+/g, "_")
           : bookName?.name?.replace(/\s+/g, "_") || "book";
       baseName = `${src}_${tgt}_${book}`;
-    } else if (translationType === "text" || translationType === "quick") {
-      const cleanFile = uploadedFileName
-  ? uploadedFileName.replace(/\.[^/.]+$/, "").replace(/\s+/g, "_")
-  : "";
-
-baseName = `${src}_${tgt}${cleanFile ? `_${cleanFile}` : ""}`;
-;
+    }  else if (translationType === "text" || translationType === "quick") {
+      baseName = `${src}_${tgt}`;
     } else {
       baseName = `${src}_${tgt}`;
     }
