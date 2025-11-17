@@ -17,15 +17,21 @@ function extractLines(node) {
   return "";
 }
 
-export default function DownloadDraftButton({ content, disabled = false, targetLanguage, sourceLanguage, bookName,
-  chapterNumber = null, translationType = "book", uploadedFileName
+export default function DownloadDraftButton({
+  content,
+  disabled = false,
+  targetLanguage,
+  sourceLanguage,
+  bookName,
+  chapterNumber = null,
+  translationType = "book",
+  uploadedFileName,
 }) {
   const rawText = extractLines(content);
   const hasContent = rawText && rawText.trim().length > 0;
 
   const handleDownload = async (format) => {
     if (disabled || !hasContent) return;
-
 
     const rawText = extractLines(content);
 
@@ -57,14 +63,19 @@ export default function DownloadDraftButton({ content, disabled = false, targetL
           ? bookName.replace(/\s+/g, "_")
           : bookName?.name?.replace(/\s+/g, "_") || "book";
       baseName = `${src}_${tgt}_${book}`;
-    }  else if (translationType === "text" || translationType === "quick") {
+    }else if (translationType === "text") {
+      const cleanFile = uploadedFileName
+        ? uploadedFileName.replace(/\.[^/.]+$/, "").replace(/\s+/g, "_")
+        : "";
+
+      baseName = cleanFile;
+    }else if (translationType === "quick") {
       baseName = `${src}_${tgt}`;
     } else {
       baseName = `${src}_${tgt}`;
     }
 
     const finalFileName = `${baseName}.${format}`;
-
 
     if (format === "txt" || format === "usfm") {
       const blob = new Blob([lines.join("\n\n")], {
@@ -97,22 +108,40 @@ export default function DownloadDraftButton({ content, disabled = false, targetL
 
   const menu = {
     items: [
-      { key: "txt", label: "Text (.txt)", onClick: () => handleDownload("txt") },
-      { key: "docx", label: "Docx (.docx)", onClick: () => handleDownload("docx") },
-      { key: "usfm", label: "USFM (.usfm)", onClick: () => handleDownload("usfm") },
+      {
+        key: "txt",
+        label: "Text (.txt)",
+        onClick: () => handleDownload("txt"),
+      },
+      {
+        key: "docx",
+        label: "Docx (.docx)",
+        onClick: () => handleDownload("docx"),
+      },
+      {
+        key: "usfm",
+        label: "USFM (.usfm)",
+        onClick: () => handleDownload("usfm"),
+      },
     ],
   };
 
   return (
-    <Dropdown menu={menu} placement="bottomRight" trigger={["click"]} disabled={disabled}>
-      <Tooltip title="Download" color="#fff" styles={{ body: { color: "#000" } }}>
-
+    <Dropdown
+      menu={menu}
+      placement="bottomRight"
+      trigger={["click"]}
+      disabled={disabled}
+    >
+      <Tooltip
+        title="Download"
+        color="#fff"
+        styles={{ body: { color: "#000" } }}
+      >
         <Button
           icon={<DownloadOutlined />}
           disabled={disabled || !hasContent}
-        >
-
-        </Button>
+        ></Button>
       </Tooltip>
     </Dropdown>
   );

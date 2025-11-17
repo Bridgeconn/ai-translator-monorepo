@@ -115,7 +115,7 @@ export default function HomePage() {
           </div>
 
           {/* ✅ Updated Title with version number */}
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap:12, marginLeft: 38 }}>
             <Title
               level={1}
               style={{
@@ -133,7 +133,18 @@ export default function HomePage() {
                 fontWeight: 500,
               }}
             >
-              v1.0.0
+              <a
+                href="https://github.com/Bridgeconn/ai-translator-monorepo/releases/tag/v1.0.0"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  textDecoration: "none", // removes underline
+                  color: "inherit", // keeps same text color
+                  cursor: "pointer",
+                }}
+              >
+                v1.0.0
+              </a>
             </Text>
           </div>
 
@@ -153,11 +164,7 @@ export default function HomePage() {
           </Paragraph>
 
           <Space size="middle">
-            <Button
-              size="large"
-              onClick={openLogin}
-              style={styles.primaryBtn}
-            >
+            <Button size="large" onClick={openLogin} style={styles.primaryBtn}>
               Get Started
             </Button>
             <Button
