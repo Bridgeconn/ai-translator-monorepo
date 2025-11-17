@@ -21,7 +21,7 @@ POLL_INTERVAL = 3
 
 SUPPORTED_MODELS = [
     "nllb-600M",
-    "nllb_finetuned_eng_nzm",
+    "nllb-english-zeme",
     "nllb-english-nagamese",
     "nllb-gujrathi-koli_kachchi",
     "nllb-hindi-surjapuri",
