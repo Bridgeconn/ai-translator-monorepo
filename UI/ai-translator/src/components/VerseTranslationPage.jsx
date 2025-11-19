@@ -160,6 +160,7 @@ const VerseTranslationPage = () => {
   const [serverDraft, setServerDraft] = useState("");
   const [loadingDraft, setLoadingDraft] = useState(false);
   const [isZemeNaga, setIsZemeNaga] = useState(false);
+  const [isGeneratingTokens, setIsGeneratingTokens] = useState(false);
 
   // store edits per verse_token_id
   const [draftId, setDraftId] = useState(null); //Added to track draft ID
@@ -548,32 +549,51 @@ const VerseTranslationPage = () => {
     });
   };
   // ---------- Ensure tokens exist for a book (generate if missing) ----------
+  // ✅ Add loading state
   const ensureBookTokens = async (bookName) => {
-    // Try to see if *any* tokens exist for this book first
-    try {
-      const res = await api.get(`/verse_tokens/by-project/${projectId}`, {
-        params: { book_name: bookName, chapter: "" },
-      });
-      const existing = Array.isArray(res.data) ? res.data : [];
-      if (existing.length > 0) return; // already there
-    } catch (err) {
-      // ignore → will attempt generation below
-      if (err.response?.status !== 404) {
-        // non-404 errors should bubble up
-      }
+  try {
+    // Check if tokens exist first
+    const res = await api.get(`/verse_tokens/by-project/${projectId}`, {
+      params: { book_name: bookName },
+    });
+    const existing = Array.isArray(res.data) ? res.data : [];
+    if (existing.length > 0) {
+      console.log(`✅ Tokens already exist for ${bookName}`);
+      return existing.length; // Return count
     }
+  } catch (err) {
+    if (err.response?.status !== 404) {
+      console.error("Error checking tokens:", err);
+    }
+  }
 
+  // Generate tokens
+  setIsGeneratingTokens(true);
+  try {
     const key = "gen-book-tokens";
     message.loading({
       key,
-      content: "No tokens found. Generating tokens for this book…",
+      content: "Generating tokens for this book…",
       duration: 0,
     });
+    
     await api.post(`/verse_tokens/generate-verse-tokens/${projectId}`, null, {
-      params: { book_name: bookName, chapter: "" }, // book-level generation
+      params: { book_name: bookName },
     });
-    message.success({ key, content: "Tokens generated for the book." });
-  };
+    
+    message.success({ key, content: "Tokens generated successfully!" });
+    
+    // ✅ Wait a bit for database commit
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    return 0; // Newly generated
+  } catch (err) {
+    message.error(`Failed to generate tokens: ${err.message}`);
+    throw err;
+  } finally {
+    setIsGeneratingTokens(false);
+  }
+};
 
   // ---------- Fetch tokens for current selection (book and optional chapter) ----------
   const fetchTokensForSelection = async (bookName, chapterNumber = null) => {

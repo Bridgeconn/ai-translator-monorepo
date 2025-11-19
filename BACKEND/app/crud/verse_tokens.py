@@ -12,6 +12,7 @@ import asyncio
 from sqlalchemy.exc import IntegrityError
 
 # Import models
+from app.models.book import Book
 from app.models.project import Project
 from app.models.verse import Verse
 from app.models.chapter import Chapter
@@ -79,47 +80,139 @@ def get_vachan_token():
 
 # --------------------------------------------------
 # CRUD + Tokenization
+# def create_verse_tokens_for_project(db: Session, project_id, book_name):
+#     project = db.query(Project).filter(Project.project_id == project_id).first()
+#     if not project:
+#         raise ValueError("Project not found")
+#     source_id = project.source_id
+#     check_source_id = db.query(Project.source_id).filter(Project.project_id == project_id).scalar()
+#     if not check_source_id:
+#         raise ValueError("Invalid source_id or project does not have a source.")
+#     book_name = db.query(Book.book_name).filter(Book.source_id == source_id, Book.book_name == book_name).scalar()
+#     if not book_name:
+#         raise ValueError("Invalid book_name or book does not exist.")
+#     books = db.query(Book).filter(Book.source_id == source_id).all()
+#     print(f"{len(books)} books found for source_id: {source_id}")
+#     book_obj = db.query(Book).filter(
+#         Book.source_id == source_id, 
+#         Book.book_name == book_name
+#     ).first()
+    
+#     if not book_obj:
+#         raise ValueError("Invalid book_name or book does not exist.")
+#     verses = (
+#     db.query(Verse)
+#     .join(Chapter, Chapter.chapter_id == Verse.chapter_id)
+#     .filter(Chapter.book_id == book_obj.book_id)  # ✅ Direct filter, no Book join
+#     .distinct(Verse.verse_id)  # ✅ Distinct on specific column
+#     .order_by(Verse.verse_id)  # ✅ Required for PostgreSQL DISTINCT ON
+#     .all()
+# )
+#     check_bkn_tv = db.query(VerseTokenTranslation).filter_by(project_id=project_id, book_name=book_name).first()
+#     if check_bkn_tv:
+#         raise ValueError("Book name already exists for this project.")
+#      # ✅ CHECK FOR EXISTING TOKENS (more robust check)
+#     existing_verse_ids = set(
+#         db.query(VerseTokenTranslation.verse_id)
+#         .filter(
+#             VerseTokenTranslation.project_id == project_id,
+#             VerseTokenTranslation.book_name == book_name
+#         )
+#         .all()
+#     )
+#     existing_verse_ids = {v[0] for v in existing_verse_ids}
+#     created_tokens = []
+#     skipped_count = 0
+#     for verse in verses:
+#         try:
+#          token = VerseTokenTranslation(
+#             verse_token_id=uuid4(),
+#             project_id=project.project_id,
+#             verse_id=verse.verse_id,
+#             book_name=book_name,
+#             token_text=verse.content,
+#             verse_translated_text=None,
+#             is_reviewed=False,
+#             is_active=True
+#         )
+#          db.add(token)
+#          db.flush()
+#          created_tokens.append(token)
+#         except IntegrityError:
+#             db.rollback()
+#             skipped_count += 1
+#             db.begin()
+#             continue
+#     db.commit()
+#     return created_tokens
 def create_verse_tokens_for_project(db: Session, project_id, book_name):
+    # 1. Validate project and get source
     project = db.query(Project).filter(Project.project_id == project_id).first()
     if not project:
         raise ValueError("Project not found")
+    
     source_id = project.source_id
-    check_source_id = db.query(Project.source_id).filter(Project.project_id == project_id).scalar()
-    if not check_source_id:
-        raise ValueError("Invalid source_id or project does not have a source.")
-    book_name = db.query(Book.book_name).filter(Book.source_id == source_id, Book.book_name == book_name).scalar()
-    if not book_name:
-        raise ValueError("Invalid book_name or book does not exist.")
-    books = db.query(Book).filter(Book.source_id == source_id).all()
-    print(f"{len(books)} books found for source_id: {source_id}")
-
-    verses = (
-    db.query(Verse)
-    .join(Chapter, Chapter.chapter_id == Verse.chapter_id)
-    .join(Book, Book.book_id == Chapter.book_id)
-    .filter(Book.book_name == book_name)
-    .all()
-)   
-    check_bkn_tv = db.query(VerseTokenTranslation).filter_by(project_id=project_id, book_name=book_name).first()
-    if check_bkn_tv:
-        raise ValueError("Book name already exists for this project.")
-     # ✅ CHECK FOR EXISTING TOKENS (more robust check)
-    existing_verse_ids = set(
-        db.query(VerseTokenTranslation.verse_id)
-        .filter(
-            VerseTokenTranslation.project_id == project_id,
-            VerseTokenTranslation.book_name == book_name
+    if not source_id:
+        raise ValueError("Project does not have a source")
+    
+    # 2. ✅ Get book from the PROJECT'S source (not just any book with that name!)
+    book_obj = db.query(Book).filter(
+        Book.source_id == source_id,  # ← CRITICAL: Must match project's source
+        Book.book_name == book_name
+    ).first()
+    
+    if not book_obj:
+        raise ValueError(f"Book '{book_name}' not found in project's source")
+    
+    # 3. ✅ Verify chapters exist
+    chapter_count = db.query(Chapter).filter(
+        Chapter.book_id == book_obj.book_id
+    ).count()
+    
+    if chapter_count == 0:
+        raise ValueError(
+            f"Book '{book_name}' has no chapters. "
+            "The book upload may have failed. Please re-upload the book."
         )
+    
+    logger.info(f"✅ Book '{book_name}' has {chapter_count} chapters")
+    
+    # 4. ✅ Check for existing tokens
+    existing_count = db.query(VerseTokenTranslation).filter(
+        VerseTokenTranslation.project_id == project_id,
+        VerseTokenTranslation.book_name == book_name
+    ).count()
+    
+    if existing_count > 0:
+        raise ValueError(
+            f"Tokens already exist for '{book_name}'. "
+            f"Found {existing_count} existing tokens."
+        )
+    
+    # 5. ✅ Get verses (with explicit source check)
+    verses = (
+        db.query(Verse)
+        .join(Chapter, Chapter.chapter_id == Verse.chapter_id)
+        .join(Book, Book.book_id == Chapter.book_id)
+        .filter(
+            Book.book_id == book_obj.book_id,  # ← Use the verified book
+            Book.source_id == source_id         # ← Double-check source
+        )
+        .order_by(Chapter.chapter_number, Verse.verse_number)
         .all()
     )
-    existing_verse_ids = {v[0] for v in existing_verse_ids}
+    
+    if not verses:
+        raise ValueError(f"No verses found for book '{book_name}'")
+    
+    logger.info(f"📖 Creating tokens for {len(verses)} verses")
+    
+    # 6. Create tokens
     created_tokens = []
-    skipped_count = 0
     for verse in verses:
-        try:
-         token = VerseTokenTranslation(
+        token = VerseTokenTranslation(
             verse_token_id=uuid4(),
-            project_id=project.project_id,
+            project_id=project_id,
             verse_id=verse.verse_id,
             book_name=book_name,
             token_text=verse.content,
@@ -127,16 +220,18 @@ def create_verse_tokens_for_project(db: Session, project_id, book_name):
             is_reviewed=False,
             is_active=True
         )
-         db.add(token)
-         db.flush()
-         created_tokens.append(token)
-        except IntegrityError:
-            db.rollback()
-            skipped_count += 1
-            continue
-    db.commit()
+        db.add(token)
+        created_tokens.append(token)
+    
+    try:
+        db.commit()
+        logger.info(f"✅ Created {len(created_tokens)} tokens successfully")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"❌ Failed to commit tokens: {e}")
+        raise ValueError(f"Failed to create tokens: {str(e)}")
+    
     return created_tokens
-
 
 def get_verse_tokens_by_project(db: Session, project_id: UUID, book_name: Optional[str] = None, chapter: Optional[int] = None):
     q = (

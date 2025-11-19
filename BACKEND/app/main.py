@@ -18,7 +18,6 @@ from app.routes import (
     project as project_routes,
     word_token_translation,
     word_tokens,
-    verse_tokens
 )
 from app.database import get_db, init_db_schema, Base, engine
 from app.load_language_data import load_languages_from_csv
