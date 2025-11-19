@@ -9,6 +9,7 @@ import logging
 from dotenv import load_dotenv
 from sqlalchemy import asc, cast, Integer
 import asyncio
+from sqlalchemy.exc import IntegrityError
 
 # Import models
 from app.models.project import Project
@@ -102,9 +103,21 @@ def create_verse_tokens_for_project(db: Session, project_id, book_name):
     check_bkn_tv = db.query(VerseTokenTranslation).filter_by(project_id=project_id, book_name=book_name).first()
     if check_bkn_tv:
         raise ValueError("Book name already exists for this project.")
+     # ✅ CHECK FOR EXISTING TOKENS (more robust check)
+    existing_verse_ids = set(
+        db.query(VerseTokenTranslation.verse_id)
+        .filter(
+            VerseTokenTranslation.project_id == project_id,
+            VerseTokenTranslation.book_name == book_name
+        )
+        .all()
+    )
+    existing_verse_ids = {v[0] for v in existing_verse_ids}
     created_tokens = []
+    skipped_count = 0
     for verse in verses:
-        token = VerseTokenTranslation(
+        try:
+         token = VerseTokenTranslation(
             verse_token_id=uuid4(),
             project_id=project.project_id,
             verse_id=verse.verse_id,
@@ -114,9 +127,13 @@ def create_verse_tokens_for_project(db: Session, project_id, book_name):
             is_reviewed=False,
             is_active=True
         )
-        db.add(token)
-        created_tokens.append(token)
-
+         db.add(token)
+         db.flush()
+         created_tokens.append(token)
+        except IntegrityError:
+            db.rollback()
+            skipped_count += 1
+            continue
     db.commit()
     return created_tokens
 
@@ -243,19 +260,16 @@ def manual_update_translation(db: Session, verse_token_id: UUID, project_id: UUI
     
     if not token_obj:
         raise HTTPException(status_code=404, detail="Verse token not found for this project")
+    try:
 
-    token_obj.verse_translated_text = new_translation
-    token_obj.is_reviewed = True
-    db.add(token_obj)
-    db.commit()
-    db.refresh(token_obj)
-    
-    verify = db.query(VerseTokenTranslation).filter(
-        VerseTokenTranslation.verse_token_id == verse_token_id
-    ).first()
-    
-    return token_obj
-
+     token_obj.verse_translated_text = new_translation
+     token_obj.is_reviewed = True
+     db.commit()
+     db.refresh(token_obj)
+     return token_obj
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to update translation: {str(e)}")
 
 # # # Book Translation
 def translate_chunk(db: Session, project_id: UUID, book_name: str, skip: int = 0, limit: int = 10,model_name: str = "nllb-600M"):
@@ -383,11 +397,28 @@ async def translate_chapter(
       query = query.filter(VerseTokenTranslation.verse_token_id.in_(token_ids))
 
     tokens = query.all()
+    seen_keys = set()
+    unique_tokens = []
+    
+    for token in tokens:
+        # Get verse_number from the relationship
+        verse = db.query(Verse).filter(Verse.verse_id == token.verse_id).first()
+        if not verse:
+            continue
+            
+        key = f"{verse.verse_number}:{token.token_text}"
+        
+        if key not in seen_keys:
+            seen_keys.add(key)
+            unique_tokens.append(token)
+    
+    tokens = unique_tokens
     if not full_regenerate:
         # Only translate verses that DON'T have translations yet
         tokens = [
             t for t in tokens 
-            if not t.verse_translated_text or t.verse_translated_text.strip() == ""
+            if (not t.verse_translated_text or t.verse_translated_text.strip() == "") 
+            and not t.is_reviewed
         ]
         #  If all verses are already translated, return early
         if not tokens:
