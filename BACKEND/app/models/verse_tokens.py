@@ -6,6 +6,7 @@ from app.database import Base
 from sqlalchemy.orm import relationship
 from app.models.project import Project
 from app.models.verse import Verse
+from sqlalchemy import UniqueConstraint
 
 class VerseTokenTranslation(Base):
     __tablename__ = 'verse_token_translation'
@@ -24,3 +25,6 @@ class VerseTokenTranslation(Base):
     #Relationships
     project = relationship("Project", back_populates="verse_tokens")
     verse = relationship("Verse", back_populates="verse_translations")
+    __table_args__ = (
+        UniqueConstraint('project_id', 'verse_id', 'token_text', name='unique_verse_token'),
+    )
