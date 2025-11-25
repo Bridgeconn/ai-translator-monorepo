@@ -596,6 +596,7 @@ const VerseTranslationPage = () => {
             }`,
           verse_translated_text:
             t.verse_translated_text || t.translated_text || "",
+          is_reviewed: t.is_reviewed || false, 
         }));
 
         // Deduplicate by verse_id + token_text
@@ -866,7 +867,7 @@ const VerseTranslationPage = () => {
     // ✅ Only reset tokens if fullRegenerate is true
     if (fullRegenerate) {
       setTokens((prev) =>
-        prev.map((tok) => ({ ...tok, verse_translated_text: "" }))
+        prev.map((tok) => ({ ...tok, verse_translated_text: "",is_reviewed: false }))
       );
     }
 
@@ -885,7 +886,7 @@ const VerseTranslationPage = () => {
           );
           
           setTokens((prev) =>
-            prev.map((tok) => ({ ...tok, verse_translated_text: "" }))
+            prev.map((tok) => ({ ...tok, verse_translated_text: "" ,is_reviewed: false}))
           );
         } catch (clearError) {
           notificationApi.error({
@@ -969,6 +970,11 @@ const VerseTranslationPage = () => {
           setTokens((prev) => {
             // build updated array (always new reference)
             const updated = prev.map((tok) => {
+                // ✅ PROTECT MANUALLY REVIEWED VERSES
+        if (tok.is_reviewed) {
+         console.log(`⚠️ Protecting reviewed verse ${tok.verse_number}`);
+          return tok; // Don't update reviewed verses
+         }
               const match = newTokens.find(
                 (nt) =>
                   nt.verse_number === tok.verse_number &&
@@ -981,6 +987,7 @@ const VerseTranslationPage = () => {
                     match.verse_translated_text ||
                     match.translated_text ||
                     "",
+                  is_reviewed: false,
                   lastUpdated: Date.now(),
                 }
                 : tok;
