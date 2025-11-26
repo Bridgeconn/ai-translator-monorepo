@@ -10,6 +10,7 @@ import {
   Modal,
   Input,
   App,
+  Button,
 } from "antd";
 import {
   UserOutlined,
@@ -19,6 +20,7 @@ import {
   FolderOutlined,
   ThunderboltOutlined,
   KeyOutlined,
+  MessageOutlined
 } from "@ant-design/icons";
 
 import { Tooltip } from "antd"; //  add this at the top with other imports
@@ -78,6 +80,26 @@ export default function MainLayout() {
       localStorage.removeItem("user");
       navigate("/login");
     }
+  };
+
+  const styles = {
+    // Floating Feedback Button
+    feedbackBtn: {
+      // position: "fixed",
+      // bottom: 28,
+      // right: 28,
+      // background: "linear-gradient(135deg,#2C8DFB,#6C63FF)",
+      // color: "#fff",
+      // borderRadius: "20px",
+      // padding: "8px 18px",
+      fontWeight: 500,
+      boxShadow: '0 2px 14px rgba(11,14,19,0.1)',
+      cursor: "pointer",
+      fontSize: 14,
+      border: "none",
+      // zIndex: 999,
+      // border: "none",
+    },
   };
 
   const handlePasswordReset = async () => {
@@ -339,35 +361,60 @@ export default function MainLayout() {
           <div
             style={{
               display: "flex",
-              flexDirection: "column",
+              flexDirection: "row",     // 🔥 Make items inline
               alignItems: "center",
+              gap: "20px",              // spacing between button and avatar
             }}
           >
-            <Dropdown
-              menu={{ items: userMenuItems }}
-              placement="bottomRight"
-              trigger={["click"]}
-            >
-              <Avatar
-                icon={<UserOutlined />}
-                style={{
-                  cursor: "pointer",
-                  backgroundColor: "rgb(44, 141, 251)",
-                  color: "white",
-                }}
-                size="default"
-              />
-            </Dropdown>
-            <Text
+            <Button
+              icon={<MessageOutlined style={{ fontSize: "16px" }} />}
+              style={styles.feedbackBtn}
+              onClick={() =>
+                window.open(
+                  "https://forms.office.com/r/7Yui5AKKAj",
+                  "_blank",
+                  "noopener,noreferrer"
+                )
+              }>
+              Feedback
+            </Button>
+            
+            {/* Avatar + Username (vertical inside horizontal row) */}
+            <div
               style={{
-                fontSize: "12px",
-                marginTop: "4px",
-                color: "rgb(0, 2, 0, 0.88)",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
               }}
             >
-              {user.username || "User"}
-            </Text>
+              <Dropdown
+                menu={{ items: userMenuItems }}
+                placement="bottomRight"
+                trigger={["click"]}
+              >
+                <Avatar
+                  icon={<UserOutlined />}
+                  style={{
+                    cursor: "pointer",
+                    backgroundColor: "rgb(44, 141, 251)",
+                    color: "white",
+                  }}
+                  size="default"
+                />
+              </Dropdown>
+                
+              <Text
+                style={{
+                  fontSize: "12px",
+                  marginTop: "4px",
+                  color: "rgb(0, 2, 0, 0.88)",
+                }}
+              >
+                {user.username || "User"}
+              </Text>
+            </div>
           </div>
+
         </Header>
 
         <Content

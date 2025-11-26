@@ -1,17 +1,20 @@
-import React, { useState } from "react";
+import React from "react";
 import { Typography, Button, Space, Row, Col, Card } from "antd";
 import { useNavigate } from "react-router-dom";
 import {
   TranslationOutlined,
   EditOutlined,
   ThunderboltOutlined,
+  MessageOutlined,
 } from "@ant-design/icons";
-import { useAuthModal } from "./AuthModalContext"; // ✅ Add this
+import { useAuthModal } from "./AuthModalContext";
+
 const { Title, Paragraph, Text } = Typography;
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const { openLogin } = useAuthModal(); // ✅ Add this
+  const { openLogin } = useAuthModal();
+
   const features = [
     {
       icon: <TranslationOutlined style={{ fontSize: 28, color: "white" }} />,
@@ -38,6 +41,7 @@ export default function HomePage() {
       paddingTop: 94,
       display: "flex",
       justifyContent: "center",
+      // position: "relative", // required for floating button
     },
     container: {
       width: "100%",
@@ -103,6 +107,23 @@ export default function HomePage() {
       marginBottom: 18,
       boxShadow: "0 8px 20px rgba(44,141,251,0.12)",
     },
+
+    // Floating Feedback Button
+    feedbackBtn: {
+      position: "fixed",
+      bottom: 22,
+      right: 18,
+      background: "linear-gradient(135deg,#2C8DFB,#6C63FF)",
+      color: "#fff",
+      borderRadius: "20px",
+      padding: "8px 18px",
+      fontWeight: 600,
+      boxShadow: "0 8px 24px rgba(17,24,39,0.18)",
+      cursor: "pointer",
+      fontSize: 14,
+      zIndex: 999,
+      border: "none",
+    },
   };
 
   return (
@@ -114,8 +135,15 @@ export default function HomePage() {
             <Text style={styles.logoText}>文A</Text>
           </div>
 
-          {/* ✅ Updated Title with version number */}
-          <div style={{ display: "flex", alignItems: "baseline", gap:12, marginLeft: 38 }}>
+          {/* Title + Version */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "baseline",
+              gap: 12,
+              marginLeft: 38,
+            }}
+          >
             <Title
               level={1}
               style={{
@@ -138,8 +166,8 @@ export default function HomePage() {
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
-                  textDecoration: "none", // removes underline
-                  color: "inherit", // keeps same text color
+                  textDecoration: "none",
+                  color: "inherit",
                   cursor: "pointer",
                 }}
               >
@@ -222,6 +250,21 @@ export default function HomePage() {
           ))}
         </Row>
       </div>
+
+      {/* Floating Feedback Button */}
+      <Button
+        icon={<MessageOutlined style={{ fontSize: "15px" }} />}
+        style={styles.feedbackBtn}
+        onClick={() =>
+          window.open(
+            "https://forms.office.com/r/7Yui5AKKAj",
+            "_blank",
+            "noopener,noreferrer"
+          )
+        }
+      >
+      Feedback
+      </Button>
     </div>
   );
 }
