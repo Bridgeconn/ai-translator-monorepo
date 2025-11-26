@@ -184,11 +184,36 @@ const Dashboard = () => {
         <p style={{ marginBottom: 4 }}>
           <b>Release Date:</b> 12 Nov 2025
         </p>
-        {/* <p>
-        <b>Status:</b> Stable Release 🚀
-      </p> */}
+        <p style={{ marginBottom: 4 }}>
+          <b>Support:</b>{" "}
+          {/* <a
+            href="mailto:aimt.support@bridgeconn.in"
+            style={{
+              textDecoration: "none",
+              color: "rgba(6,18,40,0.65)",
+              fontStyle: "italic",
+            }}
+          > */}
+            aimt.support@bridgeconn.in
+          {/* </a> */}
+        </p>
 
-        {/* --- New Additions Below --- */}
+        <p style={{ marginBottom: 4 }}>
+          <b>Send Feedback:</b>{" "}
+          <a
+            href="https://forms.office.com/r/7Yui5AKKAj"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              textDecoration: "none",
+              color: "rgba(6,18,40,0.65)",
+              fontStyle: "italic",
+              cursor: "pointer",
+            }}
+          >
+            Click here
+          </a>
+        </p>
 
         <div
           style={{

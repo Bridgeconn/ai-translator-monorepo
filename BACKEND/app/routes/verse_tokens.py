@@ -3,7 +3,7 @@ from app.database import get_db
 from sqlalchemy.orm import Session
 from uuid import UUID
 from typing import List, Optional
-
+from sqlalchemy import or_
 # CRUD imports
 from app.crud import verse_tokens as verse_token_crud
 
@@ -160,24 +160,87 @@ async def translate_chapter_route(
         full_regenerate=request_body.full_regenerate  #  Pass this parameter
     )
 
+# @router.get("/verse_tokens/verse-numbers/{project_id}/{book_name}/{chapter_number}")
+# def get_verse_numbers(project_id: UUID, book_name: str, chapter_number: int, db: Session = Depends(get_db)):
+#     verses = (
+#         db.query(Verse.verse_number)
+#         .join(VerseTokenTranslation, Verse.verse_id == VerseTokenTranslation.verse_id)
+#         .join(Chapter, Chapter.chapter_id == Verse.chapter_id)
+#         .join(Book, Book.book_id == Chapter.book_id)
+#         .filter(
+#             VerseTokenTranslation.project_id == project_id,
+#             Book.book_name == book_name,
+#             Chapter.chapter_number == chapter_number,
+#             or_ (
+#             VerseTokenTranslation.verse_translated_text == None,
+#             VerseTokenTranslation.verse_translated_text == ""
+#              ),
+#             VerseTokenTranslation.is_reviewed == False  # ✅ ADD THIS
+
+#         )
+#         .order_by(Verse.verse_number)
+#         .all()
+#     )
+#     if not verses:
+#         raise HTTPException(status_code=404, detail="No verses found for this chapter.")
+#     # Get unique, sorted verse numbers excluding the first one
+#     verse_numbers = sorted(set(v[0] for v in verses))
+#     return verse_numbers
+
 @router.get("/verse_tokens/verse-numbers/{project_id}/{book_name}/{chapter_number}")
 def get_verse_numbers(project_id: UUID, book_name: str, chapter_number: int, db: Session = Depends(get_db)):
-    verses = (
+    """
+    Get unique verse numbers that need translation.
+    """
+    
+    # ✅ Get unique verses by verse_number (not verse_id)
+    all_verses = (
         db.query(Verse.verse_number)
-        .join(VerseTokenTranslation, Verse.verse_id == VerseTokenTranslation.verse_id)
         .join(Chapter, Chapter.chapter_id == Verse.chapter_id)
         .join(Book, Book.book_id == Chapter.book_id)
         .filter(
-            VerseTokenTranslation.project_id == project_id,
             Book.book_name == book_name,
             Chapter.chapter_number == chapter_number
         )
+        .distinct(Verse.verse_number)  # ✅ Only unique verse numbers
         .order_by(Verse.verse_number)
         .all()
     )
-    if not verses:
+    
+    if not all_verses:
         raise HTTPException(status_code=404, detail="No verses found for this chapter.")
-    return [v[0] for v in verses]  # return list of integers
+    
+    verse_numbers = [v[0] for v in all_verses]
+    untranslated_verses = []
+    
+    for verse_number in verse_numbers:
+        # ✅ Check if ANY token for this verse_number has translation
+        has_translation = (
+            db.query(VerseTokenTranslation)
+            .join(Verse, VerseTokenTranslation.verse_id == Verse.verse_id)
+            .filter(
+                VerseTokenTranslation.project_id == project_id,
+                Verse.verse_number == verse_number,
+                Verse.chapter_id.in_(
+                    db.query(Chapter.chapter_id).filter(
+                        Chapter.chapter_number == chapter_number,
+                        Chapter.book_id.in_(
+                            db.query(Book.book_id).filter(Book.book_name == book_name)
+                        )
+                    )
+                )
+            )
+            .filter(
+                VerseTokenTranslation.verse_translated_text.isnot(None),
+                VerseTokenTranslation.verse_translated_text != ""
+            )
+            .first()
+        ) is not None
+        
+        if not has_translation:
+            untranslated_verses.append(verse_number)
+    
+    return untranslated_verses
 @router.delete("/clear-chapter-translations/{project_id}/{book_name}/{chapter_number}")
 def clear_chapter_translations(
     project_id: UUID,
